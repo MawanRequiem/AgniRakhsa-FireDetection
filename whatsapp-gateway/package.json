@@ -1,0 +1,17 @@
+{
+    "name": "agniraksha-whatsapp-gateway",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "node --watch src/index.js",
+        "start": "node src/index.js"
+    },
+    "dependencies": {
+        "express": "^4.21.0",
+        "baileys": "^6.7.0",
+        "pino": "^9.0.0",
+        "dotenv": "^16.4.0",
+        "axios": "^1.7.0"
+    }
+}
