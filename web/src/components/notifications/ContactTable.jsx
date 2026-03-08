@@ -1,0 +1,94 @@
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Pencil, Trash2, Send } from 'lucide-react';
+import { toast } from 'sonner';
+
+export default function ContactTable({ contacts, onEdit, onDelete }) {
+  const handleTest = (name) => {
+    toast.success(`Test message sent to ${name}`, {
+      description: 'Check WhatsApp for the message.',
+    });
+  };
+
+  return (
+    <div className="border rounded-md" style={{ borderColor: 'var(--agni-border)' }}>
+      <Table>
+        <TableHeader style={{ backgroundColor: 'var(--agni-bg-secondary)' }}>
+          <TableRow style={{ borderColor: 'var(--agni-border)', borderBottomWidth: '1px' }}>
+            <TableHead style={{ color: 'var(--agni-text-muted)' }}>Name</TableHead>
+            <TableHead style={{ color: 'var(--agni-text-muted)' }}>Phone Number</TableHead>
+            <TableHead style={{ color: 'var(--agni-text-muted)' }}>Role</TableHead>
+            <TableHead style={{ color: 'var(--agni-text-muted)' }}>Status</TableHead>
+            <TableHead className="text-right" style={{ color: 'var(--agni-text-muted)' }}>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {contacts.map((contact) => (
+            <TableRow key={contact.id} style={{ borderColor: 'var(--agni-border)', borderBottomWidth: '1px' }} className="hover:bg-white/5 transition-colors">
+              <TableCell className="font-medium" style={{ color: 'var(--agni-text-primary)' }}>
+                {contact.name}
+              </TableCell>
+              <TableCell className="font-mono text-sm" style={{ color: 'var(--agni-text-secondary)' }}>
+                {contact.phone}
+              </TableCell>
+              <TableCell>
+                <Badge variant="outline" className="capitalize text-xs font-normal" style={{ 
+                  color: contact.role === 'admin' ? 'var(--agni-info)' : 'var(--agni-text-secondary)',
+                  borderColor: 'var(--agni-border)',
+                  backgroundColor: 'var(--agni-bg-tertiary)'
+                }}>
+                  {contact.role}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${contact.active ? 'bg-[var(--agni-safe)]' : 'bg-[var(--agni-text-muted)]'}`} />
+                  <span className="text-xs" style={{ color: contact.active ? 'var(--agni-safe)' : 'var(--agni-text-muted)' }}>
+                    {contact.active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-[var(--agni-text-secondary)] hover:text-white hover:bg-[var(--agni-bg-tertiary)]"
+                    onClick={() => handleTest(contact.name)}
+                    title="Send Test WA"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-[var(--agni-text-secondary)] hover:text-white hover:bg-[var(--agni-bg-tertiary)]"
+                    onClick={() => onEdit(contact)}
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-[var(--agni-fire)] hover:text-red-400 hover:bg-[rgba(248,113,113,0.1)]"
+                    onClick={() => onDelete(contact.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+          {contacts.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={5} className="h-24 text-center" style={{ color: 'var(--agni-text-muted)' }}>
+                No notification contacts found. Add one above.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
