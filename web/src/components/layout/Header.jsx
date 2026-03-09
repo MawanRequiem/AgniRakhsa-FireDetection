@@ -2,6 +2,7 @@ import { useLocation, Link } from 'react-router-dom';
 import { Bell, Clock, Menu, User, Settings, LogOut, ShieldCheck } from 'lucide-react';
 import { ALERTS } from '@/data/mockData';
 import { useUIStore } from '@/store/store';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,6 +77,9 @@ export default function Header() {
           <span className="mx-1 opacity-30">|</span>
           <span className="font-medium">{dateStr}</span>
         </div>
+
+        {/* Theme Toggle */}
+        <ThemeToggle />
 
         {/* Notifications Dropdown */}
         <DropdownMenu>
