@@ -53,6 +53,40 @@
     --agni-text-muted: #94a3b8;      /* Light gray */
 }
 
+.dark {
+    /* Base Shadcn tokens for Dark Mode */
+    --background: oklch(0.14 0.01 260); 
+    --foreground: oklch(0.98 0 0);
+    --card: oklch(0.14 0.01 260);
+    --card-foreground: oklch(0.98 0 0);
+    --popover: oklch(0.14 0.01 260);
+    --popover-foreground: oklch(0.98 0 0);
+    --primary: oklch(0.98 0 0);
+    --primary-foreground: oklch(0.2 0.02 260);
+    --secondary: oklch(0.2 0.01 260);
+    --secondary-foreground: oklch(0.98 0 0);
+    --muted: oklch(0.2 0.01 260);
+    --muted-foreground: oklch(0.6 0.01 260);
+    --accent: oklch(0.2 0.01 260);
+    --accent-foreground: oklch(0.98 0 0);
+    --destructive: oklch(0.65 0.18 25);
+    --border: oklch(0.2 0.01 260); 
+    --input: oklch(0.2 0.01 260);
+    --ring: oklch(0.9 0.01 260);
+
+    /* True Dark Theme Backgrounds */
+    --agni-bg-primary: #0F1117;
+    --agni-bg-secondary: #171B24;
+    --agni-bg-tertiary: #1E2330;
+    --agni-border: #334155;
+    --agni-border-light: #475569;
+    
+    /* Light Text for Readability */
+    --agni-text-primary: #F0F1F3;
+    --agni-text-secondary: #94a3b8;
+    --agni-text-muted: #64748b;
+}
+
 @theme inline {
     --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
