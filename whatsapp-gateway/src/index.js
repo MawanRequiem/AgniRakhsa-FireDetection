@@ -1,7 +1,10 @@
 import express from 'express'
 import config from './config.js'
+import { connectToWhatsApp } from './baileys.js'
 
 const app = express()
+
+// JSON Body parser
 app.use(express.json())
 
 // Health check
@@ -13,11 +16,16 @@ app.get('/', (req, res) => {
     })
 })
 
-// TODO: Import routes
-// import messageRoutes from './routes/message.js'
-// app.use('/api/messages', messageRoutes)
+// Message routes (Secured via API Key middleware in the router)
+import messageRoutes from './routes/message.js'
+app.use('/api/messages', messageRoutes)
 
-app.listen(config.port, () => {
+app.listen(config.port, async () => {
     console.log(`🤖 WhatsApp Gateway running on http://localhost:${config.port}`)
-    // TODO: Initialize Baileys connection here
+    
+    try {
+        await connectToWhatsApp()
+    } catch (error) {
+        console.error('Failed to initialize WhatsApp connection:', error)
+    }
 })
