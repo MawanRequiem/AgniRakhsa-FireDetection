@@ -1,0 +1,14 @@
+[
+  {
+    "username": "admin",
+    "password": "password123",
+    "name": "Thaufiq Rahmat",
+    "role": "Admin"
+  },
+  {
+    "username": "satpam",
+    "password": "aman123",
+    "name": "Petugas Keamanan",
+    "role": "User"
+  }
+]

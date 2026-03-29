@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 
 // Eager load critical routes
+import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import Rooms from '@/pages/Rooms';
 import RoomDetail from '@/pages/RoomDetail';
@@ -11,6 +12,15 @@ import RoomDetail from '@/pages/RoomDetail';
 const CCTVMonitor = lazy(() => import('@/pages/CCTVMonitor'));
 const Alerts = lazy(() => import('@/pages/Alerts'));
 const Notifications = lazy(() => import('@/pages/Notifications'));
+
+// Fungsi Proteksi Rute
+const ProtectedRoute = ({ children }) => {
+  const user = localStorage.getItem('user');
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
 
 // Common suspense fallback (simple spinner using Warm Industrial colors)
 const PageFallback = () => (
@@ -23,6 +33,7 @@ function App() {
   return (
     <div className="min-h-screen text-[var(--agni-text-primary)]" style={{ backgroundColor: 'var(--agni-bg-primary)' }}>
       <Routes>
+        <Route path="/login" element={<Login />} />
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="rooms" element={<Rooms />} />
