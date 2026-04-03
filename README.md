@@ -39,41 +39,44 @@ Sistem deteksi dan monitoring kebakaran berbasis AI yang mengintegrasikan Comput
 
 ### 1. Web Dashboard — `web/`
 
-| Item | Detail |
-|------|--------|
-| **Teknologi** | React.js (JavaScript) + Vite |
-| **Styling** | Tailwind CSS v4 + shadcn/ui |
-| **Fungsi** | Dashboard monitoring real-time: grafik sensor, visual CCTV, status ruangan, card notifikasi |
-| **Port** | `5173` (dev) |
+| Item          | Detail                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------- |
+| **Teknologi** | React.js (JavaScript) + Vite                                                                |
+| **Styling**   | Tailwind CSS v4 + shadcn/ui                                                                 |
+| **Fungsi**    | Dashboard monitoring real-time: grafik sensor, visual CCTV, status ruangan, card notifikasi |
+| **Port**      | `5173` (dev)                                                                                |
 
 ### 2. Backend & AI Core — `backend/`
 
-| Item | Detail |
-|------|--------|
-| **Teknologi** | Python 3.11+ + FastAPI |
-| **Package Manager** | uv |
-| **Database** | Supabase (PostgreSQL) |
-| **Fungsi** | Pusat logika & kecerdasan sistem |
+| Item                | Detail                           |
+| ------------------- | -------------------------------- |
+| **Teknologi**       | Python 3.11+ + FastAPI           |
+| **Package Manager** | uv                               |
+| **Database**        | Supabase (PostgreSQL)            |
+| **Fungsi**          | Pusat logika & kecerdasan sistem |
 
 **Fungsi Web & API:**
+
 - Menerima data metrik dari sensor IoT (via MQTT/HTTP)
 - Menyimpan data ke Supabase
 - Menyajikan data ke dashboard React (WebSocket untuk real-time update)
 
 **Fungsi AI/ML:**
+
 - Computer Vision: YOLO & Semantic Segmentation untuk video CCTV
 - Data Mining: Random Forest / XGBoost untuk analisis data sensor
 - NLP: Text generation untuk chatbot dan laporan otomatis
 
 ### 3. WhatsApp Gateway — `whatsapp-gateway/`
 
-| Item | Detail |
-|------|--------|
-| **Teknologi** | Node.js + Express.js + Baileys |
-| **Fungsi** | Bot WhatsApp untuk komunikasi interaktif |
-| **Port** | `3001` (dev) |
+| Item          | Detail                                   |
+| ------------- | ---------------------------------------- |
+| **Teknologi** | Node.js + Express.js + Baileys           |
+| **Fungsi**    | Bot WhatsApp untuk komunikasi interaktif |
+| **Port**      | `3001` (dev)                             |
 
 **Capabilities:**
+
 - Menerima perintah dari backend via REST API (kirim alert, notifikasi)
 - Menangkap pesan dari pengguna (satpam) → forward ke backend untuk dijawab AI NLP
 - Mengirim alert otomatis saat ada deteksi bahaya
@@ -162,7 +165,7 @@ npm run dev
 
 ```bash
 cd backend
-cp .env.example .env        # isi credential Supabase
+cp .env.example c.env        # isi credential Supabase
 uv sync
 uv run uvicorn app.main:app --reload
 # → http://localhost:8000
@@ -184,11 +187,11 @@ npm run dev
 
 Setiap service punya `.env.example` masing-masing. Copy ke `.env` dan isi sesuai kebutuhan:
 
-| Service | File | Key Variables |
-|---------|------|---------------|
-| Web | `web/.env.example` | `VITE_API_URL` |
-| Backend | `backend/.env.example` | `SUPABASE_URL`, `SUPABASE_KEY`, `SECRET_KEY` |
-| WA Gateway | `whatsapp-gateway/.env.example` | `PORT`, `BACKEND_API_URL` |
+| Service    | File                            | Key Variables                                |
+| ---------- | ------------------------------- | -------------------------------------------- |
+| Web        | `web/.env.example`              | `VITE_API_URL`                               |
+| Backend    | `backend/.env.example`          | `SUPABASE_URL`, `SUPABASE_KEY`, `SECRET_KEY` |
+| WA Gateway | `whatsapp-gateway/.env.example` | `PORT`, `BACKEND_API_URL`                    |
 
 ---
 
@@ -204,17 +207,17 @@ docker compose up --build
 
 ### Tahap Pengerjaan
 
-| Fase | Deskripsi | Status |
-|------|-----------|--------|
-| **1. Setup** | Scaffolding project, struktur folder, konfigurasi awal | 🔄 In Progress |
-| **2. Requirement Engineering** | Analisis kebutuhan, use case, user story | ⏳ Pending |
-| **3. Database Design** | Schema Supabase, tabel, relasi, RLS policies | ⏳ Pending |
-| **4. Backend API** | Endpoint CRUD, auth, WebSocket, integrasi Supabase | ⏳ Pending |
-| **5. AI/ML Integration** | YOLO, segmentation, data mining, NLP chatbot | ⏳ Pending |
-| **6. Frontend Dashboard** | UI monitoring, grafik real-time, notifikasi | ⏳ Pending |
-| **7. WhatsApp Bot** | Integrasi Baileys, alert otomatis, chatbot | ⏳ Pending |
-| **8. Testing & QA** | Unit test, integration test, UAT | ⏳ Pending |
-| **9. Deployment** | Docker, cloud deployment, CI/CD | ⏳ Pending |
+| Fase                           | Deskripsi                                              | Status         |
+| ------------------------------ | ------------------------------------------------------ | -------------- |
+| **1. Setup**                   | Scaffolding project, struktur folder, konfigurasi awal | 🔄 In Progress |
+| **2. Requirement Engineering** | Analisis kebutuhan, use case, user story               | ⏳ Pending     |
+| **3. Database Design**         | Schema Supabase, tabel, relasi, RLS policies           | ⏳ Pending     |
+| **4. Backend API**             | Endpoint CRUD, auth, WebSocket, integrasi Supabase     | ⏳ Pending     |
+| **5. AI/ML Integration**       | YOLO, segmentation, data mining, NLP chatbot           | ⏳ Pending     |
+| **6. Frontend Dashboard**      | UI monitoring, grafik real-time, notifikasi            | ⏳ Pending     |
+| **7. WhatsApp Bot**            | Integrasi Baileys, alert otomatis, chatbot             | ⏳ Pending     |
+| **8. Testing & QA**            | Unit test, integration test, UAT                       | ⏳ Pending     |
+| **9. Deployment**              | Docker, cloud deployment, CI/CD                        | ⏳ Pending     |
 
 ### Prinsip Development
 

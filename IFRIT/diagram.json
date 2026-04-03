@@ -1,0 +1,188 @@
+{
+  "version": 1,
+  "author": "AgniRakhsa-IFRIT",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-s3-devkitc-1",
+      "id": "esp",
+      "top": -100,
+      "left": 50,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-breadboard",
+      "id": "bb1",
+      "top": 220,
+      "left": -280,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txtTitle",
+      "top": -220,
+      "left": -100,
+      "attrs": { "text": "AgniRakhsa IFRIT - Fire Detection System" }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txtCam",
+      "top": -195,
+      "left": -100,
+      "attrs": { "text": "ESP32-S3 + OV2640 CAM (camera not sim in Wokwi)" }
+    },
+    {
+      "type": "wokwi-gas-sensor",
+      "id": "mq2",
+      "top": 340,
+      "left": -460,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txtMQ2",
+      "top": 320,
+      "left": -470,
+      "attrs": { "text": "MQ-2 (Smoke)" }
+    },
+    {
+      "type": "wokwi-gas-sensor",
+      "id": "mq4",
+      "top": 340,
+      "left": -290,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txtMQ4",
+      "top": 320,
+      "left": -300,
+      "attrs": { "text": "MQ-4 (Methane)" }
+    },
+    {
+      "type": "wokwi-gas-sensor",
+      "id": "mq6",
+      "top": 340,
+      "left": -120,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txtMQ6",
+      "top": 320,
+      "left": -130,
+      "attrs": { "text": "MQ-6 (LPG)" }
+    },
+    {
+      "type": "wokwi-gas-sensor",
+      "id": "mq9b",
+      "top": 340,
+      "left": 60,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txtMQ9B",
+      "top": 320,
+      "left": 50,
+      "attrs": { "text": "MQ-9B (CO)" }
+    },
+    {
+      "type": "wokwi-photoresistor-sensor",
+      "id": "flame",
+      "top": -80,
+      "left": 350,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txtFlame",
+      "top": -100,
+      "left": 340,
+      "attrs": { "text": "TO-39 Flame Sensor" }
+    },
+    {
+      "type": "wokwi-dht22",
+      "id": "shtc3",
+      "top": 50,
+      "left": 360,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txtSHTC3",
+      "top": 30,
+      "left": 330,
+      "attrs": { "text": "SHTC3 (sim: DHT22)" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledAlert",
+      "top": 170,
+      "left": 380,
+      "attrs": { "color": "red" }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txtLED",
+      "top": 150,
+      "left": 350,
+      "attrs": { "text": "Fire Alert LED" }
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "buzzer",
+      "top": 250,
+      "left": 360,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txtBuzzer",
+      "top": 230,
+      "left": 350,
+      "attrs": { "text": "Alarm Buzzer" }
+    }
+  ],
+  "connections": [
+    ["esp:5V", "bb1:tp.1", "red", ["v0"]],
+    ["esp:3V3.1", "bb1:tp.25", "red", ["v0"]],
+    ["esp:GND.1", "bb1:tn.1", "black", ["v0"]],
+    ["esp:GND.4", "bb1:tn.25", "black", ["v0"]],
+
+    ["mq2:VCC", "bb1:bp.2", "red", ["v0"]],
+    ["mq2:GND", "bb1:bn.2", "black", ["v0"]],
+    ["mq2:AOUT", "esp:4", "orange", ["v0"]],
+
+    ["mq4:VCC", "bb1:bp.12", "red", ["v0"]],
+    ["mq4:GND", "bb1:bn.12", "black", ["v0"]],
+    ["mq4:AOUT", "esp:5", "gold", ["v0"]],
+
+    ["mq6:VCC", "bb1:bp.22", "red", ["v0"]],
+    ["mq6:GND", "bb1:bn.22", "black", ["v0"]],
+    ["mq6:AOUT", "esp:6", "darkorange", ["v0"]],
+
+    ["mq9b:VCC", "bb1:bp.32", "red", ["v0"]],
+    ["mq9b:GND", "bb1:bn.32", "black", ["v0"]],
+    ["mq9b:AOUT", "esp:7", "brown", ["v0"]],
+
+    ["bb1:bp.1", "bb1:bp.50", "red", ["v0"]],
+    ["bb1:bn.1", "bb1:bn.50", "black", ["v0"]],
+    ["bb1:tp.1", "bb1:bp.1", "red", ["v0"]],
+    ["bb1:tn.1", "bb1:bn.1", "black", ["v0"]],
+
+    ["flame:VCC", "esp:3V3.2", "red", ["h0"]],
+    ["flame:GND", "esp:GND.2", "black", ["h0"]],
+    ["flame:AO", "esp:15", "purple", ["h0"]],
+
+    ["shtc3:VCC", "bb1:tp.30", "red", ["v0"]],
+    ["shtc3:GND", "bb1:tn.30", "black", ["v0"]],
+    ["shtc3:SDA", "esp:16", "green", ["h0"]],
+
+    ["ledAlert:A", "esp:17", "red", ["h0"]],
+    ["ledAlert:C", "esp:GND.3", "black", ["h0"]],
+
+    ["buzzer:1", "esp:18", "blue", ["h0"]],
+    ["buzzer:2", "esp:GND.3", "black", ["h0"]]
+  ]
+}

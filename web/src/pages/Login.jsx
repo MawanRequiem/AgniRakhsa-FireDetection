@@ -2,29 +2,40 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Flame, ShieldAlert, Loader2 } from 'lucide-react'; // Ganti User ke Mail
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/supabaseClient';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { customFetch } from '@/lib/api';
 
 export default function Login() {
   const [email, setEmail] = useState(''); // Supabase menggunakan Email
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false); // State untuk loading
   const navigate = useNavigate();
+  const setAuth = useAuthStore((state) => state.setAuth);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // 1. Proses Login ke Supabase (Otomatis handle Enkripsi & JWT)
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password,
+      const formData = new URLSearchParams();
+      formData.append('username', email);
+      formData.append('password', password);
+
+      const response = await customFetch(`/api/v1/auth/login`, {
+        method: 'POST',
+        body: formData,
       });
 
-      if (error) throw error;
+      const data = await response.json();
 
-      // 2. Jika berhasil, data session (JWT) sudah tersimpan otomatis oleh Supabase
-      // Kita bisa langsung arahkan ke dashboard
+      if (!response.ok) {
+        throw new Error(data.detail || 'Login gagal.');
+      }
+
+      // Store in memory (Zustand) securely! No localStorage!
+      setAuth(data.user, data.csrf_token);
+
+      // Redirect to dashboard
       navigate('/');
       
     } catch (error) {
