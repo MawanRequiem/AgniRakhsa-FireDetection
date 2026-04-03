@@ -11,7 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '../ui/button';
+import { cn } from '../../lib/utils';
 
 const pageTitles = {
   '/': 'Dashboard',
@@ -83,19 +84,16 @@ export default function Header() {
 
         {/* Notifications Dropdown */}
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative group">
-              <Bell className="w-5 h-5 text-[var(--agni-text-secondary)] group-hover:text-[var(--agni-text-primary)] transition-colors" />
-              {alertCount > 0 && (
-                <span
-                  className="absolute top-1 right-1 w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded-full text-white"
-                  style={{ backgroundColor: 'var(--agni-fire)' }}
-                >
-                  {alertCount > 9 ? '9+' : alertCount}
-                </span>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
+          <DropdownMenuTrigger 
+    className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "relative group")}
+  >
+    <Bell className="w-5 h-5 text-[var(--agni-text-secondary)] group-hover:text-[var(--agni-text-primary)] transition-colors" />
+    {alertCount > 0 && (
+      <span className="absolute top-1 right-1 w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded-full text-white bg-[var(--agni-fire)]">
+        {alertCount > 9 ? '9+' : alertCount}
+      </span>
+    )}
+  </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden" style={{ backgroundColor: 'var(--agni-bg-primary)', borderColor: 'var(--agni-border)' }}>
             <div className="p-3 border-b flex justify-between items-center" style={{ borderColor: 'var(--agni-border)', backgroundColor: 'var(--agni-bg-secondary)' }}>
               <span className="font-semibold text-sm">Recent Alerts</span>
@@ -131,32 +129,43 @@ export default function Header() {
 
         {/* User Profile Dropdown */}
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="group rounded-full bg-[var(--agni-bg-secondary)] border hover:bg-[var(--agni-bg-tertiary)]" style={{ borderColor: 'var(--agni-border)' }}>
-              <User className="w-4 h-4 text-[var(--agni-text-primary)]" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56" style={{ backgroundColor: 'var(--agni-bg-primary)', borderColor: 'var(--agni-border)' }}>
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none text-[var(--agni-text-primary)]">Admin Security</p>
-                <p className="text-xs leading-none text-[var(--agni-text-muted)]">admin@agniraksha.local</p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator style={{ backgroundColor: 'var(--agni-border-light)' }} />
-            <DropdownMenuItem asChild>
-              <Link to="/settings/notifications" className="cursor-pointer text-[var(--agni-text-secondary)] hover:text-[var(--agni-text-primary)]">
-                <Settings className="mr-2 w-4 h-4" />
-                <span>Notification Settings</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator style={{ backgroundColor: 'var(--agni-border-light)' }} />
-            <DropdownMenuItem className="text-[var(--agni-fire)] cursor-pointer hover:bg-[rgba(239,68,68,0.1)]">
-              <LogOut className="mr-2 w-4 h-4" />
-              <span>Log out</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+  <DropdownMenuTrigger 
+    className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "group rounded-full bg-[var(--agni-bg-secondary)] border")}
+  >
+    <User className="w-4 h-4 text-[var(--agni-text-primary)]" />
+  </DropdownMenuTrigger>
+  <DropdownMenuContent align="end" className="w-56" style={{ backgroundColor: 'var(--agni-bg-primary)', borderColor: 'var(--agni-border)' }}>
+    
+    {/* PERBAIKAN DI SINI: Ganti DropdownMenuLabel dengan div biasa */}
+    <div className="px-2 py-1.5 mb-1 flex flex-col space-y-1">
+      <p className="text-sm font-medium leading-none text-[var(--agni-text-primary)]">Admin Security</p>
+      <p className="text-xs leading-none text-[var(--agni-text-muted)]">admin@agniraksha.local</p>
+    </div>
+
+    <DropdownMenuSeparator style={{ backgroundColor: 'var(--agni-border-light)' }} />
+    
+    <DropdownMenuItem asChild>
+      <Link to="/settings/notifications" className="cursor-pointer flex items-center p-2 text-sm text-[var(--agni-text-secondary)] hover:text-[var(--agni-text-primary)]">
+        <Settings className="mr-2 w-4 h-4" />
+        <span>Notification Settings</span>
+      </Link>
+    </DropdownMenuItem>
+
+    <DropdownMenuSeparator style={{ backgroundColor: 'var(--agni-border-light)' }} />
+    
+    {/* Tombol Logout Resmi */}
+    <DropdownMenuItem 
+      onClick={() => {
+        localStorage.removeItem('user');
+        window.location.href = '/login'; // Cara paling paksa dan ampuh untuk redirect
+      }}
+      className="text-[var(--agni-fire)] flex items-center p-2 text-sm cursor-pointer hover:bg-[rgba(239,68,68,0.1)]"
+    >
+      <LogOut className="mr-2 w-4 h-4" />
+      <span>Log out</span>
+    </DropdownMenuItem>
+  </DropdownMenuContent>
+</DropdownMenu>
       </div>
     </header>
   );
