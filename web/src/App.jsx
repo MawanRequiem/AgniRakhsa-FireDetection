@@ -1,6 +1,8 @@
-import { Suspense, lazy } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Suspense, lazy, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { customFetch } from '@/lib/api';
 
 // Eager load critical routes
 import Login from '@/pages/Login';
@@ -13,15 +15,6 @@ const CCTVMonitor = lazy(() => import('@/pages/CCTVMonitor'));
 const Alerts = lazy(() => import('@/pages/Alerts'));
 const Notifications = lazy(() => import('@/pages/Notifications'));
 
-// Fungsi Proteksi Rute
-const ProtectedRoute = ({ children }) => {
-  const user = localStorage.getItem('user');
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-  return children;
-};
-
 // Common suspense fallback (simple spinner using Warm Industrial colors)
 const PageFallback = () => (
   <div className="flex items-center justify-center p-12 w-full h-64">
@@ -29,12 +22,59 @@ const PageFallback = () => (
   </div>
 );
 
+// Secure Route Protection using in-memory Zustand store
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuthStore();
+
+  if (isLoading) {
+    return <PageFallback />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
+
 function App() {
+  const { setAuth, clearAuth, setLoading } = useAuthStore();
+
+  // Verify HttpOnly Cookie Session on initial app load
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const response = await customFetch('/api/v1/auth/me');
+        if (response.ok) {
+          const user = await response.json();
+          // We don't get the CSRF token from /me natively right now, but 
+          // we should update /me to return it if needed, or rely on it staying valid if session valid.
+          // Wait, backend /login gave us the CSRF token. If user refreshes, we lose CSRF token from memory!
+          // But since the cookie is still there, /me succeeds.
+          // We need CSRF token for future POST requests!
+          // We will retrieve a new CSRF token on boot from /me or we'll modify /me right after this.
+          const resCsrf = response.headers.get('X-CSRF-Token');
+          setAuth(user, resCsrf || ''); // We will patch /me to return a new or same CSRF token.
+        } else {
+          clearAuth();
+        }
+      } catch (error) {
+        console.error("Session verification failed", error);
+        clearAuth();
+      }
+    };
+    checkSession();
+  }, [setAuth, clearAuth]);
+
   return (
     <div className="min-h-screen text-[var(--agni-text-primary)]" style={{ backgroundColor: 'var(--agni-bg-primary)' }}>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/" element={<MainLayout />}>
+        <Route path="/" element={
+          <ProtectedRoute>
+            <MainLayout />
+          </ProtectedRoute>
+        }>
           <Route index element={<Dashboard />} />
           <Route path="rooms" element={<Rooms />} />
           <Route path="rooms/:id" element={<RoomDetail />} />

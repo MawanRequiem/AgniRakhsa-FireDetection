@@ -136,8 +136,8 @@ export default function Header() {
   </DropdownMenuTrigger>
   <DropdownMenuContent align="end" className="w-56" style={{ backgroundColor: 'var(--agni-bg-primary)', borderColor: 'var(--agni-border)' }}>
     
-    {/* PERBAIKAN DI SINI: Ganti DropdownMenuLabel dengan div biasa */}
     <div className="px-2 py-1.5 mb-1 flex flex-col space-y-1">
+      {/* TODO: Ganti hardcode ini menggunakan data dari useAuthStore bila user endpoint dimurnikan */}
       <p className="text-sm font-medium leading-none text-[var(--agni-text-primary)]">Admin Security</p>
       <p className="text-xs leading-none text-[var(--agni-text-muted)]">admin@agniraksha.local</p>
     </div>
@@ -153,11 +153,20 @@ export default function Header() {
 
     <DropdownMenuSeparator style={{ backgroundColor: 'var(--agni-border-light)' }} />
     
-    {/* Tombol Logout Resmi */}
+    {/* Secure Logout Process */}
     <DropdownMenuItem 
-      onClick={() => {
-        localStorage.removeItem('user');
-        window.location.href = '/login'; // Cara paling paksa dan ampuh untuk redirect
+      onClick={async () => {
+        try {
+          // Dynamic import to avoid circular dependency in layout if any, actually we can just import customFetch at the top.
+          const { customFetch } = await import('@/lib/api');
+          const { useAuthStore } = await import('@/stores/useAuthStore');
+          
+          await customFetch('/api/v1/auth/logout', { method: 'POST' });
+          useAuthStore.getState().clearAuth();
+          // Routing is handled automatically by ProtectedRoute!
+        } catch (error) {
+          console.error("Logout failed", error);
+        }
       }}
       className="text-[var(--agni-fire)] flex items-center p-2 text-sm cursor-pointer hover:bg-[rgba(239,68,68,0.1)]"
     >
