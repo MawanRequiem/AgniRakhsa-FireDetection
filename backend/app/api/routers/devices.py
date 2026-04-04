@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from uuid import UUID
 from datetime import datetime
 
-from app.schemas.device import DeviceCreate, DeviceUpdate, DeviceOut, DeviceHeartbeat
+from app.schemas.device import DeviceCreate, DeviceUpdate, DeviceOut, DeviceHeartbeat, DeviceProvisionRequest, DeviceProvisionResponse
 from app.api.deps import CurrentUser
 from app.core.db import supabase
 
@@ -47,6 +47,61 @@ async def register_device(device: DeviceCreate):
         
     res = supabase.table("devices").insert(data).execute()
     return res.data[0]
+
+
+@router.post("/provision", response_model=DeviceProvisionResponse)
+async def provision_device(req: DeviceProvisionRequest):
+    """
+    Self-register a device and its sensors by MAC address.
+    Returns the mapped sensor UUIDs so the firmware can send batch readings.
+    """
+    # 1. Resolve room if name provided
+    room_id = None
+    if req.room_name:
+        res = supabase.table("rooms").select("id").eq("name", req.room_name).execute()
+        if res.data:
+            room_id = res.data[0]["id"]
+        else:
+            res = supabase.table("rooms").insert({"name": req.room_name, "description": "Auto-provisioned room"}).execute()
+            room_id = res.data[0]["id"]
+            
+    # 2. Resolve or create device
+    res = supabase.table("devices").select("id").eq("mac_address", req.mac_address).execute()
+    if res.data:
+        device_id = res.data[0]["id"]
+        # Update room if changed
+        if room_id:
+            supabase.table("devices").update({"room_id": room_id, "status": "online"}).eq("id", device_id).execute()
+        else:
+            supabase.table("devices").update({"status": "online"}).eq("id", device_id).execute()
+    else:
+        res = supabase.table("devices").insert({
+            "name": req.name,
+            "mac_address": req.mac_address,
+            "room_id": room_id,
+            "status": "online"
+        }).execute()
+        device_id = res.data[0]["id"]
+        
+    # 3. Resolve or create sensors
+    res = supabase.table("sensors").select("id, sensor_type").eq("device_id", device_id).execute()
+    existing_sensors = {s["sensor_type"]: s["id"] for s in (res.data or [])}
+    
+    sensor_map = {}
+    for stype in req.sensor_types:
+        if stype in existing_sensors:
+            sensor_map[stype] = existing_sensors[stype]
+        else:
+            s_res = supabase.table("sensors").insert({
+                "device_id": device_id,
+                "room_id": room_id,
+                "sensor_type": stype,
+                "unit": "raw", # Basic default, specific sensors can update this later
+                "status": "active"
+            }).execute()
+            sensor_map[stype] = s_res.data[0]["id"]
+            
+    return {"device_id": device_id, "sensors": sensor_map}
 
 
 @router.post("/{device_id}/heartbeat")
