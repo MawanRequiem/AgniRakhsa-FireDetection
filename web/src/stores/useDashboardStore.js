@@ -17,6 +17,7 @@ export const useDashboardStore = create((set, get) => ({
   error: null,
   socket: null,
   isConnected: false,
+  cameraFrames: {},
 
   fetchSummary: async () => {
     try {
@@ -140,6 +141,16 @@ export const useDashboardStore = create((set, get) => ({
               },
             };
           });
+        }
+        
+        if (message.type === 'DETECTION_FRAME') {
+          set((state) => ({
+             // Store the latest frame payload by camera_id
+             cameraFrames: {
+                ...(state.cameraFrames || {}),
+                [message.data.camera_id]: message.data
+             }
+          }));
         }
       } catch (error) {
         console.error('WebSocket message parsing error:', error);

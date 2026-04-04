@@ -4,14 +4,21 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { LayoutGrid, Maximize, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { customFetch } from '@/lib/api';
+import { useDashboardStore } from '@/stores/useDashboardStore';
 
 export default function CCTVMonitor() {
   const [layout, setLayout] = useState('grid-4');
   const [cameras, setCameras] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCamera, setSelectedCamera] = useState(null);
+  
+  const connectWebSocket = useDashboardStore((state) => state.connectWebSocket);
 
   useEffect(() => {
+    // Ensure websocket is connected for live video 
+    connectWebSocket();
+    
+
     const fetchCameras = async () => {
       try {
         const response = await customFetch('/api/v1/cameras/');

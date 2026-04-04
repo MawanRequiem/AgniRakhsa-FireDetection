@@ -122,3 +122,19 @@ async def device_heartbeat(device_id: UUID, heartbeat: DeviceHeartbeat):
         raise HTTPException(404, "Device not found")
         
     return {"status": "ok"}
+
+
+@router.patch("/{device_id}", response_model=DeviceOut)
+async def update_device(device_id: UUID, update: DeviceUpdate):
+    """Update device fields (name, room assignment, firmware, status)."""
+    data = update.model_dump(exclude_unset=True)
+    if "room_id" in data and data["room_id"] is not None:
+        data["room_id"] = str(data["room_id"])
+
+    if not data:
+        raise HTTPException(400, "No fields to update")
+
+    res = supabase.table("devices").update(data).eq("id", str(device_id)).execute()
+    if not res.data:
+        raise HTTPException(404, "Device not found")
+    return res.data[0]
