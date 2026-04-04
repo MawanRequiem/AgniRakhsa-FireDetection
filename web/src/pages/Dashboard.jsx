@@ -38,8 +38,15 @@ export default function Dashboard() {
     fetchRooms();
     connectWebSocket();
 
+    // Poll device status and summary every 15 seconds for freshness
+    const statusPoll = setInterval(() => {
+      fetchDevices();
+      fetchSummary();
+    }, 15000);
+
     return () => {
       disconnectWebSocket();
+      clearInterval(statusPoll);
     };
   }, [fetchSummary, fetchRecentAlerts, fetchDevices, fetchSensorHistory, fetchRooms, connectWebSocket, disconnectWebSocket]);
 
