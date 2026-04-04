@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.schemas.device import DeviceCreate, DeviceUpdate, DeviceOut, DeviceHeartbeat, DeviceProvisionRequest, DeviceProvisionResponse
 from app.api.deps import CurrentUser
@@ -112,7 +112,7 @@ async def device_heartbeat(device_id: UUID, heartbeat: DeviceHeartbeat):
     """
     update_data = {
         "status": "online",
-        "last_seen": datetime.utcnow().isoformat()
+        "last_seen": datetime.now(timezone.utc).isoformat()
     }
     if heartbeat.firmware_version:
         update_data["firmware_version"] = heartbeat.firmware_version

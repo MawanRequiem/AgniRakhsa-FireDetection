@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from app.api.routers import auth, notifications, detection, sensors, rooms, devices, dashboard, ws, alerts, cameras
 from app.core.config import settings
 from app.ai import registry
+from app.services.device_watchdog import run_watchdog
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,8 +24,18 @@ async def lifespan(app: FastAPI):
         import logging
         logging.getLogger(__name__).error(f"AI Model failed to load: {e}")
     
+    # Start the device watchdog as a background task
+    import asyncio
+    watchdog_task = asyncio.create_task(run_watchdog())
+    
     yield
-    # Teardown logic if needed
+    
+    # Teardown: cancel the watchdog
+    watchdog_task.cancel()
+    try:
+        await watchdog_task
+    except asyncio.CancelledError:
+        pass
 
 
 

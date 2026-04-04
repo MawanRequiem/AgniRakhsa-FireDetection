@@ -9,6 +9,10 @@ export default function Rooms() {
 
   useEffect(() => {
     fetchRooms();
+    
+    // Poll every 15 seconds to keep device status fresh
+    const interval = setInterval(fetchRooms, 15000);
+    return () => clearInterval(interval);
   }, [fetchRooms]);
 
   const getCount = (status) => status === 'all' 

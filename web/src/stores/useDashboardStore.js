@@ -120,6 +120,27 @@ export const useDashboardStore = create((set, get) => ({
             }));
           }
         }
+
+        if (message.type === 'DEVICE_STATUS_CHANGE') {
+          const { device_id, status } = message.data;
+          set((state) => {
+            // Update the device in the devices array
+            const updatedDevices = state.devices.map((d) =>
+              d.id === device_id ? { ...d, status } : d
+            );
+            
+            // Recalculate online count
+            const onlineCount = updatedDevices.filter((d) => d.status === 'online').length;
+            
+            return {
+              devices: updatedDevices,
+              summary: {
+                ...state.summary,
+                onlineDevices: onlineCount,
+              },
+            };
+          });
+        }
       } catch (error) {
         console.error('WebSocket message parsing error:', error);
       }

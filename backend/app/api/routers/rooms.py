@@ -10,11 +10,30 @@ from app.core.db import supabase
 router = APIRouter(prefix="/rooms", tags=["rooms"])
 
 
-@router.get("/", response_model=list[RoomOut])
+@router.get("/")
 async def list_rooms():
-    """List all rooms."""
+    """List all rooms with device status and sensor counts."""
     res = supabase.table("rooms").select("*").order("created_at").execute()
-    return res.data or []
+    rooms = res.data or []
+    
+    # Enrich each room with its devices and sensor count
+    for room in rooms:
+        room_id = room["id"]
+        
+        # Fetch devices for this room
+        devices_res = supabase.table("devices").select("id, status, name, last_seen").eq("room_id", room_id).execute()
+        room["devices"] = devices_res.data or []
+        room["device_count"] = len(room["devices"])
+        
+        # Count sensors linked to this room's devices
+        if room["devices"]:
+            device_ids = [d["id"] for d in room["devices"]]
+            sensors_res = supabase.table("sensors").select("id", count="exact").in_("device_id", device_ids).execute()
+            room["sensor_count"] = sensors_res.count or 0
+        else:
+            room["sensor_count"] = 0
+    
+    return rooms
 
 
 @router.get("/{room_id}", response_model=RoomDetail)

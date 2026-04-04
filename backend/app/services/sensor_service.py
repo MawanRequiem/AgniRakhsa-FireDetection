@@ -46,7 +46,15 @@ async def ingest_readings(device_id: UUID, readings: list[dict]) -> int:
     
     now_utc = datetime.now(timezone.utc).isoformat()
     
-    # Update device last_seen
+    # Check if device was previously offline (for status change broadcast)
+    device_res = supabase.table("devices").select("status, name").eq("id", str(device_id)).execute()
+    was_offline = False
+    device_name = ""
+    if device_res.data:
+        was_offline = device_res.data[0].get("status") != "online"
+        device_name = device_res.data[0].get("name", "")
+    
+    # Update device last_seen and status
     supabase.table("devices").update(
         {"last_seen": now_utc, "status": "online"}
     ).eq("id", str(device_id)).execute()
@@ -78,6 +86,18 @@ async def ingest_readings(device_id: UUID, readings: list[dict]) -> int:
             "timestamp": now_utc,
         }
     })
+    
+    # Broadcast DEVICE_STATUS_CHANGE if device just came back online
+    if was_offline:
+        logger.info(f"Device '{device_name}' ({device_id}) came back ONLINE")
+        await manager.broadcast({
+            "type": "DEVICE_STATUS_CHANGE",
+            "data": {
+                "device_id": str(device_id),
+                "status": "online",
+                "name": device_name,
+            }
+        })
     
     return inserted_count
 
