@@ -15,12 +15,14 @@ Fusion formula:
 """
 
 import logging
+import asyncio
 from typing import Optional
 from uuid import UUID
 
 from app.core.config import settings
 from app.core.db import supabase
 from app.services import sensor_service
+from app.api.ws_manager import manager
 
 logger = logging.getLogger(__name__)
 
@@ -227,5 +229,12 @@ async def _create_alert(
     if fusion_result_id:
         insert_data["fusion_result_id"] = fusion_result_id
     
-    supabase.table("alerts").insert(insert_data).execute()
+    res = supabase.table("alerts").insert(insert_data).execute()
     logger.warning(f"ALERT CREATED: {message}")
+    
+    # Broadcast alert via websocket
+    if res.data:
+        asyncio.create_task(manager.broadcast({
+            "type": "NEW_ALERT",
+            "data": res.data[0]
+        }))

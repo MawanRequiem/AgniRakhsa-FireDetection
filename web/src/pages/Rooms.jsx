@@ -1,12 +1,32 @@
+import { useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import RoomCard from '@/components/dashboard/RoomCard';
 import HoverClue from '@/components/ui/HoverClue';
-import { ROOMS } from '@/data/mockData';
+import { useRoomsStore } from '@/stores/useRoomsStore';
 
 export default function Rooms() {
+  const { rooms, isLoading, fetchRooms } = useRoomsStore();
+
+  useEffect(() => {
+    fetchRooms();
+  }, [fetchRooms]);
+
   const getCount = (status) => status === 'all' 
-    ? ROOMS.length 
-    : ROOMS.filter(r => r.status === status).length;
+    ? rooms.length 
+    : rooms.filter(r => r.status === status).length;
+
+  if (isLoading && rooms.length === 0) {
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto">
+        <h1 className="text-2xl font-semibold" style={{ color: 'var(--agni-text-primary)' }}>Facility Rooms</h1>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="h-36 rounded-md border animate-pulse" style={{ backgroundColor: 'var(--agni-bg-tertiary)', borderColor: 'var(--agni-border)' }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -25,7 +45,7 @@ export default function Rooms() {
           className="w-full justify-start h-auto p-1 mb-6" 
           style={{ backgroundColor: 'var(--agni-bg-secondary)', borderColor: 'var(--agni-border)', borderBottomWidth: '1px' }}
         >
-          {['all', 'fire', 'warning', 'safe'].map(filter => (
+          {['all', 'safe', 'warning', 'high', 'critical'].map(filter => (
             <TabsTrigger 
               key={filter} 
               value={filter}
@@ -39,10 +59,10 @@ export default function Rooms() {
           ))}
         </TabsList>
 
-        {['all', 'fire', 'warning', 'safe'].map(filter => (
+        {['all', 'safe', 'warning', 'high', 'critical'].map(filter => (
           <TabsContent key={filter} value={filter} className="mt-0 outline-none">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {ROOMS.filter(r => filter === 'all' || r.status === filter).map(room => (
+              {rooms.filter(r => filter === 'all' || r.status === filter).map(room => (
                 <RoomCard key={room.id} room={room} />
               ))}
             </div>
@@ -57,7 +77,7 @@ export default function Rooms() {
                 </div>
                 <h3 className="text-[var(--agni-text-primary)] font-medium">No rooms found</h3>
                 <p className="text-[var(--agni-text-muted)] text-sm text-center max-w-sm mt-1">
-                  There are currently no rooms matching the "{filter}" status filter.
+                  There are currently no rooms matching the &quot;{filter}&quot; status filter.
                 </p>
               </div>
             )}

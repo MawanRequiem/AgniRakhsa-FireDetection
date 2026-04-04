@@ -1,108 +1,181 @@
-import StatCard from '@/components/dashboard/StatCard';
-import RoomCard from '@/components/dashboard/RoomCard';
-import SensorChart from '@/components/dashboard/SensorChart';
-import AlertItem from '@/components/dashboard/AlertItem';
-import HoverClue from '@/components/ui/HoverClue';
-import { ROOMS, ALERTS, SYSTEM_STATS, SENSOR_TRENDS } from '@/data/mockData';
-import { Building2, Activity, BellRing, ArrowUpRight } from 'lucide-react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Building2, Activity, BellRing, Route, HardDrive } from 'lucide-react';
+
+import { useDashboardStore } from '@/stores/useDashboardStore';
+import { useRoomsStore } from '@/stores/useRoomsStore';
+import MetricCard from '@/components/dashboard/MetricCard';
+import AlertFeed from '@/components/dashboard/AlertFeed';
+import SensorsOverview from '@/components/dashboard/SensorsOverview';
+import DevicesTable from '@/components/dashboard/DevicesTable';
+import HoverClue from '@/components/ui/HoverClue';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  // Get a sample room's dataset for the overview chart
-  const sampleTrend = SENSOR_TRENDS['R006']; // Using R006 as it has engaging data
-  const recentAlerts = ALERTS.slice(0, 5);
+  const { 
+    summary, 
+    recentAlerts, 
+    devices,
+    isLoading, 
+    fetchSummary,
+    fetchRecentAlerts,
+    fetchDevices,
+    fetchSensorHistory,
+    connectWebSocket,
+    disconnectWebSocket,
+    isConnected
+  } = useDashboardStore();
+
+  const { rooms, fetchRooms } = useRoomsStore();
+
+  // Load initial data and connect to websocket
+  useEffect(() => {
+    fetchSummary();
+    fetchRecentAlerts();
+    fetchDevices();
+    fetchSensorHistory();
+    fetchRooms();
+    connectWebSocket();
+
+    return () => {
+      disconnectWebSocket();
+    };
+  }, [fetchSummary, fetchRecentAlerts, fetchDevices, fetchSensorHistory, fetchRooms, connectWebSocket, disconnectWebSocket]);
+
+  const getRoomName = (roomId) => {
+    if (!roomId) return 'UNASSIGNED';
+    const room = rooms.find(r => r.id === roomId);
+    return room ? room.name : roomId.split('-')[0].toUpperCase();
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-end mb-4">
+      <div className="flex justify-between items-end mb-4 border-b border-[var(--agni-border)] pb-4">
         <div>
-           <div className="flex items-center">
-             <h2 className="text-2xl font-bold" style={{ color: 'var(--agni-text-primary)' }}>Overview</h2>
-             <HoverClue text="Halaman ini memberikan ringkasan kondisi seluruh gedung secara real-time. Peringatan berwarna merah (Fire) butuh tindakan segera." />
+           <div className="flex items-center gap-4">
+             <h2 className="text-2xl font-bold tracking-tight text-foreground uppercase">
+               SYSTEM_MONITOR
+             </h2>
+             {isConnected ? (
+               <div className="flex items-center gap-2 px-2.5 py-1 rounded-sm bg-green-500/10 border border-green-500/50">
+                 <div className="w-1.5 h-1.5 bg-green-500 animate-pulse" />
+                 <span className="text-[10px] uppercase font-bold tracking-wider text-green-600 dark:text-green-400 font-mono">CONNECTION_SECURE</span>
+               </div>
+             ) : (
+               <div className="flex items-center gap-2 px-2.5 py-1 rounded-sm bg-red-500/10 border border-red-500/50">
+                 <div className="w-1.5 h-1.5 bg-red-500" />
+                 <span className="text-[10px] uppercase font-bold tracking-wider text-red-600 dark:text-red-400 font-mono">CONNECTION_LOST</span>
+               </div>
+             )}
            </div>
-           <p className="text-sm mt-1" style={{ color: 'var(--agni-text-secondary)' }}>Status fasilitas saat ini.</p>
+           <p className="text-xs uppercase tracking-widest mt-1 text-muted-foreground font-mono opacity-80">MULTI-MCU TELEMETRY NODE</p>
         </div>
       </div>
       
       {/* Top Stats Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-4">
-        <StatCard 
-          label="Total Rooms" 
-          value={SYSTEM_STATS.totalRooms} 
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard 
+          title="Monitored Zones" 
+          value={isLoading ? '-' : summary.totalRooms} 
           icon={Building2} 
+          color="blue"
         />
-        <StatCard 
-          label="Active Sensors" 
-          value={SYSTEM_STATS.activeSensors} 
+        <MetricCard 
+          title="Online Sensors" 
+          value={isLoading ? '-' : summary.onlineDevices} 
           icon={Activity} 
-          trend={0} 
+          color="green" 
         />
-        <StatCard 
-          label="Active Alerts" 
-          value={SYSTEM_STATS.activeAlerts} 
+        <MetricCard 
+          title="High Risk Zones" 
+          value={isLoading ? '-' : summary.highRiskRooms} 
+          icon={Route} 
+          color={summary.highRiskRooms > 0 ? "red" : "amber"}
+        />
+        <MetricCard 
+          title="Active Alerts" 
+          value={isLoading ? '-' : summary.activeAlerts} 
           icon={BellRing} 
-          trend={12.5} 
-          className={SYSTEM_STATS.activeAlerts > 0 ? "border-[var(--agni-fire)] bg-[rgba(248,113,113,0.05)]" : ""}
+          color={summary.activeAlerts > 0 ? "red" : "blue"} 
         />
       </div>
 
-      {/* Middle Section: Chart & Recent Alerts (Asymmetric 60/40) */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3 h-full flex flex-col">
-          <div className="flex items-center mb-2 px-1">
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--agni-text-primary)' }}>Sensor Trends (R006)</h3>
-            <HoverClue text="Grafik ini menampilkan rata-rata pergerakan sensor dari ruangan yang paling butuh perhatian saat ini (misalnya R006). Data level Asap, Karbon Monoksida, dan Temperatur dicatat secara historis." />
+      {/* Middle Section: Chart & Recent Alerts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="lg:col-span-2 shadow-sm border border-[var(--agni-border)] bg-[var(--agni-bg-primary)] p-0"
+        >
+          <div className="flex items-center justify-between p-4 border-b border-[var(--agni-border)] bg-[var(--agni-bg-secondary)]">
+            <div className="flex items-center gap-3">
+              <h3 className="text-sm font-bold uppercase tracking-wider">Telemetry Readout</h3>
+              <select className="bg-[var(--agni-bg-tertiary)] border border-[var(--agni-border)] text-[10px] text-muted-foreground focus:text-foreground p-1 pr-6 font-mono font-bold tracking-wider uppercase outline-none focus:border-[#f59e0b] transition-colors appearance-none cursor-pointer">
+                <option value="ALL">AVERAGE_ALL_NODES</option>
+                {devices?.map((d) => (
+                  <option key={d.id} value={d.id}>NODE: {getRoomName(d.room_id)}</option>
+                ))}
+              </select>
+            </div>
+            <div className="text-[10px] text-muted-foreground flex items-center gap-4 font-mono font-bold uppercase">
+               <div className="flex items-center gap-1.5"><div className="w-2 h-2 bg-[#f59e0b]/80" /> TEMP_C</div>
+               <div className="flex items-center gap-1.5"><div className="w-2 h-2 bg-[#ef4444]/80" /> GAS_PPM</div>
+            </div>
           </div>
-          <div className="flex-1">
-            <SensorChart data={sampleTrend} sensors={['co', 'flame', 'smoke']} height={320} />
+          <div className="p-4">
+            <SensorsOverview />
           </div>
-        </div>
+        </motion.div>
         
-        <div className="lg:col-span-2 flex flex-col h-full rounded-md border" style={{ backgroundColor: 'var(--agni-bg-tertiary)', borderColor: 'var(--agni-border)' }}>
-          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--agni-border)' }}>
-            <h3 className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--agni-text-muted)' }}>
-              Recent Alerts
-            </h3>
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="lg:col-span-1 flex flex-col h-full border border-[var(--agni-border)] bg-[var(--agni-bg-primary)] shadow-sm overflow-hidden"
+        >
+          <div className="flex items-center justify-between p-4 border-b border-[var(--agni-border)] bg-[var(--agni-bg-secondary)]">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Incident Log</h3>
             <button 
               onClick={() => navigate('/alerts')}
-              className="text-[10px] uppercase font-bold flex items-center gap-1 hover:text-[var(--agni-text-primary)] transition-colors"
-              style={{ color: 'var(--agni-text-secondary)' }}
+              className="text-[10px] uppercase font-bold tracking-widest text-[#f59e0b] hover:opacity-80 transition-opacity"
             >
-              View All <ArrowUpRight className="w-3 h-3" />
+              [ View Log ]
             </button>
           </div>
           
-          <div className="p-3 space-y-2 overflow-y-auto flex-1" style={{ maxHeight: '265px' }}>
-            {recentAlerts.map(alert => (
-              <AlertItem key={alert.id} alert={alert} compact />
-            ))}
+          <div className="p-4 flex-1 overflow-y-auto custom-scrollbar bg-[var(--agni-bg-primary)]">
+            {isLoading && recentAlerts.length === 0 ? (
+              <div className="animate-pulse space-y-2">
+                {[1,2,3].map(i => (
+                  <div key={i} className="h-14 w-full bg-[var(--agni-bg-tertiary)] border border-[var(--agni-border)]" />
+                ))}
+              </div>
+            ) : (
+              <AlertFeed alerts={recentAlerts} />
+            )}
           </div>
-        </div>
+        </motion.div>
       </div>
 
-      {/* Bottom Section: Room Grid */}
-      <div>
-        <div className="flex items-center justify-between mb-4 mt-6">
-          <div className="flex items-center">
-            <h2 className="text-xl font-bold" style={{ color: 'var(--agni-text-primary)' }}>
-              Facility Status
-            </h2>
-            <HoverClue text="Status detail pada tiap ruangan. Warna merah mengindikasikan deteksi api atau anomali tingkat tinggi." />
+      {/* Bottom Section: Active Devices Table */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="w-full flex flex-col border border-[var(--agni-border)] bg-[var(--agni-bg-primary)] shadow-sm overflow-hidden"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-[var(--agni-border)] bg-[var(--agni-bg-secondary)]">
+          <div className="flex items-center gap-2">
+            <HardDrive className="w-4 h-4 opacity-70" />
+            <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">MCU Fleet Status</h3>
           </div>
-          <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--agni-text-muted)' }}>
-            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[var(--agni-safe)]" /> Safe</span>
-            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[var(--agni-warning)]" /> Warning</span>
-            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[var(--agni-fire)]" /> Fire</span>
-          </div>
+          <span className="text-[10px] uppercase tracking-widest font-mono text-muted-foreground">TOTAL_NODES: {devices.length}</span>
         </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-          {ROOMS.map(room => (
-            <RoomCard key={room.id} room={room} />
-          ))}
-        </div>
-      </div>
+        <DevicesTable devices={devices} isLoading={isLoading} />
+      </motion.div>
+
     </div>
   );
 }

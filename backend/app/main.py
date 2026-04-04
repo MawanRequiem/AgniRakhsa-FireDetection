@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from app.api.routers import auth, notifications, detection, sensors, rooms, devices, dashboard
+from app.api.routers import auth, notifications, detection, sensors, rooms, devices, dashboard, ws, alerts, cameras
 from app.core.config import settings
 from app.ai import registry
 
@@ -65,6 +65,9 @@ app.include_router(sensors.router, prefix=settings.API_V1_STR)
 app.include_router(rooms.router, prefix=settings.API_V1_STR)
 app.include_router(devices.router, prefix=settings.API_V1_STR)
 app.include_router(dashboard.router, prefix=settings.API_V1_STR)
+app.include_router(alerts.router, prefix=settings.API_V1_STR)
+app.include_router(cameras.router, prefix=settings.API_V1_STR)
+app.include_router(ws.router, prefix=f"{settings.API_V1_STR}/dashboard", tags=["WebSockets"])
 
 @app.get("/")
 async def health_check():

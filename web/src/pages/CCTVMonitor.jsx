@@ -1,15 +1,34 @@
-import { useState } from 'react';
-import { CAMERAS } from '@/data/mockData';
+import { useState, useEffect } from 'react';
 import CameraFeed from '@/components/cctv/CameraFeed';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { LayoutGrid, Maximize } from 'lucide-react';
+import { LayoutGrid, Maximize, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { customFetch } from '@/lib/api';
 
 export default function CCTVMonitor() {
-  const [layout, setLayout] = useState('grid-4'); // 'grid-4' (2x2) or 'grid-8' (4x2)
+  const [layout, setLayout] = useState('grid-4');
+  const [cameras, setCameras] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedCamera, setSelectedCamera] = useState(null);
 
-  const displayedCameras = layout === 'grid-4' ? CAMERAS.slice(0, 4) : CAMERAS;
+  useEffect(() => {
+    const fetchCameras = async () => {
+      try {
+        const response = await customFetch('/api/v1/cameras/');
+        if (response.ok) {
+          const data = await response.json();
+          setCameras(data || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch cameras:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCameras();
+  }, []);
+
+  const displayedCameras = layout === 'grid-4' ? cameras.slice(0, 4) : cameras;
 
   return (
     <div className="space-y-6 h-[calc(100vh-8rem)] flex flex-col">
@@ -43,20 +62,35 @@ export default function CCTVMonitor() {
       </div>
 
       {/* Main Grid */}
-      <div 
-        className="flex-1 grid gap-4 auto-rows-fr"
-        style={{ 
-          gridTemplateColumns: layout === 'grid-4' ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))' 
-        }}
-      >
-        {displayedCameras.map(camera => (
-           <CameraFeed 
-             key={camera.id} 
-             camera={camera} 
-             onClick={() => setSelectedCamera(camera)} 
-           />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="flex-1 grid gap-4 auto-rows-fr" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+          {[1,2,3,4].map(i => (
+            <div key={i} className="rounded-md border animate-pulse" style={{ backgroundColor: 'var(--agni-bg-tertiary)', borderColor: 'var(--agni-border)' }} />
+          ))}
+        </div>
+      ) : cameras.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed rounded-xl" style={{ borderColor: 'var(--agni-border)', color: 'var(--agni-text-muted)' }}>
+          <Video className="w-12 h-12 mb-4 opacity-30" />
+          <h2 className="text-lg font-bold uppercase tracking-wider mb-2">CCTV Integration Pending</h2>
+          <p className="text-sm font-mono opacity-70">No camera sources configured.</p>
+          <p className="text-xs font-mono mt-1 opacity-50">Register cameras via POST /api/v1/cameras/</p>
+        </div>
+      ) : (
+        <div 
+          className="flex-1 grid gap-4 auto-rows-fr"
+          style={{ 
+            gridTemplateColumns: layout === 'grid-4' ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))' 
+          }}
+        >
+          {displayedCameras.map(camera => (
+             <CameraFeed 
+               key={camera.id} 
+               camera={camera} 
+               onClick={() => setSelectedCamera(camera)} 
+             />
+          ))}
+        </div>
+      )}
 
       {/* Expanded Camera Dialog */}
       <Dialog open={!!selectedCamera} onOpenChange={(open) => !open && setSelectedCamera(null)}>
