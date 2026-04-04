@@ -1,13 +1,39 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routers import auth, notifications
+from contextlib import asynccontextmanager
+
+from app.api.routers import auth, notifications, detection, sensors, rooms, devices, dashboard
 from app.core.config import settings
+from app.ai import registry
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifecycle events for FastAPI application."""
+    # Load AI model into memory on startup
+    try:
+        registry.load_detector(
+            model_type=settings.MODEL_TYPE,
+            model_path=settings.MODEL_PATH,
+            confidence_threshold=settings.MODEL_CONFIDENCE_THRESHOLD,
+            input_size=settings.MODEL_INPUT_SIZE
+        )
+    except Exception as e:
+        # We don't crash the server if the model isn't here yet, 
+        # but we log the error so ops know AI inference won't work.
+        import logging
+        logging.getLogger(__name__).error(f"AI Model failed to load: {e}")
+    
+    yield
+    # Teardown logic if needed
+
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Backend & AI Core for Fire Detection System",
     version="0.0.1",
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan
 )
 
 # CORS — izinkan frontend dev server
@@ -32,6 +58,13 @@ async def add_security_headers(request, call_next):
 
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(notifications.router, prefix=f"{settings.API_V1_STR}/notifications", tags=["notifications"])
+
+# --- AI & Core Functionality Routers ---
+app.include_router(detection.router, prefix=settings.API_V1_STR)
+app.include_router(sensors.router, prefix=settings.API_V1_STR)
+app.include_router(rooms.router, prefix=settings.API_V1_STR)
+app.include_router(devices.router, prefix=settings.API_V1_STR)
+app.include_router(dashboard.router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def health_check():
