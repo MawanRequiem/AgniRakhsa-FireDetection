@@ -36,7 +36,6 @@ export const Button = React.forwardRef(({
   return (
     <ButtonPrimitive
       ref={ref}
-      asChild={asChild} // 3. Berikan asChild hanya ke Primitive Base UI
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}        // 4. Aman! Browser tidak akan melihat asChild lagi

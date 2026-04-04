@@ -8,7 +8,7 @@ reading queries with time-range filters, and sensor management.
 import logging
 from typing import Optional
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from app.core.db import supabase
 
@@ -44,19 +44,41 @@ async def ingest_readings(device_id: UUID, readings: list[dict]) -> int:
     result = supabase.table("sensor_readings").insert(rows).execute()
     inserted_count = len(result.data) if result.data else 0
     
+    now_utc = datetime.now(timezone.utc).isoformat()
+    
     # Update device last_seen
     supabase.table("devices").update(
-        {"last_seen": datetime.utcnow().isoformat(), "status": "online"}
+        {"last_seen": now_utc, "status": "online"}
     ).eq("id", str(device_id)).execute()
     
     # Update each sensor's current_value and last_update
     for r in readings:
         supabase.table("sensors").update({
             "current_value": r["value"],
-            "last_update": datetime.utcnow().isoformat(),
+            "last_update": now_utc,
         }).eq("id", str(r["sensor_id"])).execute()
     
     logger.info(f"Ingested {inserted_count} readings from device {device_id}")
+    
+    # Build sensor_type_map for broadcasting readable sensor types
+    sensor_ids = [str(r["sensor_id"]) for r in readings]
+    sensor_meta = supabase.table("sensors").select("id, sensor_type").in_("id", sensor_ids).execute()
+    sensor_type_map = {s["id"]: s["sensor_type"] for s in (sensor_meta.data or [])}
+    
+    # Broadcast SENSOR_UPDATE to connected dashboard clients
+    from app.api.ws_manager import manager
+    await manager.broadcast({
+        "type": "SENSOR_UPDATE",
+        "data": {
+            "device_id": str(device_id),
+            "readings": [
+                {"sensor_type": sensor_type_map.get(str(r["sensor_id"]), "UNKNOWN"), "value": r["value"]}
+                for r in readings
+            ],
+            "timestamp": now_utc,
+        }
+    })
+    
     return inserted_count
 
 
@@ -153,3 +175,80 @@ async def get_room_sensor_snapshot(room_id: UUID) -> dict:
         }
     
     return snapshot
+
+
+async def get_chart_history(
+    device_id: Optional[UUID] = None,
+    room_id: Optional[UUID] = None,
+    minutes: int = 30,
+) -> list[dict]:
+    """
+    Chart-optimized time-series query.
+
+    Returns a flat list of {time, sensor_type, value} rows.
+    The frontend pivots these into Recharts-friendly format:
+      [{time: "10:05", MQ2: 200, SHTC3_TEMP: 25}, ...]
+    """
+    since = datetime.now(timezone.utc) - timedelta(minutes=minutes)
+
+    # Get sensor IDs scoped to device or room
+    sensor_query = supabase.table("sensors").select("id, sensor_type")
+    if device_id:
+        sensor_query = sensor_query.eq("device_id", str(device_id))
+    elif room_id:
+        sensor_query = sensor_query.eq("room_id", str(room_id))
+    
+    sensor_res = sensor_query.execute()
+    sensors = sensor_res.data or []
+    
+    if not sensors:
+        return []
+    
+    sensor_ids = [s["id"] for s in sensors]
+    sensor_type_map = {s["id"]: s["sensor_type"] for s in sensors}
+    
+    # Fetch readings in the time window
+    readings_res = (
+        supabase.table("sensor_readings")
+        .select("sensor_id, value, reading_at")
+        .in_("sensor_id", sensor_ids)
+        .gte("reading_at", since.isoformat())
+        .order("reading_at", desc=False)
+        .limit(2000)
+        .execute()
+    )
+    
+    readings = readings_res.data or []
+    
+    # Group by truncated timestamp (to nearest 10 seconds for smoothing)
+    from collections import defaultdict
+    time_buckets = defaultdict(dict)
+    
+    for r in readings:
+        # Truncate to 10-second bucket
+        raw_time = r["reading_at"]
+        try:
+            dt = datetime.fromisoformat(raw_time.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            continue
+        
+        # Round to 10-second bucket
+        bucket_second = (dt.second // 10) * 10
+        bucket_dt = dt.replace(second=bucket_second, microsecond=0)
+        bucket_key = bucket_dt.isoformat()
+        
+        sensor_type = sensor_type_map.get(r["sensor_id"], "UNKNOWN")
+        
+        # Use the latest value in each bucket
+        time_buckets[bucket_key][sensor_type] = round(r["value"], 2)
+        time_buckets[bucket_key]["_time"] = bucket_key
+    
+    # Convert to sorted list
+    result = sorted(time_buckets.values(), key=lambda x: x.get("_time", ""))
+    
+    # Rename _time to time for frontend
+    for entry in result:
+        entry["time"] = entry.pop("_time", "")
+    
+    return result
+

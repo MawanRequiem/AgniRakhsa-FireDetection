@@ -62,6 +62,25 @@ async def get_latest_sensor_reading(sensor_id: UUID):
     return {"sensor": sensor_data, "latest_reading": latest}
 
 
+@router.get("/history")
+async def get_sensor_history(
+    device_id: Optional[UUID] = None,
+    room_id: Optional[UUID] = None,
+    minutes: int = Query(30, ge=1, le=1440),
+):
+    """
+    Chart-optimized time-series sensor data.
+
+    Returns data grouped by timestamp with each sensor type as a field,
+    ready for direct consumption by Recharts or similar charting libraries.
+    """
+    return await sensor_service.get_chart_history(
+        device_id=device_id,
+        room_id=room_id,
+        minutes=minutes,
+    )
+
+
 @router.get("/", response_model=list[SensorOut])
 async def list_sensors(room_id: Optional[UUID] = None):
     """List all registered sensors."""

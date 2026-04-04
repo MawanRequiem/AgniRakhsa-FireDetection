@@ -1,13 +1,18 @@
 import { useState } from 'react';
-import { CONTACTS, SYSTEM_STATS } from '@/data/mockData';
 import ContactTable from '@/components/notifications/ContactTable';
 import ContactForm from '@/components/notifications/ContactForm';
 import { Button } from '@/components/ui/button';
 import { Plus, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
+// Local contacts data — will be replaced with a backend API when ready
+const INITIAL_CONTACTS = [
+  { id: 'C001', name: 'Budi Santoso', phone: '+6281234567890', role: 'admin', active: true, lastNotified: null },
+  { id: 'C002', name: 'Siti Rahayu', phone: '+6289876543210', role: 'security', active: true, lastNotified: null },
+];
+
 export default function Notifications() {
-  const [contacts, setContacts] = useState(CONTACTS);
+  const [contacts, setContacts] = useState(INITIAL_CONTACTS);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
 
@@ -38,6 +43,9 @@ export default function Notifications() {
     }
   };
 
+  // Simple WA gateway status — placeholder until real status endpoint
+  const whatsappConnected = false;
+
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
       <div>
@@ -52,7 +60,7 @@ export default function Notifications() {
           <p className="text-xs mt-1" style={{ color: 'var(--agni-text-muted)' }}>Responsible for delivering automated messages to contacts below.</p>
         </div>
         <div className="flex items-center gap-2">
-          {SYSTEM_STATS.whatsappStatus === 'connected' ? (
+          {whatsappConnected ? (
              <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--agni-safe)' }}>
                 <CheckCircle2 className="w-4 h-4" /> Connected
              </span>

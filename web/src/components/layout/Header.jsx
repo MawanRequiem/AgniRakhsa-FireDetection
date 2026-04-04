@@ -1,6 +1,6 @@
 import { useLocation, Link } from 'react-router-dom';
 import { Bell, Clock, Menu, User, Settings, LogOut, ShieldCheck } from 'lucide-react';
-import { ALERTS } from '@/data/mockData';
+import { useDashboardStore } from '@/stores/useDashboardStore';
 import { useUIStore } from '@/store/store';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import {
@@ -25,8 +25,11 @@ const pageTitles = {
 // Map status to a colored dot
 const StatusDot = ({ severity }) => {
   const colors = {
+    critical: 'bg-[var(--agni-fire)] shadow-[0_0_8px_rgba(239,68,68,0.5)]',
+    high: 'bg-[var(--agni-fire)] shadow-[0_0_8px_rgba(239,68,68,0.5)]',
     fire: 'bg-[var(--agni-fire)] shadow-[0_0_8px_rgba(239,68,68,0.5)]',
     warning: 'bg-[var(--agni-warning)] shadow-[0_0_6px_rgba(245,158,11,0.4)]',
+    medium: 'bg-[var(--agni-warning)] shadow-[0_0_6px_rgba(245,158,11,0.4)]',
     info: 'bg-[var(--agni-info)]'
   };
   return <span className={`w-2 h-2 rounded-full flex-shrink-0 ${colors[severity] || colors.info}`} />;
@@ -35,7 +38,8 @@ const StatusDot = ({ severity }) => {
 export default function Header() {
   const location = useLocation();
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
-  const activeAlerts = ALERTS.filter(a => !a.acknowledged);
+  const recentAlerts = useDashboardStore((s) => s.recentAlerts);
+  const activeAlerts = recentAlerts.filter(a => !a.is_acknowledged);
   const alertCount = activeAlerts.length;
 
   const title = location.pathname.startsWith('/rooms/')
@@ -105,9 +109,11 @@ export default function Header() {
                   <div key={alert.id} className="p-3 border-b hover:bg-[var(--agni-bg-secondary)] transition-colors break-words flex gap-3 cursor-pointer" style={{ borderColor: 'var(--agni-border-light)' }}>
                     <div className="mt-1"><StatusDot severity={alert.severity} /></div>
                     <div className="flex-1 min-w-0">
-                       <p className="text-xs font-medium text-[var(--agni-text-primary)] line-clamp-1">{alert.roomId} Alert</p>
+                       <p className="text-xs font-medium text-[var(--agni-text-primary)] line-clamp-1">{alert.alert_type || 'Alert'}</p>
                        <p className="text-xs text-[var(--agni-text-secondary)] line-clamp-2 mt-0.5">{alert.message}</p>
-                       <span className="text-[10px] text-[var(--agni-text-muted)] block mt-1">Just now</span>
+                       <span className="text-[10px] text-[var(--agni-text-muted)] block mt-1">
+                         {alert.created_at ? new Date(alert.created_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                       </span>
                     </div>
                   </div>
                 ))

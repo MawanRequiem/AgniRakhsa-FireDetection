@@ -53,12 +53,14 @@ async def get_dashboard_summary():
     )
     
     return {
+        "totalRooms": len(rooms),
+        "totalDevices": len(devices),
+        "onlineDevices": device_status.get("online", 0),
+        "activeAlerts": active_alerts,
+        "highRiskRooms": status_counts.get("high", 0) + status_counts.get("critical", 0),
         "room_status_counts": status_counts,
-        "active_alerts_count": active_alerts,
         "device_status_counts": device_status,
         "recent_critical_events": fusion_res.data or [],
-        "total_rooms": len(rooms),
-        "total_devices": len(devices),
     }
 
 
