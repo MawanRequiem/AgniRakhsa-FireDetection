@@ -25,6 +25,15 @@ class CameraCreate(BaseModel):
     )
 
 
+class CameraUpdate(BaseModel):
+    """Update camera fields."""
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    room_id: Optional[UUID] = None
+    stream_url: Optional[str] = None
+    camera_type: Optional[str] = None
+    unassign_room: bool = Field(default=False, description="Set to true to explicitly unassign the camera from any room")
+
+
 class CameraOut(BaseModel):
     """Camera as returned by the API."""
     id: UUID
@@ -71,3 +80,42 @@ async def register_camera(camera: CameraCreate):
 
     result = supabase.table("cameras").insert(data).execute()
     return result.data[0]
+
+
+@router.patch("/{camera_id}", response_model=CameraOut)
+async def update_camera(camera_id: UUID, update: CameraUpdate):
+    """Update camera fields (name, room assignment, stream URL, type)."""
+    data = update.model_dump(exclude_unset=True)
+    
+    # Handle explicit room unassignment
+    if data.pop("unassign_room", False):
+        data["room_id"] = None
+    elif "room_id" in data and data["room_id"] is not None:
+        data["room_id"] = str(data["room_id"])
+
+    if not data:
+        raise HTTPException(400, "No fields to update")
+
+    result = (
+        supabase.table("cameras")
+        .update(data)
+        .eq("id", str(camera_id))
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(404, "Camera not found")
+    return result.data[0]
+
+
+@router.delete("/{camera_id}")
+async def delete_camera(camera_id: UUID):
+    """Delete a camera registration."""
+    result = (
+        supabase.table("cameras")
+        .delete()
+        .eq("id", str(camera_id))
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(404, "Camera not found")
+    return {"status": "deleted", "id": str(camera_id)}

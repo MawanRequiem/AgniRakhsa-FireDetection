@@ -14,6 +14,7 @@ import RoomDetail from '@/pages/RoomDetail';
 const CCTVMonitor = lazy(() => import('@/pages/CCTVMonitor'));
 const Alerts = lazy(() => import('@/pages/Alerts'));
 const Notifications = lazy(() => import('@/pages/Notifications'));
+const DeviceManagement = lazy(() => import('@/pages/DeviceManagement'));
 
 // Common suspense fallback (simple spinner using Warm Industrial colors)
 const PageFallback = () => (
@@ -82,6 +83,12 @@ function App() {
           <Route path="cctv" element={
             <Suspense fallback={<PageFallback />}>
               <CCTVMonitor />
+            </Suspense>
+          } />
+
+          <Route path="devices" element={
+            <Suspense fallback={<PageFallback />}>
+              <DeviceManagement />
             </Suspense>
           } />
           
