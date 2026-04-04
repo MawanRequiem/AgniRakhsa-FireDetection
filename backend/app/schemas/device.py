@@ -40,3 +40,15 @@ class DeviceHeartbeat(BaseModel):
     """Device heartbeat payload (sent periodically by IoT devices)."""
     firmware_version: Optional[str] = None
     uptime_seconds: Optional[int] = None
+
+class DeviceProvisionRequest(BaseModel):
+    """Sent by MCU on boot to self-register and get sensor UUIDs."""
+    name: str = Field(..., description="Device name from config")
+    mac_address: str = Field(..., description="Device MAC address")
+    room_name: Optional[str] = Field(default=None, description="Auto-assign to room by name")
+    sensor_types: list[str] = Field(..., description="List of sensor types this device has (e.g. ['MQ2', 'MQ4'])")
+
+class DeviceProvisionResponse(BaseModel):
+    """Returned to MCU containing its assigned UUIDs."""
+    device_id: UUID
+    sensors: dict[str, UUID] = Field(default_factory=dict, description="Map of sensor_type to its UUID")
