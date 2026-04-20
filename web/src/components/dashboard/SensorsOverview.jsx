@@ -4,13 +4,14 @@ import { useDashboardStore } from '@/stores/useDashboardStore';
 
 // Color palette for different sensor types
 const SENSOR_COLORS = {
-  MQ2: '#f59e0b',
-  MQ4: '#3b82f6',
-  MQ6: '#8b5cf6',
-  MQ9B: '#06b6d4',
-  FLAME: '#ef4444',
-  SHTC3_TEMP: '#f97316',
-  SHTC3_HUMIDITY: '#10b981',
+  MQ2: '#f59e0b',    // amber  — Smoke / LPG
+  MQ4: '#3b82f6',    // blue   — Methane
+  MQ5: '#8b5cf6',    // violet — Natural Gas / LPG
+  MQ7: '#ef4444',    // red    — Carbon Monoxide
+  MQ9B: '#06b6d4',   // cyan   — CO + Methane
+  MQ135: '#ec4899',  // pink   — Air Quality
+  SHTC3_TEMP: '#f97316',     // orange
+  SHTC3_HUMIDITY: '#10b981', // emerald
 };
 
 const SENSOR_FALLBACK_COLOR = '#6b7280';
