@@ -11,13 +11,16 @@ import { customFetch } from '@/lib/api';
 
 // Sensor type display configuration
 const SENSOR_DISPLAY = [
-  { key: 'MQ2', label: 'MQ2 (Smoke)', unit: 'ppm', safeMax: 400, warnMax: 800 },
-  { key: 'MQ4', label: 'MQ4 (CNG)', unit: 'ppm', safeMax: 400, warnMax: 800 },
-  { key: 'MQ6', label: 'MQ6 (LPG)', unit: 'ppm', safeMax: 400, warnMax: 800 },
-  { key: 'MQ9B', label: 'MQ9B (CO)', unit: 'ppm', safeMax: 400, warnMax: 800 },
-  { key: 'FLAME', label: 'Flame IR', unit: 'raw', safeMax: 3000, warnMax: 1500 },
-  { key: 'SHTC3_TEMP', label: 'Temperature', unit: '°C', safeMax: 35, warnMax: 50 },
-  { key: 'SHTC3_HUMIDITY', label: 'Humidity', unit: '%', safeMax: 70, warnMax: 85 },
+  // --- MQ Gas Sensors (hardware: ESP32 IFRIT) ---
+  { key: 'MQ2',   label: 'MQ-2 — Smoke / LPG / Propane',           unit: 'raw', safeMax: 1500, warnMax: 2500, description: 'Combustible gas & smoke detector. Detects LPG, propane, hydrogen, methane, and smoke particles.' },
+  { key: 'MQ4',   label: 'MQ-4 — Methane (CH₄)',                   unit: 'raw', safeMax: 1500, warnMax: 2500, description: 'Natural gas & methane sensor. Optimized for CH₄ with low cross-sensitivity to alcohol and smoke.' },
+  { key: 'MQ5',   label: 'MQ-5 — Natural Gas / LPG',               unit: 'raw', safeMax: 1500, warnMax: 2500, description: 'LPG & natural gas leak detector. High sensitivity to butane, propane, and methane.' },
+  { key: 'MQ7',   label: 'MQ-7 — Carbon Monoxide (CO)',             unit: 'raw', safeMax: 1200, warnMax: 2000, description: 'Carbon monoxide detector. Specialized for CO with dual-voltage heating cycle (10–1000 ppm range).' },
+  { key: 'MQ9B',  label: 'MQ-9B — CO + Methane',                   unit: 'raw', safeMax: 1500, warnMax: 2500, description: 'Dual-gas sensor. Detects CO at low voltage (1.5V) and methane/combustible gases at high voltage (5V).' },
+  { key: 'MQ135', label: 'MQ-135 — Air Quality (NH₃/NOx/Benzene)', unit: 'raw', safeMax: 1500, warnMax: 2500, description: 'General air quality monitor. Sensitive to ammonia, nitrogen oxides, benzene, smoke, and CO₂.' },
+  // --- Environmental Sensors (defaults) ---
+  { key: 'SHTC3_TEMP',     label: 'Temperature', unit: '°C', safeMax: 35, warnMax: 50 },
+  { key: 'SHTC3_HUMIDITY',  label: 'Humidity',    unit: '%',  safeMax: 70, warnMax: 85 },
 ];
 
 export default function RoomDetail() {
