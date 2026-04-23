@@ -1,117 +1,94 @@
-import { useState, useEffect } from 'react';
-import CameraFeed from '@/components/cctv/CameraFeed';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { LayoutGrid, Maximize, Video } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { customFetch } from '@/lib/api';
-import { useDashboardStore } from '@/stores/useDashboardStore';
+import React from "react";
+import Sidebar from "../components/layout/Sidebar";
+import { Video, VideoOff, Maximize2, AlertCircle } from "lucide-react";
 
-export default function CCTVMonitor() {
-  const [layout, setLayout] = useState('grid-4');
-  const [cameras, setCameras] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedCamera, setSelectedCamera] = useState(null);
-  
-  const connectWebSocket = useDashboardStore((state) => state.connectWebSocket);
+const cameraList = [
+  { id: 1, name: "Kamera 01 - Lab IoT", status: "Online", ip: "192.168.1.101" },
+  {
+    id: 2,
+    name: "Kamera 02 - Koridor PNJ",
+    status: "Online",
+    ip: "192.168.1.102",
+  },
+  {
+    id: 3,
+    name: "Kamera 03 - Ruang Server",
+    status: "Offline",
+    ip: "192.168.1.103",
+  },
+];
 
-  useEffect(() => {
-    // Ensure websocket is connected for live video 
-    connectWebSocket();
-    
-
-    const fetchCameras = async () => {
-      try {
-        const response = await customFetch('/api/v1/cameras/');
-        if (response.ok) {
-          const data = await response.json();
-          setCameras(data || []);
-        }
-      } catch (err) {
-        console.error('Failed to fetch cameras:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchCameras();
-  }, []);
-
-  const displayedCameras = layout === 'grid-4' ? cameras.slice(0, 4) : cameras;
-
+const Camera = () => {
   return (
-    <div className="space-y-6 h-[calc(100vh-8rem)] flex flex-col">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold" style={{ color: 'var(--agni-text-primary)' }}>Live CCTV Monitor</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--agni-text-muted)' }}>Real-time surveillance feeds across the facility.</p>
+    <div className="flex bg-gray-950 min-h-screen text-white">
+      <main className="flex-1 p-8">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-bold">Monitoring Kamera (CCTV)</h1>
+          <button className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-full font-bold flex items-center gap-2 animate-pulse shadow-lg shadow-red-500/20">
+            <AlertCircle size={20} /> PANIC BUTTON
+          </button>
         </div>
-        
-        {/* Layout Controls */}
-        <div className="flex items-center gap-2 p-1 rounded-md border" style={{ backgroundColor: 'var(--agni-bg-secondary)', borderColor: 'var(--agni-border)' }}>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`h-8 px-3 text-xs ${layout === 'grid-4' ? 'bg-[var(--agni-bg-tertiary)]' : ''}`}
-            style={{ color: layout === 'grid-4' ? 'var(--agni-amber)' : 'var(--agni-text-secondary)' }}
-            onClick={() => setLayout('grid-4')}
-          >
-            <LayoutGrid className="w-3.5 h-3.5 mr-1.5" /> 2×2
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`h-8 px-3 text-xs ${layout === 'grid-8' ? 'bg-[var(--agni-bg-tertiary)]' : ''}`}
-            style={{ color: layout === 'grid-8' ? 'var(--agni-amber)' : 'var(--agni-text-secondary)' }}
-            onClick={() => setLayout('grid-8')}
-          >
-            <Maximize className="w-3.5 h-3.5 mr-1.5" /> 4×2
-          </Button>
-        </div>
-      </div>
 
-      {/* Main Grid */}
-      {isLoading ? (
-        <div className="flex-1 grid gap-4 auto-rows-fr" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-          {[1,2,3,4].map(i => (
-            <div key={i} className="rounded-md border animate-pulse" style={{ backgroundColor: 'var(--agni-bg-tertiary)', borderColor: 'var(--agni-border)' }} />
-          ))}
-        </div>
-      ) : cameras.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed rounded-xl" style={{ borderColor: 'var(--agni-border)', color: 'var(--agni-text-muted)' }}>
-          <Video className="w-12 h-12 mb-4 opacity-30" />
-          <h2 className="text-lg font-bold uppercase tracking-wider mb-2">CCTV Integration Pending</h2>
-          <p className="text-sm font-mono opacity-70">No camera sources configured.</p>
-          <p className="text-xs font-mono mt-1 opacity-50">Register cameras via POST /api/v1/cameras/</p>
-        </div>
-      ) : (
-        <div 
-          className="flex-1 grid gap-4 auto-rows-fr"
-          style={{ 
-            gridTemplateColumns: layout === 'grid-4' ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))' 
-          }}
-        >
-          {displayedCameras.map(camera => (
-             <CameraFeed 
-               key={camera.id} 
-               camera={camera} 
-               onClick={() => setSelectedCamera(camera)} 
-             />
-          ))}
-        </div>
-      )}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {cameraList.map((cam) => (
+            <div
+              key={cam.id}
+              className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl"
+            >
+              {/* Camera Preview Area */}
+              <div className="aspect-video bg-black flex items-center justify-center relative group">
+                {cam.status === "Online" ? (
+                  <div className="text-gray-700 group-hover:text-gray-500 transition cursor-pointer">
+                    <Video size={64} />
+                    <p className="text-xs mt-2 text-center">Live Feed Stream</p>
+                  </div>
+                ) : (
+                  <div className="text-red-900 flex flex-col items-center">
+                    <VideoOff size={64} />
+                    <p className="text-sm mt-2 font-semibold">
+                      Koneksi Terputus
+                    </p>
+                  </div>
+                )}
 
-      {/* Expanded Camera Dialog */}
-      <Dialog open={!!selectedCamera} onOpenChange={(open) => !open && setSelectedCamera(null)}>
-        <DialogContent 
-          className="max-w-5xl w-[90vw] p-0 border-0 bg-black overflow-hidden"
-        >
-          <DialogTitle className="sr-only">Live Feed: {selectedCamera?.name}</DialogTitle>
-          {selectedCamera && (
-            <div className="relative w-full aspect-video">
-              <CameraFeed camera={selectedCamera} onClick={() => {}} />
+                {/* Overlay Info */}
+                <div className="absolute top-4 left-4 flex gap-2">
+                  <span
+                    className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                      cam.status === "Online"
+                        ? "bg-green-500 text-black"
+                        : "bg-red-600 text-white"
+                    }`}
+                  >
+                    {cam.status}
+                  </span>
+                  <span className="bg-black/50 backdrop-blur-md px-2 py-1 rounded text-[10px] text-white">
+                    {cam.ip}
+                  </span>
+                </div>
+                <button className="absolute bottom-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-lg backdrop-blur-md opacity-0 group-hover:opacity-100 transition">
+                  <Maximize2 size={18} />
+                </button>
+              </div>
+
+              {/* Camera Footer */}
+              <div className="p-4 flex justify-between items-center">
+                <h3 className="font-medium text-gray-200">{cam.name}</h3>
+                <div className="flex gap-2 text-xs">
+                  <button className="px-3 py-1 bg-gray-800 hover:bg-gray-700 rounded-md transition text-gray-400">
+                    Settings
+                  </button>
+                  <button className="px-3 py-1 bg-gray-800 hover:bg-gray-700 rounded-md transition text-gray-400">
+                    Recordings
+                  </button>
+                </div>
+              </div>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          ))}
+        </div>
+      </main>
     </div>
   );
-}
+};
+
+export default Camera;

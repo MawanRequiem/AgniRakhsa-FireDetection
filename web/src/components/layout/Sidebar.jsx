@@ -14,11 +14,8 @@ import {
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/rooms', icon: DoorOpen, label: 'Rooms' },
   { to: '/cctv', icon: Camera, label: 'CCTV' },
   { to: '/devices', icon: Wifi, label: 'Devices' },
-  { to: '/alerts', icon: Bell, label: 'Alerts' },
-  { to: '/settings/notifications', icon: Smartphone, label: 'Notifications' },
 ];
 
 export default function Sidebar() {

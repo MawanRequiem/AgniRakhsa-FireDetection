@@ -18,26 +18,26 @@
     --card-foreground: oklch(0.14 0.01 260);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.14 0.01 260);
-    --primary: oklch(0.2 0.02 260);
-    --primary-foreground: oklch(0.98 0 0);
-    --secondary: oklch(0.96 0.01 260);
-    --secondary-foreground: oklch(0.2 0.01 260);
+    --primary: #8e0e0e;
+    --primary-foreground: #ffffff;
+    --secondary: #d35400;
+    --secondary-foreground: #ffffff;
     --muted: oklch(0.96 0.01 260);
     --muted-foreground: oklch(0.4 0.01 260);
-    --accent: oklch(0.96 0.01 260);
-    --accent-foreground: oklch(0.2 0.01 260);
-    --destructive: oklch(0.65 0.18 25);
-    --border: oklch(0.9 0.01 260); /* soft gray border */
-    --input: oklch(0.9 0.01 260);
-    --ring: oklch(0.2 0.01 260);
+    --accent: #d35400;
+    --accent-foreground: #ffffff;
+    --destructive: #8e0e0e;
+    --border: #8c1d0f; /* rich accent border */
+    --input: #f8f1ee;
+    --ring: #d35400;
     --radius: 0.5rem;
     
     /* AgniRaksha Custom Light Tokens */
-    --agni-amber: #f59e0b; 
-    --agni-amber-hover: #d97706;
+    --agni-amber: #d35400;
+    --agni-amber-hover: #b74100;
     --agni-safe: #10b981; 
-    --agni-warning: #f59e0b; 
-    --agni-fire: #ef4444; 
+    --agni-warning: #d35400; 
+    --agni-fire: #8e0e0e; 
     --agni-info: #3b82f6; 
     
     /* True Light Theme Backgrounds */
@@ -61,30 +61,30 @@
     --card-foreground: oklch(0.98 0 0);
     --popover: oklch(0.14 0.01 260);
     --popover-foreground: oklch(0.98 0 0);
-    --primary: oklch(0.98 0 0);
-    --primary-foreground: oklch(0.2 0.02 260);
-    --secondary: oklch(0.2 0.01 260);
-    --secondary-foreground: oklch(0.98 0 0);
+    --primary: #8e0e0e;
+    --primary-foreground: #ffffff;
+    --secondary: #d35400;
+    --secondary-foreground: #ffffff;
     --muted: oklch(0.2 0.01 260);
     --muted-foreground: oklch(0.6 0.01 260);
-    --accent: oklch(0.2 0.01 260);
-    --accent-foreground: oklch(0.98 0 0);
-    --destructive: oklch(0.65 0.18 25);
-    --border: oklch(0.2 0.01 260); 
-    --input: oklch(0.2 0.01 260);
-    --ring: oklch(0.9 0.01 260);
+    --accent: #d35400;
+    --accent-foreground: #ffffff;
+    --destructive: #8e0e0e;
+    --border: #4f1510;
+    --input: #171b24;
+    --ring: #d35400;
 
     /* True Dark Theme Backgrounds */
     --agni-bg-primary: #0F1117;
     --agni-bg-secondary: #171B24;
     --agni-bg-tertiary: #1E2330;
-    --agni-border: #334155;
-    --agni-border-light: #475569;
+    --agni-border: #4f1510;
+    --agni-border-light: #6b1f15;
     
     /* Light Text for Readability */
     --agni-text-primary: #F0F1F3;
-    --agni-text-secondary: #94a3b8;
-    --agni-text-muted: #64748b;
+    --agni-text-secondary: #d1d5db;
+    --agni-text-muted: #9ca3af;
 }
 
 @theme inline {

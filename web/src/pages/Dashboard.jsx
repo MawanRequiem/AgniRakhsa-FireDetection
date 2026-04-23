@@ -1,188 +1,208 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Building2, Activity, BellRing, Route, HardDrive } from 'lucide-react';
+import React, { useState } from "react";
+import {
+  Users,
+  Activity,
+  ShieldAlert,
+  Clock,
+  Filter,
+  Thermometer,
+} from "lucide-react";
 
-import { useDashboardStore } from '@/stores/useDashboardStore';
-import { useRoomsStore } from '@/stores/useRoomsStore';
-import MetricCard from '@/components/dashboard/MetricCard';
-import AlertFeed from '@/components/dashboard/AlertFeed';
-import SensorsOverview from '@/components/dashboard/SensorsOverview';
-import DevicesTable from '@/components/dashboard/DevicesTable';
-import HoverClue from '@/components/ui/HoverClue';
+const Dashboard = () => {
+  // 1. State untuk memfilter data berdasarkan status (Aman, Waspada, Bahaya)
+  const [filterStatus, setFilterStatus] = useState("Semua");
 
-export default function Dashboard() {
-  const navigate = useNavigate();
-  const { 
-    summary, 
-    recentAlerts, 
-    devices,
-    isLoading, 
-    fetchSummary,
-    fetchRecentAlerts,
-    fetchDevices,
-    fetchSensorHistory,
-    connectWebSocket,
-    disconnectWebSocket,
-    isConnected
-  } = useDashboardStore();
+  // 2. Data dummy (Nantinya data ini akan diambil dari Supabase/Backend)
+  const detectionLogs = [
+    {
+      id: 1,
+      time: "14:20:05",
+      date: "23 Apr 2026",
+      status: "Bahaya",
+      temp: "85°C",
+      img: "Kebakaran Lab",
+    },
+    {
+      id: 2,
+      time: "14:15:00",
+      date: "23 Apr 2026",
+      status: "Waspada",
+      temp: "42°C",
+      img: "Asap Terdeteksi",
+    },
+    {
+      id: 3,
+      time: "13:50:22",
+      date: "23 Apr 2026",
+      status: "Aman",
+      temp: "31°C",
+      img: "Kondisi Normal",
+    },
+    {
+      id: 4,
+      time: "13:30:10",
+      date: "23 Apr 2026",
+      status: "Aman",
+      temp: "30°C",
+      img: "Kondisi Normal",
+    },
+  ];
 
-  const { rooms, fetchRooms } = useRoomsStore();
-
-  // Load initial data and connect to websocket
-  useEffect(() => {
-    fetchSummary();
-    fetchRecentAlerts();
-    fetchDevices();
-    fetchSensorHistory();
-    fetchRooms();
-    connectWebSocket();
-
-    // Poll device status and summary every 15 seconds for freshness
-    const statusPoll = setInterval(() => {
-      fetchDevices();
-      fetchSummary();
-    }, 15000);
-
-    return () => {
-      disconnectWebSocket();
-      clearInterval(statusPoll);
-    };
-  }, [fetchSummary, fetchRecentAlerts, fetchDevices, fetchSensorHistory, fetchRooms, connectWebSocket, disconnectWebSocket]);
-
-  const getRoomName = (roomId) => {
-    if (!roomId) return 'UNASSIGNED';
-    const room = rooms.find(r => r.id === roomId);
-    return room ? room.name : roomId.split('-')[0].toUpperCase();
-  };
+  // 3. Logika Filtering
+  const filteredData =
+    filterStatus === "Semua"
+      ? detectionLogs
+      : detectionLogs.filter((item) => item.status === filterStatus);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-end mb-4 border-b border-[var(--agni-border)] pb-4">
-        <div>
-           <div className="flex items-center gap-4">
-             <h2 className="text-2xl font-bold tracking-tight text-foreground uppercase">
-               SYSTEM_MONITOR
-             </h2>
-             {isConnected ? (
-               <div className="flex items-center gap-2 px-2.5 py-1 rounded-sm bg-green-500/10 border border-green-500/50">
-                 <div className="w-1.5 h-1.5 bg-green-500 animate-pulse" />
-                 <span className="text-[10px] uppercase font-bold tracking-wider text-green-600 dark:text-green-400 font-mono">CONNECTION_SECURE</span>
-               </div>
-             ) : (
-               <div className="flex items-center gap-2 px-2.5 py-1 rounded-sm bg-red-500/10 border border-red-500/50">
-                 <div className="w-1.5 h-1.5 bg-red-500" />
-                 <span className="text-[10px] uppercase font-bold tracking-wider text-red-600 dark:text-red-400 font-mono">CONNECTION_LOST</span>
-               </div>
-             )}
-           </div>
-           <p className="text-xs uppercase tracking-widest mt-1 text-muted-foreground font-mono opacity-80">MULTI-MCU TELEMETRY NODE</p>
+      <main className="flex-1 p-8">
+        {/* Header Section: Judul dan Jam Real-time */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard AgniRakhsa</h1>
+            <p className="text-gray-400 mt-1">
+              Sistem Pemantauan Api Berbasis AI & IoT (PBL PNJ)
+            </p>
+          </div>
+          <div className="flex items-center gap-3 bg-gray-900 border border-gray-800 p-3 rounded-xl shadow-inner">
+            <Clock size={20} className="text-red-500" />
+            <span className="text-sm font-mono tracking-wider">
+              {new Date().toLocaleTimeString()} | {new Date().toLocaleDateString()}
+            </span>
+          </div>
         </div>
-      </div>
-      
-      {/* Top Stats Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard 
-          title="Monitored Zones" 
-          value={isLoading ? '-' : summary.totalRooms} 
-          icon={Building2} 
-          color="blue"
-        />
-        <MetricCard 
-          title="Online Sensors" 
-          value={isLoading ? '-' : summary.onlineDevices} 
-          icon={Activity} 
-          color="green" 
-        />
-        <MetricCard 
-          title="High Risk Zones" 
-          value={isLoading ? '-' : summary.highRiskRooms} 
-          icon={Route} 
-          color={summary.highRiskRooms > 0 ? "red" : "amber"}
-        />
-        <MetricCard 
-          title="Active Alerts" 
-          value={isLoading ? '-' : summary.activeAlerts} 
-          icon={BellRing} 
-          color={summary.activeAlerts > 0 ? "red" : "blue"} 
-        />
-      </div>
 
-      {/* Middle Section: Chart & Recent Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="lg:col-span-2 shadow-sm border border-[var(--agni-border)] bg-[var(--agni-bg-primary)] p-0"
-        >
-          <div className="flex items-center justify-between p-4 border-b border-[var(--agni-border)] bg-[var(--agni-bg-secondary)]">
-            <div className="flex items-center gap-3">
-              <h3 className="text-sm font-bold uppercase tracking-wider">Telemetry Readout</h3>
-              <select className="bg-[var(--agni-bg-tertiary)] border border-[var(--agni-border)] text-[10px] text-muted-foreground focus:text-foreground p-1 pr-6 font-mono font-bold tracking-wider uppercase outline-none focus:border-[#f59e0b] transition-colors appearance-none cursor-pointer">
-                <option value="ALL">AVERAGE_ALL_NODES</option>
-                {devices?.map((d) => (
-                  <option key={d.id} value={d.id}>NODE: {getRoomName(d.room_id)}</option>
-                ))}
-              </select>
+        {/* Top Highlight Cards: Ringkasan Cepat */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 flex items-center gap-4 shadow-lg hover:border-blue-500/50 transition">
+            <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl">
+              <Activity size={24} />
             </div>
-            <div className="text-[10px] text-muted-foreground flex items-center gap-4 font-mono font-bold uppercase">
-               <div className="flex items-center gap-1.5"><div className="w-2 h-2 bg-[#f59e0b]/80" /> TEMP_C</div>
-               <div className="flex items-center gap-1.5"><div className="w-2 h-2 bg-[#ef4444]/80" /> GAS_PPM</div>
+            <div>
+              <p className="text-gray-400 text-xs uppercase font-bold">Sensor Aktif</p>
+              <h2 className="text-2xl font-bold">12 Node</h2>
             </div>
           </div>
-          <div className="p-4">
-            <SensorsOverview />
+
+          <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 flex items-center gap-4 shadow-lg hover:border-red-500/50 transition">
+            <div className="p-3 bg-red-500/10 text-red-500 rounded-xl">
+              <ShieldAlert size={24} />
+            </div>
+            <div>
+              <p className="text-gray-400 text-xs uppercase font-bold">Total Deteksi</p>
+              <h2 className="text-2xl font-bold">{detectionLogs.length} Gambar</h2>
+            </div>
           </div>
-        </motion.div>
-        
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="lg:col-span-1 flex flex-col h-full border border-[var(--agni-border)] bg-[var(--agni-bg-primary)] shadow-sm overflow-hidden"
-        >
-          <div className="flex items-center justify-between p-4 border-b border-[var(--agni-border)] bg-[var(--agni-bg-secondary)]">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Incident Log</h3>
-            <button 
-              onClick={() => navigate('/alerts')}
-              className="text-[10px] uppercase font-bold tracking-widest text-[#f59e0b] hover:opacity-80 transition-opacity"
+
+          <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 flex items-center gap-4 shadow-lg hover:border-green-500/50 transition">
+            <div className="p-3 bg-green-500/10 text-green-500 rounded-xl">
+              <Users size={24} />
+            </div>
+            <div>
+              <p className="text-gray-400 text-xs uppercase font-bold">Admin Online</p>
+              <h2 className="text-2xl font-bold">1 Aktif</h2>
+            </div>
+          </div>
+
+          <div className="bg-red-600 p-6 rounded-2xl flex items-center gap-4 shadow-xl shadow-red-900/40 transform hover:scale-105 transition">
+            <div className="p-3 bg-white/20 text-white rounded-xl shadow-inner">
+              <Thermometer size={24} />
+            </div>
+            <div>
+              <p className="text-red-100 text-xs uppercase font-bold tracking-wider">Suhu Tertinggi</p>
+              <h2 className="text-2xl font-bold text-white">85°C</h2>
+            </div>
+          </div>
+        </div>
+
+        {/* Filter Section: Memilih status yang ingin dilihat */}
+        <div className="flex flex-wrap items-center gap-4 mb-6">
+          <div className="flex items-center gap-2 text-sm text-gray-400 mr-2 uppercase tracking-widest font-bold text-[10px]">
+            <Filter size={16} /> Filter Status:
+          </div>
+          {["Semua", "Aman", "Waspada", "Bahaya"].map((status) => (
+            <button
+              key={status}
+              onClick={() => setFilterStatus(status)}
+              className={`px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-300 ${
+                filterStatus === status
+                  ? "bg-red-600 text-white shadow-lg shadow-red-900/40 border border-red-500"
+                  : "bg-gray-900 text-gray-500 border border-gray-800 hover:border-gray-600 hover:text-gray-300"
+              }`}
             >
-              [ View Log ]
+              {status}
             </button>
-          </div>
-          
-          <div className="p-4 flex-1 overflow-y-auto custom-scrollbar bg-[var(--agni-bg-primary)]">
-            {isLoading && recentAlerts.length === 0 ? (
-              <div className="animate-pulse space-y-2">
-                {[1,2,3].map(i => (
-                  <div key={i} className="h-14 w-full bg-[var(--agni-bg-tertiary)] border border-[var(--agni-border)]" />
-                ))}
-              </div>
-            ) : (
-              <AlertFeed alerts={recentAlerts} />
-            )}
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Bottom Section: Active Devices Table */}
-      <motion.div 
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="w-full flex flex-col border border-[var(--agni-border)] bg-[var(--agni-bg-primary)] shadow-sm overflow-hidden"
-      >
-        <div className="flex items-center justify-between p-4 border-b border-[var(--agni-border)] bg-[var(--agni-bg-secondary)]">
-          <div className="flex items-center gap-2">
-            <HardDrive className="w-4 h-4 opacity-70" />
-            <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">MCU Fleet Status</h3>
-          </div>
-          <span className="text-[10px] uppercase tracking-widest font-mono text-muted-foreground">TOTAL_NODES: {devices.length}</span>
+          ))}
         </div>
-        <DevicesTable devices={devices} isLoading={isLoading} />
-      </motion.div>
 
-    </div>
+        {/* List Deteksi Gambar & Sensor (Feed) */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {filteredData.map((log) => (
+            <div
+              key={log.id}
+              className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden flex items-stretch hover:border-red-500/50 transition-all duration-300 group shadow-lg"
+            >
+              {/* Bagian Thumbnail (AI Visual) */}
+              <div className="w-32 md:w-40 bg-black flex flex-col items-center justify-center p-4 text-center border-r border-gray-800">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-colors ${log.status === 'Bahaya' ? 'bg-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'bg-gray-800'}`}>
+                  <ShieldAlert
+                    className={log.status === "Bahaya" ? "text-red-500" : "text-gray-600"}
+                    size={24}
+                  />
+                </div>
+                <span className="text-[9px] text-gray-600 font-mono uppercase tracking-widest">
+                  AI_SNAPSHOT
+                </span>
+              </div>
+
+              {/* Bagian Detail Informasi */}
+              <div className="flex-1 p-6 flex flex-col justify-between">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-lg group-hover:text-red-500 transition-colors">{log.img}</h3>
+                    <p className="text-gray-500 text-[10px] uppercase font-mono tracking-wider flex items-center gap-1.5 mt-1">
+                      <Clock size={12} /> {log.date} | {log.time}
+                    </p>
+                  </div>
+                  <div
+                    className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm ${
+                      log.status === "Bahaya"
+                        ? "bg-red-500/10 text-red-500 border-red-500/30"
+                        : log.status === "Waspada"
+                        ? "bg-orange-500/10 text-orange-500 border-orange-500/30"
+                        : "bg-green-500/10 text-green-500 border-green-500/30"
+                    }`}
+                  >
+                    {log.status}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 mt-6">
+                  <div className="flex items-center gap-2 bg-gray-800/50 px-3 py-1.5 rounded-lg border border-gray-700/50">
+                    <Thermometer size={16} className="text-orange-500" />
+                    <span className="text-sm font-mono font-bold">{log.temp}</span>
+                  </div>
+                  <div className="h-4 w-px bg-gray-800"></div>
+                  <button className="text-[10px] tracking-widest uppercase text-red-500 hover:text-red-400 font-black transition-colors">
+                    [ ANALYZE_DETAIL ]
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Empty State: Jika filter tidak menemukan data */}
+          {filteredData.length === 0 && (
+            <div className="col-span-full py-24 text-center bg-gray-900/50 rounded-3xl border-2 border-dashed border-gray-800 shadow-inner">
+              <ShieldAlert size={48} className="mx-auto text-gray-800 mb-4" />
+              <p className="text-gray-600 font-bold uppercase tracking-widest text-sm">
+                Sistem Nominal: Tidak ada anomali "{filterStatus}"
+              </p>
+            </div>
+          )}
+        </div>
+      </main>
   );
-}
+};
+
+export default Dashboard;
