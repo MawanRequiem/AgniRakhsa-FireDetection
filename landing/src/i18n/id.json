@@ -1,0 +1,150 @@
+{
+  "nav": {
+    "home": "Beranda",
+    "about": "Tentang Kami",
+    "solutions": "Solusi",
+    "contact": "Kontak",
+    "requestDemo": "Minta Demo"
+  },
+  "hero": {
+    "tagline": "Penjaga Api Cerdas",
+    "subtitle": "Deteksi kebakaran berbasis AI yang mengintegrasikan Computer Vision, Sensor IoT, dan alerting real-time — sebelum api menjadi bencana.",
+    "cta": "Minta Demo",
+    "ctaSecondary": "Pelajari Lebih Lanjut"
+  },
+  "problem": {
+    "label": "MASALAH",
+    "title": "Sistem Tradisional Gagal Saat Dibutuhkan",
+    "description": "Detektor asap konvensional hanya bereaksi setelah api membesar. Tanpa kecerdasan visual dan analisis data, deteksi dini mustahil.",
+    "stats": [
+      { "value": "40%", "label": "Kegagalan deteksi dini pada sistem konvensional" },
+      { "value": "7 min", "label": "Rata-rata waktu respons manual tanpa AI" },
+      { "value": "82%", "label": "Kebakaran bisa dicegah dengan deteksi < 60 detik" }
+    ]
+  },
+  "features": {
+    "label": "KAPABILITAS",
+    "title": "Tiga Pilar Perlindungan",
+    "items": [
+      {
+        "title": "Computer Vision AI",
+        "description": "YOLO dan Semantic Segmentation menganalisis feed CCTV secara real-time. Mendeteksi asap, api, dan anomali visual sebelum sensor tradisional bereaksi.",
+        "tag": "VISION"
+      },
+      {
+        "title": "Sensor Fusion IoT",
+        "description": "Data dari sensor gas MQ, suhu, dan kelembaban digabungkan melalui algoritma machine learning untuk penilaian risiko multi-dimensional.",
+        "tag": "SENSOR"
+      },
+      {
+        "title": "Alerting Real-Time",
+        "description": "Notifikasi instan via WhatsApp, dashboard monitoring langsung, dan eskalasi otomatis ke tim keamanan dalam hitungan detik.",
+        "tag": "RESPONS"
+      }
+    ]
+  },
+  "techStack": {
+    "label": "ARSITEKTUR",
+    "title": "Dibangun untuk Keandalan",
+    "description": "Arsitektur microservices yang scalable, didesain untuk operasi 24/7 tanpa downtime.",
+    "layers": [
+      { "name": "Perception", "items": ["CCTV Stream", "Sensor IoT", "ESP32-S3"] },
+      { "name": "Intelligence", "items": ["YOLO v8", "Random Forest", "FastAPI"] },
+      { "name": "Action", "items": ["WhatsApp Bot", "Dashboard", "Supabase"] }
+    ]
+  },
+  "ctaBanner": {
+    "title": "Siap melihat IFRIT beraksi?",
+    "subtitle": "Jadwalkan demo langsung dan lihat bagaimana AI melindungi fasilitas Anda.",
+    "cta": "Jadwalkan Demo"
+  },
+  "trust": {
+    "label": "PERFORMA",
+    "title": "Angka Bicara",
+    "stats": [
+      { "value": 3, "suffix": "dtk", "label": "Waktu deteksi rata-rata" },
+      { "value": 97, "suffix": "%", "label": "Akurasi deteksi AI" },
+      { "value": 99.9, "suffix": "%", "label": "Uptime sistem" },
+      { "value": 24, "suffix": "/7", "label": "Monitoring tanpa henti" }
+    ]
+  },
+  "contactCta": {
+    "title": "Lindungi Fasilitas Anda",
+    "subtitle": "Hubungi kami untuk konsultasi gratis dan demo produk.",
+    "form": {
+      "name": "Nama Lengkap",
+      "email": "Email",
+      "company": "Perusahaan",
+      "message": "Pesan",
+      "submit": "Kirim Permintaan",
+      "interest": "Saya tertarik untuk",
+      "options": ["Demo Produk", "Konsultasi", "Harga & Paket", "Partnership"]
+    }
+  },
+  "about": {
+    "heroTitle": "Tentang IFRIT",
+    "heroSubtitle": "Membangun masa depan keamanan kebakaran dengan kecerdasan buatan.",
+    "mission": {
+      "label": "MISI",
+      "title": "Mencegah Bencana Sebelum Terjadi",
+      "description": "IFRIT lahir dari keyakinan bahwa teknologi AI dapat menyelamatkan nyawa. Kami mengembangkan sistem deteksi kebakaran yang tidak hanya bereaksi, tapi memprediksi dan mencegah."
+    },
+    "values": {
+      "label": "NILAI",
+      "title": "Prinsip Kami",
+      "items": [
+        { "title": "Keandalan", "description": "Sistem yang bekerja saat paling dibutuhkan." },
+        { "title": "Inovasi", "description": "Terus mendorong batas teknologi deteksi." },
+        { "title": "Transparansi", "description": "Teknologi terbuka dan dapat diaudit." },
+        { "title": "Respons Cepat", "description": "Setiap detik berharga dalam keadaan darurat." }
+      ]
+    }
+  },
+  "solutions": {
+    "heroTitle": "Solusi",
+    "heroSubtitle": "Perlindungan kebakaran cerdas untuk setiap jenis fasilitas.",
+    "useCases": {
+      "label": "INDUSTRI",
+      "title": "Disesuaikan untuk Kebutuhan Anda",
+      "items": [
+        {
+          "title": "Gedung Perkantoran",
+          "description": "Monitoring multi-lantai dengan integrasi CCTV existing dan sensor IoT di setiap zona.",
+          "icon": "building"
+        },
+        {
+          "title": "Gudang & Pabrik",
+          "description": "Deteksi gas berbahaya, suhu abnormal, dan api terbuka di area penyimpanan material.",
+          "icon": "warehouse"
+        },
+        {
+          "title": "Fasilitas Publik",
+          "description": "Perlindungan untuk rumah sakit, sekolah, dan pusat perbelanjaan dengan alerting massal.",
+          "icon": "hospital"
+        },
+        {
+          "title": "Data Center",
+          "description": "Monitoring suhu presisi tinggi dan deteksi anomali lingkungan untuk infrastuktur kritis.",
+          "icon": "server"
+        }
+      ]
+    }
+  },
+  "contact": {
+    "heroTitle": "Hubungi Kami",
+    "heroSubtitle": "Siap berdiskusi tentang keamanan fasilitas Anda.",
+    "info": {
+      "email": "info@ifrit.id",
+      "phone": "+62 812 3456 7890",
+      "location": "Jakarta, Indonesia"
+    }
+  },
+  "footer": {
+    "description": "Sistem deteksi kebakaran berbasis AI untuk keamanan fasilitas Anda.",
+    "links": {
+      "product": "Produk",
+      "company": "Perusahaan"
+    },
+    "copyright": "© 2026 IFRIT. Hak cipta dilindungi."
+  }
+}
