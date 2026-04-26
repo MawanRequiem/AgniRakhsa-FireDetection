@@ -15,7 +15,8 @@ import logging
 from typing import Type
 
 from app.ai.base import BaseDetector
-from app.ai.yolo_detector import YOLOFireDetector
+from app.ai.yolo.detector import YOLOFireDetector
+from app.ai.iot_sensor.detector import SensorAnomalyDetector
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 _DETECTOR_REGISTRY: dict[str, Type[BaseDetector]] = {}
 _active_detector: BaseDetector | None = None
+_sensor_detector: SensorAnomalyDetector | None = None
 
 
 def register(name: str, detector_class: Type[BaseDetector]) -> None:
@@ -113,3 +115,43 @@ register("yolo", YOLOFireDetector)
 # Future detector types can be registered here:
 # register("custom_rf", CustomRandomForestDetector)
 # register("efficientnet", EfficientNetDetector)
+
+
+# ─── Sensor Anomaly Detector (Isolation Forest) ──────────────────────────────
+
+def load_sensor_detector(model_dir: str) -> SensorAnomalyDetector:
+    """
+    Load the Isolation Forest sensor anomaly model.
+
+    Called once at application startup alongside the YOLO detector.
+
+    Args:
+        model_dir: Directory containing isolation_forest_model.pkl and scaler.pkl
+
+    Returns:
+        Loaded SensorAnomalyDetector instance.
+    """
+    global _sensor_detector
+
+    detector = SensorAnomalyDetector()
+    detector.load(model_dir)
+
+    _sensor_detector = detector
+    logger.info("Sensor anomaly detector loaded and active (Isolation Forest)")
+    return detector
+
+
+def get_sensor_detector() -> SensorAnomalyDetector:
+    """
+    Get the currently active sensor anomaly detector.
+
+    Raises:
+        RuntimeError: If no sensor model has been loaded.
+    """
+    if _sensor_detector is None:
+        raise RuntimeError(
+            "No sensor anomaly model has been loaded. "
+            "Ensure the model is loaded during application startup."
+        )
+    return _sensor_detector
+
