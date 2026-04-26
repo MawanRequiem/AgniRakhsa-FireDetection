@@ -13,11 +13,25 @@ export const useDashboardStore = create((set, get) => ({
   recentDetections: [],
   devices: [],
   sensorHistory: [],
+  sensorHealth: null, // { total, summary, sensors: [] }
   isLoading: true,
   error: null,
   socket: null,
   isConnected: false,
   cameraFrames: {},
+  latestReadings: {}, // { [deviceId]: { SHTC3_TEMP: 25.5, MQ9B: 400, ... } }
+
+  fetchSensorHealth: async () => {
+    try {
+      const response = await customFetch('/api/v1/sensors/health?window_minutes=5');
+      if (response.ok) {
+        const data = await response.json();
+        set({ sensorHealth: data });
+      }
+    } catch (error) {
+      console.error('Failed to fetch sensor health', error);
+    }
+  },
 
   fetchSummary: async () => {
     try {
@@ -109,17 +123,33 @@ export const useDashboardStore = create((set, get) => ({
         }
         
         if (message.type === 'SENSOR_UPDATE') {
-          // Append new data point to sensorHistory for real-time chart updates
-          const readings = message.data?.readings || [];
-          if (readings.length > 0) {
-            const newPoint = { time: message.data.timestamp };
-            for (const r of readings) {
-              newPoint[r.sensor_type] = r.value;
-            }
-            set((state) => ({
-              sensorHistory: [...state.sensorHistory, newPoint].slice(-180), // Keep last 180 data points (30 min @ 10s buckets)
-            }));
+          const { device_id, readings, timestamp } = message.data || {};
+          if (!readings || readings.length === 0) return;
+
+          const newPoint = { time: timestamp };
+          const deviceReadings = {};
+
+          for (const r of readings) {
+            newPoint[r.sensor_type] = r.value;
+            deviceReadings[r.sensor_type] = r.value;
           }
+
+          set((state) => {
+            // Merge with existing device readings
+            const updatedLatest = {
+              ...state.latestReadings,
+              [device_id]: {
+                ...(state.latestReadings[device_id] || {}),
+                ...deviceReadings,
+                _lastUpdate: timestamp
+              }
+            };
+
+            return {
+              sensorHistory: [...state.sensorHistory, newPoint].slice(-180),
+              latestReadings: updatedLatest,
+            };
+          });
         }
 
         if (message.type === 'DEVICE_STATUS_CHANGE') {
