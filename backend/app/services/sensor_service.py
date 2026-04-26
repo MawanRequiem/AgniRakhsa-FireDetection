@@ -299,3 +299,198 @@ async def get_chart_history(
     
     return result
 
+
+# ─── Sensor Health Diagnostics ────────────────────────────────────────────────
+# Expected value ranges per sensor type for sanity checking.
+# (absolute_min, absolute_max, adc_max)
+# adc_max = raw ADC ceiling that indicates sensor saturation.
+
+SENSOR_EXPECTED_RANGE: dict[str, tuple[float, float, float]] = {
+    "MQ2":         (0,    5000,   4095),
+    "MQ4":         (0,    5000,   4095),
+    "MQ5":         (0,    5000,   4095),
+    "MQ6":         (0,    5000,   4095),
+    "MQ9B":        (0,    3000,   4095),
+    "FLAME":       (0,    4095,   4095),
+    "SHTC3_TEMP":  (-40,  125,    None),   # No ADC ceiling for digital sensors
+    "SHTC3_HUM":   (0,    100,    None),
+}
+
+# Thresholds for health heuristics
+STUCK_STD_THRESHOLD = 0.01       # Std dev below this → sensor is stuck
+ERRATIC_JUMP_FACTOR = 3.0        # Max jump > factor × mean → erratic
+STALE_SECONDS = 120              # No reading within this → stale
+MIN_READINGS_FOR_DIAGNOSIS = 5   # Need at least this many readings to diagnose
+
+
+async def diagnose_sensor_health(
+    sensor_id: UUID | None = None,
+    room_id: UUID | None = None,
+    device_id: UUID | None = None,
+    window_minutes: int = 5,
+) -> list[dict]:
+    """
+    Diagnose the health of one or more sensors based on recent readings.
+
+    Checks for:
+      - stuck:     values are constant (std ≈ 0)
+      - dead:      all values are exactly 0
+      - saturated: values pegged at ADC max (4095)
+      - erratic:   extreme jumps between consecutive readings
+      - stale:     no readings within the time window
+      - out_of_range: values outside physically possible bounds
+      - healthy:   everything looks normal
+
+    Args:
+        sensor_id: Diagnose a single sensor.
+        room_id:   Diagnose all sensors in a room.
+        device_id: Diagnose all sensors on a device.
+        window_minutes: How many minutes of recent data to analyze.
+
+    Returns:
+        List of dicts with sensor_id, sensor_type, status, details.
+    """
+    # 1. Resolve which sensors to check
+    query = supabase.table("sensors").select("id, sensor_type, device_id, current_value, last_update")
+
+    if sensor_id:
+        query = query.eq("id", str(sensor_id))
+    elif room_id:
+        query = query.eq("room_id", str(room_id))
+    elif device_id:
+        query = query.eq("device_id", str(device_id))
+
+    sensor_res = query.execute()
+    sensors = sensor_res.data or []
+
+    if not sensors:
+        return []
+
+    since = datetime.now(timezone.utc) - timedelta(minutes=window_minutes)
+    results = []
+
+    for sensor in sensors:
+        sid = sensor["id"]
+        stype = sensor.get("sensor_type", "UNKNOWN")
+        last_update = sensor.get("last_update")
+        diagnosis = {
+            "sensor_id": sid,
+            "sensor_type": stype,
+            "status": "healthy",
+            "details": {},
+        }
+
+        # 2. Check for stale sensor (no recent data)
+        if last_update:
+            try:
+                last_dt = datetime.fromisoformat(last_update.replace("Z", "+00:00"))
+                seconds_ago = (datetime.now(timezone.utc) - last_dt).total_seconds()
+                diagnosis["details"]["last_seen_seconds_ago"] = round(seconds_ago, 1)
+
+                if seconds_ago > STALE_SECONDS:
+                    diagnosis["status"] = "stale"
+                    diagnosis["details"]["reason"] = (
+                        f"No reading for {round(seconds_ago)}s (threshold: {STALE_SECONDS}s)"
+                    )
+                    results.append(diagnosis)
+                    continue
+            except (ValueError, TypeError):
+                pass
+        else:
+            diagnosis["status"] = "stale"
+            diagnosis["details"]["reason"] = "Sensor has never reported a reading"
+            results.append(diagnosis)
+            continue
+
+        # 3. Fetch recent readings for statistical analysis
+        readings_res = (
+            supabase.table("sensor_readings")
+            .select("value, reading_at")
+            .eq("sensor_id", sid)
+            .gte("reading_at", since.isoformat())
+            .order("reading_at", desc=False)
+            .limit(200)
+            .execute()
+        )
+        readings = readings_res.data or []
+
+        if len(readings) < MIN_READINGS_FOR_DIAGNOSIS:
+            diagnosis["details"]["reading_count"] = len(readings)
+            diagnosis["details"]["note"] = "Too few readings for full diagnosis"
+            results.append(diagnosis)
+            continue
+
+        import numpy as np
+        values = np.array([r["value"] for r in readings], dtype=np.float64)
+        diagnosis["details"]["reading_count"] = len(values)
+        diagnosis["details"]["mean"] = round(float(np.mean(values)), 2)
+        diagnosis["details"]["std"] = round(float(np.std(values)), 4)
+        diagnosis["details"]["min"] = round(float(np.min(values)), 2)
+        diagnosis["details"]["max"] = round(float(np.max(values)), 2)
+
+        # 4. Dead check: all values are exactly 0
+        if np.all(values == 0):
+            diagnosis["status"] = "dead"
+            diagnosis["details"]["reason"] = "All readings are exactly 0 — sensor may be disconnected"
+            results.append(diagnosis)
+            continue
+
+        # 5. Stuck check: near-zero standard deviation
+        if np.std(values) < STUCK_STD_THRESHOLD:
+            diagnosis["status"] = "stuck"
+            diagnosis["details"]["reason"] = (
+                f"Constant value {values[-1]:.1f} across {len(values)} readings "
+                f"(std={np.std(values):.6f})"
+            )
+            results.append(diagnosis)
+            continue
+
+        # 6. Saturated check: pegged at ADC max
+        expected = SENSOR_EXPECTED_RANGE.get(stype)
+        if expected and expected[2] is not None:
+            adc_max = expected[2]
+            saturated_pct = float(np.sum(values >= adc_max)) / len(values)
+            if saturated_pct > 0.8:
+                diagnosis["status"] = "saturated"
+                diagnosis["details"]["reason"] = (
+                    f"{saturated_pct*100:.0f}% of readings at ADC max ({adc_max})"
+                )
+                results.append(diagnosis)
+                continue
+
+        # 7. Out of range check
+        if expected:
+            abs_min, abs_max = expected[0], expected[1]
+            below = float(np.sum(values < abs_min))
+            above = float(np.sum(values > abs_max))
+            oor_pct = (below + above) / len(values)
+            if oor_pct > 0.5:
+                diagnosis["status"] = "out_of_range"
+                diagnosis["details"]["reason"] = (
+                    f"{oor_pct*100:.0f}% of readings outside [{abs_min}, {abs_max}]"
+                )
+                results.append(diagnosis)
+                continue
+
+        # 8. Erratic check: large jumps between consecutive readings
+        if len(values) > 1:
+            diffs = np.abs(np.diff(values))
+            max_jump = float(np.max(diffs))
+            mean_val = float(np.mean(np.abs(values)))
+            diagnosis["details"]["max_jump"] = round(max_jump, 2)
+
+            if mean_val > 0 and max_jump > ERRATIC_JUMP_FACTOR * mean_val:
+                diagnosis["status"] = "erratic"
+                diagnosis["details"]["reason"] = (
+                    f"Max jump {max_jump:.1f} exceeds {ERRATIC_JUMP_FACTOR}× "
+                    f"mean ({mean_val:.1f})"
+                )
+                results.append(diagnosis)
+                continue
+
+        # 9. All checks passed → healthy
+        results.append(diagnosis)
+
+    return results
+
+
