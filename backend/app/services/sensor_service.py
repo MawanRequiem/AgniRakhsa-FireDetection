@@ -375,6 +375,7 @@ async def diagnose_sensor_health(
         last_update = sensor.get("last_update")
         diagnosis = {
             "sensor_id": sid,
+            "device_id": sensor.get("device_id"),
             "sensor_type": stype,
             "status": "healthy",
             "details": {},
