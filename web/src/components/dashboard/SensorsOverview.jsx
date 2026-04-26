@@ -1,17 +1,18 @@
 import { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { Activity } from 'lucide-react';
 import { useDashboardStore } from '@/stores/useDashboardStore';
 
-// Color palette for different sensor types
 const SENSOR_COLORS = {
-  MQ2: '#f59e0b',    // amber  — Smoke / LPG
-  MQ4: '#3b82f6',    // blue   — Methane
-  MQ5: '#8b5cf6',    // violet — Natural Gas / LPG
-  MQ7: '#ef4444',    // red    — Carbon Monoxide
-  MQ9B: '#06b6d4',   // cyan   — CO + Methane
-  MQ135: '#ec4899',  // pink   — Air Quality
-  SHTC3_TEMP: '#f97316',     // orange
-  SHTC3_HUMIDITY: '#10b981', // emerald
+  MQ2: 'var(--ifrit-warning)',
+  MQ4: 'var(--ifrit-info)',
+  MQ5: '#8b5cf6',
+  MQ6: '#fbbf24',
+  MQ7: 'var(--ifrit-fire)',
+  MQ9B: '#06b6d4',
+  MQ135: '#ec4899',
+  SHTC3_TEMP: '#f97316',
+  SHTC3_HUMIDITY: 'var(--ifrit-safe)',
 };
 
 const SENSOR_FALLBACK_COLOR = '#6b7280';
@@ -19,7 +20,6 @@ const SENSOR_FALLBACK_COLOR = '#6b7280';
 export default function SensorsOverview() {
   const sensorHistory = useDashboardStore((state) => state.sensorHistory);
 
-  // Extract available sensor keys from data
   const sensorKeys = useMemo(() => {
     if (!sensorHistory || sensorHistory.length === 0) return [];
     const keys = new Set();
@@ -31,13 +31,12 @@ export default function SensorsOverview() {
     return Array.from(keys);
   }, [sensorHistory]);
 
-  // Format timestamps for X axis
   const formattedData = useMemo(() => {
     return sensorHistory.map((point) => {
       let label = '';
       try {
         const d = new Date(point.time);
-        label = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        label = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
       } catch {
         label = point.time || '';
       }
@@ -47,10 +46,16 @@ export default function SensorsOverview() {
 
   if (!sensorHistory || sensorHistory.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[200px]">
-        <p className="text-xs font-mono uppercase tracking-wider" style={{ color: 'var(--agni-text-muted)' }}>
-          AWAITING TELEMETRY DATA...
-        </p>
+      <div className="flex flex-col items-center justify-center h-[200px] gap-3">
+        <Activity className="w-8 h-8 opacity-20" style={{ color: 'var(--ifrit-text-muted)' }} />
+        <div className="text-center">
+          <p className="text-sm font-medium" style={{ color: 'var(--ifrit-text-secondary)' }}>
+            No active telemetry
+          </p>
+          <p className="text-xs mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>
+            Waiting for sensor data from connected nodes
+          </p>
+        </div>
       </div>
     );
   }
@@ -58,29 +63,31 @@ export default function SensorsOverview() {
   return (
     <ResponsiveContainer width="100%" height={200}>
       <AreaChart data={formattedData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--agni-border)" opacity={0.3} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--ifrit-border)" opacity={0.3} />
         <XAxis 
           dataKey="time" 
-          tick={{ fill: 'var(--agni-text-muted)', fontSize: 9, fontFamily: 'monospace' }}
-          stroke="var(--agni-border)"
+          tick={{ fill: 'var(--ifrit-text-muted)', fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
+          stroke="var(--ifrit-border)"
           interval="preserveStartEnd"
         />
         <YAxis 
-          tick={{ fill: 'var(--agni-text-muted)', fontSize: 9, fontFamily: 'monospace' }} 
-          stroke="var(--agni-border)"
+          tick={{ fill: 'var(--ifrit-text-muted)', fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }} 
+          stroke="var(--ifrit-border)"
         />
         <Tooltip
           contentStyle={{
-            backgroundColor: 'var(--agni-bg-secondary)',
-            border: '1px solid var(--agni-border)',
-            borderRadius: '2px',
-            color: 'var(--agni-text-primary)',
-            fontSize: '10px',
-            fontFamily: 'monospace',
+            backgroundColor: 'var(--ifrit-bg-secondary)',
+            border: '1px solid var(--ifrit-border)',
+            borderRadius: '6px',
+            color: 'var(--ifrit-text-primary)',
+            fontSize: '11px',
+            fontFamily: "'JetBrains Mono', monospace",
           }}
         />
         <Legend 
-          wrapperStyle={{ fontSize: '9px', fontFamily: 'monospace' }}
+          verticalAlign="top"
+          align="right"
+          wrapperStyle={{ fontSize: '10px', fontFamily: "'JetBrains Mono', monospace", paddingBottom: '10px' }}
         />
         {sensorKeys.map((key) => (
           <Area
@@ -89,7 +96,7 @@ export default function SensorsOverview() {
             dataKey={key}
             stroke={SENSOR_COLORS[key] || SENSOR_FALLBACK_COLOR}
             fill={SENSOR_COLORS[key] || SENSOR_FALLBACK_COLOR}
-            fillOpacity={0.08}
+            fillOpacity={0.06}
             strokeWidth={1.5}
             dot={false}
           />

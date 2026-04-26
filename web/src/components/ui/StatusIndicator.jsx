@@ -1,12 +1,12 @@
 import { cn } from '@/lib/utils';
 
 const variants = {
-  safe: { color: 'var(--agni-safe)', label: 'Aman' },
-  warning: { color: 'var(--agni-warning)', label: 'Peringatan' },
-  fire: { color: 'var(--agni-fire)', label: 'BAHAYA' },
-  info: { color: 'var(--agni-info)', label: 'Info' },
-  online: { color: 'var(--agni-safe)', label: 'Online' },
-  offline: { color: 'var(--agni-text-muted)', label: 'Offline' },
+  safe: { color: 'var(--ifrit-safe)', label: 'Safe' },
+  warning: { color: 'var(--ifrit-warning)', label: 'Warning' },
+  fire: { color: 'var(--ifrit-fire)', label: 'Critical' },
+  info: { color: 'var(--ifrit-info)', label: 'Info' },
+  online: { color: 'var(--ifrit-safe)', label: 'Online' },
+  offline: { color: 'var(--ifrit-text-muted)', label: 'Offline' },
 };
 
 export default function StatusIndicator({ status, showLabel = false, size = 'md', className }) {
@@ -18,7 +18,7 @@ export default function StatusIndicator({ status, showLabel = false, size = 'md'
   };
 
   return (
-    <div className={cn('flex items-center gap-2', className)}>
+    <div className={cn('flex items-center gap-2', className)} role="status" aria-label={`Status: ${v.label}`}>
       <div
         className={cn(
           'rounded-full flex-shrink-0',

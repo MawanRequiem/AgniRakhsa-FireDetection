@@ -1,31 +1,47 @@
-import { useEffect } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useEffect, useState, useMemo } from 'react';
+import { Search } from 'lucide-react';
 import RoomCard from '@/components/dashboard/RoomCard';
-import HoverClue from '@/components/ui/HoverClue';
 import { useRoomsStore } from '@/stores/useRoomsStore';
 
 export default function Rooms() {
   const { rooms, isLoading, fetchRooms } = useRoomsStore();
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     fetchRooms();
-    
-    // Poll every 15 seconds to keep device status fresh
-    const interval = setInterval(fetchRooms, 15000);
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchRooms();
+    }, 15000);
     return () => clearInterval(interval);
   }, [fetchRooms]);
 
-  const getCount = (status) => status === 'all' 
-    ? rooms.length 
-    : rooms.filter(r => r.status === status).length;
+  const filteredRooms = useMemo(() => {
+    if (!search.trim()) return rooms;
+    const q = search.toLowerCase();
+    return rooms.filter(r => 
+      r.name?.toLowerCase().includes(q) || 
+      r.floor?.toLowerCase().includes(q) ||
+      r.status?.toLowerCase().includes(q)
+    );
+  }, [rooms, search]);
+
+  // Summary counts
+  const statusCounts = useMemo(() => {
+    const counts = { safe: 0, warning: 0, high: 0, critical: 0 };
+    for (const r of rooms) {
+      if (counts[r.status] !== undefined) counts[r.status]++;
+      else counts.safe++;
+    }
+    return counts;
+  }, [rooms]);
 
   if (isLoading && rooms.length === 0) {
     return (
       <div className="space-y-6 max-w-7xl mx-auto">
-        <h1 className="text-2xl font-semibold" style={{ color: 'var(--agni-text-primary)' }}>Facility Rooms</h1>
+        <h1 className="text-2xl font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Facility Rooms</h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {[1,2,3,4].map(i => (
-            <div key={i} className="h-36 rounded-md border animate-pulse" style={{ backgroundColor: 'var(--agni-bg-tertiary)', borderColor: 'var(--agni-border)' }} />
+            <div key={i} className="h-36 rounded-lg border animate-pulse" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }} />
           ))}
         </div>
       </div>
@@ -34,60 +50,74 @@ export default function Rooms() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center">
-            <h1 className="text-2xl font-semibold" style={{ color: 'var(--agni-text-primary)' }}>Facility Rooms</h1>
-            <HoverClue text="Daftar seluruh ruangan. Pilih dan klik ruangan mana saja untuk melihat detail cctv dan data spesifik sensor dari ruangan tersebut." />
-          </div>
-          <p className="text-sm mt-1" style={{ color: 'var(--agni-text-muted)' }}>Monitor detailed status of all monitored areas.</p>
+          <h1 className="text-2xl font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Facility Map</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>
+            Select an area to view live video and sensor status.
+          </p>
         </div>
       </div>
 
-      <Tabs defaultValue="all" className="w-full">
-        <TabsList 
-          className="w-full justify-start h-auto p-1 mb-6" 
-          style={{ backgroundColor: 'var(--agni-bg-secondary)', borderColor: 'var(--agni-border)', borderBottomWidth: '1px' }}
-        >
-          {['all', 'safe', 'warning', 'high', 'critical'].map(filter => (
-            <TabsTrigger 
-              key={filter} 
-              value={filter}
-              className="capitalize px-4 py-2 data-[state=active]:bg-[var(--agni-bg-tertiary)] data-[state=active]:text-[var(--agni-amber)]"
-            >
-              {filter}
-              <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--agni-bg-primary)' }}>
-                {getCount(filter)}
-              </span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      {/* Status Summary + Search */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3 flex-wrap">
+          <StatusPill label="All" count={rooms.length} active />
+          {statusCounts.critical > 0 && <StatusPill label="Critical" count={statusCounts.critical} color="var(--ifrit-fire)" />}
+          {statusCounts.high > 0 && <StatusPill label="High" count={statusCounts.high} color="var(--ifrit-warning)" />}
+          {statusCounts.warning > 0 && <StatusPill label="Warning" count={statusCounts.warning} color="#eab308" />}
+          <StatusPill label="Safe" count={statusCounts.safe} color="var(--ifrit-safe)" />
+        </div>
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--ifrit-text-muted)' }} />
+          <input
+            type="text"
+            placeholder="Search rooms..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 pr-4 py-2 text-sm rounded-lg border w-full sm:w-64 outline-none"
+            style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}
+          />
+        </div>
+      </div>
 
-        {['all', 'safe', 'warning', 'high', 'critical'].map(filter => (
-          <TabsContent key={filter} value={filter} className="mt-0 outline-none">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {rooms.filter(r => filter === 'all' || r.status === filter).map(room => (
-                <RoomCard key={room.id} room={room} />
-              ))}
-            </div>
-            
-            {getCount(filter) === 0 && (
-              <div 
-                className="flex flex-col items-center justify-center p-12 mt-8 rounded-lg border border-dashed"
-                style={{ borderColor: 'var(--agni-border)' }}
-              >
-                <div className="w-12 h-12 mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--agni-bg-secondary)' }}>
-                  <div className="w-2 h-2 rounded-full led-safe bg-[var(--agni-safe)]" />
-                </div>
-                <h3 className="text-[var(--agni-text-primary)] font-medium">No rooms found</h3>
-                <p className="text-[var(--agni-text-muted)] text-sm text-center max-w-sm mt-1">
-                  There are currently no rooms matching the &quot;{filter}&quot; status filter.
-                </p>
-              </div>
-            )}
-          </TabsContent>
+      {/* Room Grid — flat, no tabs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {filteredRooms.map(room => (
+          <RoomCard key={room.id} room={room} />
         ))}
-      </Tabs>
+      </div>
+
+      {filteredRooms.length === 0 && (
+        <div 
+          className="flex flex-col items-center justify-center p-12 rounded-lg border border-dashed"
+          style={{ borderColor: 'var(--ifrit-border)' }}
+        >
+          <h3 className="font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>No rooms found</h3>
+          <p className="text-sm text-center max-w-sm mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>
+            {search ? `No rooms match "${search}". Try a different search.` : 'No monitored rooms have been configured yet.'}
+          </p>
+        </div>
+      )}
     </div>
+  );
+}
+
+// Simple status count pill (read-only, not a tab)
+function StatusPill({ label, count, color, active }) {
+  return (
+    <span 
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium"
+      style={{ 
+        backgroundColor: active ? 'var(--ifrit-bg-tertiary)' : 'transparent',
+        color: color || 'var(--ifrit-text-secondary)',
+        border: active ? '1px solid var(--ifrit-border)' : '1px solid transparent',
+      }}
+    >
+      {color && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />}
+      {label}
+      <span className="font-mono font-bold" style={{ color: 'var(--ifrit-text-muted)' }}>{count}</span>
+    </span>
   );
 }

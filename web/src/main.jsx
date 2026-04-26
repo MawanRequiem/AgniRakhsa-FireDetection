@@ -15,9 +15,9 @@ createRoot(document.getElementById('root')).render(
           position="bottom-right"
           toastOptions={{
             style: {
-              background: 'var(--agni-bg-tertiary)',
-              border: '1px solid var(--agni-border)',
-              color: 'var(--agni-text-primary)'
+              background: 'var(--ifrit-bg-tertiary)',
+              border: '1px solid var(--ifrit-border)',
+              color: 'var(--ifrit-text-primary)'
             },
           }}
         />
