@@ -7,7 +7,7 @@ Usage:
     from app.ai import registry
     
     # At startup (in lifespan):
-    registry.load_detector(model_type="yolo", model_path="app/ai/fire_detection_model.pt")
+    registry.load_detector(model_type="yolo", model_path="app/ai/yolo/fire_detection_model.pt")
     
     # In route handlers:
     detector = registry.get_detector()

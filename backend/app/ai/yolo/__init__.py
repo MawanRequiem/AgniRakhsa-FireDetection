@@ -1,0 +1,1 @@
+# YOLO Fire Detection Module

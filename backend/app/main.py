@@ -24,6 +24,13 @@ async def lifespan(app: FastAPI):
         import logging
         logging.getLogger(__name__).error(f"AI Model failed to load: {e}")
     
+    # Load sensor anomaly detection model (Isolation Forest)
+    try:
+        registry.load_sensor_detector(model_dir=settings.SENSOR_MODEL_DIR)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Sensor ML model failed to load: {e}")
+    
     # Start the device watchdog as a background task
     import asyncio
     watchdog_task = asyncio.create_task(run_watchdog())

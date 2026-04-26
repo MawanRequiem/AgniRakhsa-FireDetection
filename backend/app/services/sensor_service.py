@@ -99,6 +99,33 @@ async def ingest_readings(device_id: UUID, readings: list[dict]) -> int:
             }
         })
     
+    # Feed sensor anomaly detector buffer (for Isolation Forest ML model)
+    try:
+        from app.ai import registry
+        sensor_detector = registry.get_sensor_detector()
+        
+        # Look up room_id for this device
+        device_room = supabase.table("devices").select("room_id").eq("id", str(device_id)).execute()
+        room_id = device_room.data[0].get("room_id") if device_room.data else None
+        
+        if room_id:
+            # Build snapshot: sensor_type → value
+            snapshot = {
+                sensor_type_map.get(str(r["sensor_id"]), ""): r["value"]
+                for r in readings
+            }
+            # Remove empty-key entries (sensors without metadata)
+            snapshot = {k: v for k, v in snapshot.items() if k}
+            sensor_detector.ingest(room_id, snapshot)
+            logger.debug(
+                f"Fed sensor buffer for room {room_id}: {len(snapshot)} sensors, "
+                f"buffer={sensor_detector.get_buffer_status().get(room_id, 0)}/9"
+            )
+    except RuntimeError:
+        pass  # Sensor model not loaded — skip buffer feeding
+    except Exception as e:
+        logger.warning(f"Failed to feed sensor anomaly buffer: {e}")
+    
     return inserted_count
 
 
