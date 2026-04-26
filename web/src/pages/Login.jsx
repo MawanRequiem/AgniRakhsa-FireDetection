@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Flame, ShieldAlert, Loader2 } from 'lucide-react'; // Ganti User ke Mail
+import { Mail, Lock, Flame, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { customFetch } from '@/lib/api';
+import { toast } from 'sonner';
 
 export default function Login() {
-  const [email, setEmail] = useState(''); // Supabase menggunakan Email
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false); // State untuk loading
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
 
@@ -29,136 +30,152 @@ export default function Login() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.detail || 'Login gagal.');
+        throw new Error(data.detail || 'Authentication failed.');
       }
 
-      // Store in memory (Zustand) securely! No localStorage!
       setAuth(data.user, data.csrf_token);
-
-      // Redirect to dashboard
       navigate('/');
       
     } catch (error) {
-      alert('Login Gagal: ' + error.message);
+      toast.error('Login failed', {
+        description: error.message,
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#0a0a0b]">
+    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--ifrit-bg-secondary)' }}>
       
-      {/* Background Decor: Blueprint / Grid Effect */}
+      {/* Subtle grid background */}
       <div 
-        className="absolute inset-0 opacity-10 pointer-events-none"
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
         style={{
-          backgroundImage: `radial-gradient(circle at 2px 2px, #f97316 1px, transparent 0)`,
-          backgroundSize: '40px 40px'
+          backgroundImage: `linear-gradient(var(--ifrit-border) 1px, transparent 1px), linear-gradient(90deg, var(--ifrit-border) 1px, transparent 1px)`,
+          backgroundSize: '48px 48px'
         }}
       />
-      
-      {/* Background Decor: Fire Glows */}
-      <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-orange-600/10 blur-[120px] rounded-full" />
-      <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-orange-900/10 blur-[120px] rounded-full" />
 
       {/* Main Container */}
-      <div className="relative z-10 w-full max-w-md px-4">
+      <div className="relative z-10 w-full max-w-sm px-4">
         
         {/* Logo Section */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-orange-500/10 border border-orange-500/20 rounded-2xl flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(249,115,22,0.15)]">
-            <Flame className="w-10 h-10 text-orange-500" />
+          <div 
+            className="w-14 h-14 rounded-xl flex items-center justify-center mb-4"
+            style={{ backgroundColor: 'var(--ifrit-brand)' }}
+          >
+            <Flame className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">
-            Agni<span className="text-orange-500">Raksha</span>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--ifrit-text-primary)' }}>
+            IFRIT
           </h1>
-          <p className="text-gray-400 text-sm mt-1">Intelligent Indoor Fire Detection</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>AI-Powered Fire Detection</p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-[#121214]/80 backdrop-blur-xl border border-white/5 p-8 rounded-[2rem] shadow-2xl">
+        <div 
+          className="p-8 rounded-xl border"
+          style={{ 
+            backgroundColor: 'var(--ifrit-bg-primary)', 
+            borderColor: 'var(--ifrit-border)',
+          }}
+        >
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-white">Selamat Datang</h2>
-            <p className="text-gray-400 text-xs">Silakan masuk untuk mengakses dashboard</p>
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Sign in</h2>
+            <p className="text-sm mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>Access your monitoring dashboard</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-4">
             {/* Email Input */}
             <div className="space-y-1.5">
-              <label className="text-[11px] uppercase tracking-widest text-gray-500 font-bold ml-1">Email Address</label>
+              <label htmlFor="email" className="text-xs font-medium" style={{ color: 'var(--ifrit-text-secondary)' }}>Email</label>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Mail className="h-4 h-4 text-gray-500 group-focus-within:text-orange-500 transition-colors" />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="w-4 h-4" style={{ color: 'var(--ifrit-text-muted)' }} />
                 </div>
                 <input
+                  id="email"
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-black/40 border border-white/5 rounded-xl py-3 pl-10 pr-4 text-sm text-white placeholder:text-gray-600 outline-none focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/10 transition-all"
-                  placeholder="admin@agniraksha.com"
+                  className="w-full rounded-lg py-2.5 pl-10 pr-4 text-sm outline-none transition-colors border"
+                  style={{ 
+                    backgroundColor: 'var(--ifrit-bg-secondary)', 
+                    borderColor: 'var(--ifrit-border)',
+                    color: 'var(--ifrit-text-primary)',
+                  }}
+                  placeholder="admin@ifrit.io"
                 />
               </div>
             </div>
 
             {/* Password Input */}
             <div className="space-y-1.5">
-              <label className="text-[11px] uppercase tracking-widest text-gray-500 font-bold ml-1">Password</label>
+              <label htmlFor="password" className="text-xs font-medium" style={{ color: 'var(--ifrit-text-secondary)' }}>Password</label>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Lock className="h-4 h-4 text-gray-500 group-focus-within:text-orange-500 transition-colors" />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="w-4 h-4" style={{ color: 'var(--ifrit-text-muted)' }} />
                 </div>
                 <input
+                  id="password"
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-black/40 border border-white/5 rounded-xl py-3 pl-10 pr-4 text-sm text-white placeholder:text-gray-600 outline-none focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                  className="w-full rounded-lg py-2.5 pl-10 pr-4 text-sm outline-none transition-colors border"
+                  style={{ 
+                    backgroundColor: 'var(--ifrit-bg-secondary)', 
+                    borderColor: 'var(--ifrit-border)',
+                    color: 'var(--ifrit-text-primary)',
+                  }}
                   placeholder="••••••••"
                 />
               </div>
             </div>
 
             {/* Remember & Forgot */}
-            <div className="flex items-center justify-between text-[11px] px-1">
-              <label className="flex items-center gap-2 text-gray-400 cursor-pointer">
-                <input type="checkbox" className="accent-orange-500 rounded border-none bg-white/5" />
-                Ingat saya
+            <div className="flex items-center justify-between text-xs px-0.5">
+              <label className="flex items-center gap-2 cursor-pointer" style={{ color: 'var(--ifrit-text-muted)' }}>
+                <input type="checkbox" className="rounded border" style={{ accentColor: 'var(--ifrit-brand)' }} />
+                Remember me
               </label>
-              <button type="button" className="text-orange-500 hover:text-orange-400 font-medium">Lupa sandi?</button>
+              <button type="button" className="font-medium" style={{ color: 'var(--ifrit-brand)' }}>Forgot password?</button>
             </div>
 
             {/* Submit Button */}
             <Button 
               type="submit"
               disabled={loading}
-              className="w-full h-12 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white font-bold rounded-xl shadow-[0_4px_15px_rgba(249,115,22,0.3)] border-none transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70"
+              className="w-full h-11 text-white font-semibold rounded-lg border-none transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 cursor-pointer"
+              style={{ backgroundColor: 'var(--ifrit-brand)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--ifrit-brand-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--ifrit-brand)'}
             >
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Memproses...
+                  Signing in...
                 </>
               ) : (
-                <>
-                  Masuk Dashboard
-                  <ShieldAlert className="w-4 h-4" />
-                </>
+                'Sign In'
               )}
             </Button>
           </form>
 
           {/* Footer Card */}
-          <div className="mt-8 pt-6 border-t border-white/5 text-center">
-            <p className="text-gray-500 text-xs">
-              Belum punya akun? <button className="text-orange-500 font-bold hover:underline">Hubungi Admin</button>
+          <div className="mt-6 pt-5 border-t text-center" style={{ borderColor: 'var(--ifrit-border)' }}>
+            <p className="text-xs" style={{ color: 'var(--ifrit-text-muted)' }}>
+              Need access? <button className="font-medium" style={{ color: 'var(--ifrit-brand)' }}>Contact your administrator</button>
             </p>
           </div>
         </div>
 
         {/* System Footer */}
-        <p className="mt-8 text-center text-[10px] text-gray-600 uppercase tracking-[0.2em]">
-          &copy; 2026 AgniRaksha Systems - PBL PNJ
+        <p className="mt-6 text-center text-[10px] tracking-wide" style={{ color: 'var(--ifrit-text-muted)' }}>
+          &copy; 2026 IFRIT Fire Detection Systems
         </p>
       </div>
     </div>

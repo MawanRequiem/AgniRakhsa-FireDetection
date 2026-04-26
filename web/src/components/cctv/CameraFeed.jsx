@@ -20,9 +20,9 @@ export default function CameraFeed({ camera, onClick }) {
     <div
       className="relative rounded-md overflow-hidden border group cursor-pointer"
       style={{
-        borderColor: hasDetection ? 'var(--agni-fire)' : 'var(--agni-border)',
+        borderColor: hasDetection ? 'var(--ifrit-fire)' : 'var(--ifrit-border)',
         minHeight: '200px',
-        backgroundColor: 'var(--agni-bg-primary)',
+        backgroundColor: 'var(--ifrit-bg-primary)',
       }}
       onClick={onClick}
     >
@@ -36,7 +36,7 @@ export default function CameraFeed({ camera, onClick }) {
       ) : isOnline ? (
         <div className="absolute inset-0 grain opacity-20" />
       ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-[var(--agni-text-muted)]">
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-[var(--ifrit-text-muted)]">
           <VideoOff className="w-8 h-8 mb-2 opacity-50" />
           <span className="text-xs">Feed Offline</span>
         </div>
@@ -53,7 +53,7 @@ export default function CameraFeed({ camera, onClick }) {
 
           {/* Top Right: Detection Badge */}
           {hasDetection && (
-            <div className="bg-[var(--agni-fire)] text-white text-[10px] font-bold px-2 py-1 rounded shadow-[0_0_10px_rgba(248,113,113,0.5)] animate-pulse">
+            <div className="bg-[var(--ifrit-fire)] text-white text-[10px] font-bold px-2 py-1 rounded shadow-[0_0_10px_rgba(248,113,113,0.5)] animate-pulse">
               MOTION DETECTED
             </div>
           )}
@@ -83,7 +83,7 @@ export default function CameraFeed({ camera, onClick }) {
               return (
                 <div
                   key={idx}
-                  className="absolute border-2 border-[var(--agni-fire)] opacity-80"
+                  className="absolute border-2 border-[var(--ifrit-fire)] opacity-80"
                   style={{
                     top: `${top}%`,
                     left: `${left}%`,
@@ -91,7 +91,7 @@ export default function CameraFeed({ camera, onClick }) {
                     height: `${boxHeight}%`,
                   }}
                 >
-                  <div className="absolute -top-5 left-0 bg-[var(--agni-fire)] text-white text-[10px] px-1 font-mono whitespace-nowrap">
+                  <div className="absolute -top-5 left-0 bg-[var(--ifrit-fire)] text-white text-[10px] px-1 font-mono whitespace-nowrap">
                     {det.class_name} {confidencePercent}%
                   </div>
                 </div>

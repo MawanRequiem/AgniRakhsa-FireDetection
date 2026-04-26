@@ -1,5 +1,5 @@
 // ============================================
-// AgniRaksha — Mock Data for Dashboard
+// ifrit — Mock Data for Dashboard
 // ============================================
 
 export const ROOMS = [
@@ -43,7 +43,7 @@ function generateTrendData(baseValues, roomStatus) {
     const time = new Date(now.getTime() - i * 30000);
     const progress = (60 - i) / 60;
     const entry = {
-      time: time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+      time: time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
     };
 
     for (const [key, base] of Object.entries(baseValues)) {

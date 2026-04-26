@@ -30,9 +30,9 @@ export default function ContactForm({ open, onOpenChange, contact, onSave }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]" style={{ 
-        backgroundColor: 'var(--agni-bg-tertiary)', 
-        borderColor: 'var(--agni-border)',
-        color: 'var(--agni-text-primary)'
+        backgroundColor: 'var(--ifrit-bg-tertiary)', 
+        borderColor: 'var(--ifrit-border)',
+        color: 'var(--ifrit-text-primary)'
       }}>
         <DialogHeader>
           <DialogTitle>{contact ? 'Edit Contact' : 'Add New Contact'}</DialogTitle>
@@ -40,19 +40,19 @@ export default function ContactForm({ open, onOpenChange, contact, onSave }) {
         
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="name" style={{ color: 'var(--agni-text-secondary)' }}>Full Name</Label>
+            <Label htmlFor="name" style={{ color: 'var(--ifrit-text-secondary)' }}>Full Name</Label>
             <Input 
               id="name" 
               value={formData.name} 
               onChange={(e) => setFormData({...formData, name: e.target.value})}
               placeholder="e.g. Budi Santoso"
               required
-              style={{ backgroundColor: 'var(--agni-bg-secondary)', borderColor: 'var(--agni-border)', color: 'var(--agni-text-primary)' }}
+              style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="phone" style={{ color: 'var(--agni-text-secondary)' }}>WhatsApp Number</Label>
+            <Label htmlFor="phone" style={{ color: 'var(--ifrit-text-secondary)' }}>WhatsApp Number</Label>
             <Input 
               id="phone" 
               value={formData.phone} 
@@ -60,18 +60,18 @@ export default function ContactForm({ open, onOpenChange, contact, onSave }) {
               placeholder="+628123..."
               required
               className="font-mono"
-              style={{ backgroundColor: 'var(--agni-bg-secondary)', borderColor: 'var(--agni-border)', color: 'var(--agni-text-primary)' }}
+              style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}
             />
-            <p className="text-[10px]" style={{ color: 'var(--agni-text-muted)' }}>Include country code (e.g. +62 for Indonesia)</p>
+            <p className="text-[10px]" style={{ color: 'var(--ifrit-text-muted)' }}>Include country code (e.g. +62 for Indonesia)</p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="role" style={{ color: 'var(--agni-text-secondary)' }}>Role</Label>
+            <Label htmlFor="role" style={{ color: 'var(--ifrit-text-secondary)' }}>Role</Label>
             <Select value={formData.role} onValueChange={(val) => setFormData({...formData, role: val})}>
-              <SelectTrigger style={{ backgroundColor: 'var(--agni-bg-secondary)', borderColor: 'var(--agni-border)', color: 'var(--agni-text-primary)' }}>
+              <SelectTrigger style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}>
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
-              <SelectContent style={{ backgroundColor: 'var(--agni-bg-secondary)', borderColor: 'var(--agni-border)', color: 'var(--agni-text-primary)' }}>
+              <SelectContent style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}>
                 <SelectItem value="admin">Administrator</SelectItem>
                 <SelectItem value="security">Security Guard</SelectItem>
                 <SelectItem value="manager">Facility Manager</SelectItem>
@@ -84,14 +84,14 @@ export default function ContactForm({ open, onOpenChange, contact, onSave }) {
               type="button" 
               variant="outline" 
               onClick={() => onOpenChange(false)}
-              style={{ borderColor: 'var(--agni-border)', color: 'var(--agni-text-primary)' }}
+              style={{ borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}
             >
               Cancel
             </Button>
             <Button 
               type="submit"
-              className="hover:bg-[var(--agni-amber-hover)] text-black font-semibold"
-              style={{ backgroundColor: 'var(--agni-amber)' }}
+              className="hover:bg-[var(--ifrit-amber-hover)] text-black font-semibold"
+              style={{ backgroundColor: 'var(--ifrit-amber)' }}
             >
               {contact ? 'Save Changes' : 'Add Contact'}
             </Button>

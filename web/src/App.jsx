@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { customFetch } from '@/lib/api';
@@ -16,10 +16,10 @@ const Alerts = lazy(() => import('@/pages/Alerts'));
 const Notifications = lazy(() => import('@/pages/Notifications'));
 const DeviceManagement = lazy(() => import('@/pages/DeviceManagement'));
 
-// Common suspense fallback (simple spinner using Warm Industrial colors)
+// Common suspense fallback
 const PageFallback = () => (
   <div className="flex items-center justify-center p-12 w-full h-64">
-    <div className="w-8 h-8 rounded-full border-2 border-[var(--agni-border)] border-t-[var(--agni-amber)] animate-spin" />
+    <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--ifrit-border)', borderTopColor: 'var(--ifrit-brand)' }} />
   </div>
 );
 
@@ -39,7 +39,7 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function App() {
-  const { setAuth, clearAuth, setLoading } = useAuthStore();
+  const { setAuth, clearAuth } = useAuthStore();
 
   // Verify HttpOnly Cookie Session on initial app load
   useEffect(() => {
@@ -48,14 +48,8 @@ function App() {
         const response = await customFetch('/api/v1/auth/me');
         if (response.ok) {
           const user = await response.json();
-          // We don't get the CSRF token from /me natively right now, but 
-          // we should update /me to return it if needed, or rely on it staying valid if session valid.
-          // Wait, backend /login gave us the CSRF token. If user refreshes, we lose CSRF token from memory!
-          // But since the cookie is still there, /me succeeds.
-          // We need CSRF token for future POST requests!
-          // We will retrieve a new CSRF token on boot from /me or we'll modify /me right after this.
           const resCsrf = response.headers.get('X-CSRF-Token');
-          setAuth(user, resCsrf || ''); // We will patch /me to return a new or same CSRF token.
+          setAuth(user, resCsrf || '');
         } else {
           clearAuth();
         }
@@ -68,7 +62,7 @@ function App() {
   }, [setAuth, clearAuth]);
 
   return (
-    <div className="min-h-screen text-[var(--agni-text-primary)]" style={{ backgroundColor: 'var(--agni-bg-primary)' }}>
+    <div className="min-h-screen" style={{ color: 'var(--ifrit-text-primary)', backgroundColor: 'var(--ifrit-bg-primary)' }}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={
@@ -107,8 +101,8 @@ function App() {
           {/* Catch-all route */}
           <Route path="*" element={
             <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-              <h2 className="text-2xl font-bold mb-2">404 - Page Not Found</h2>
-              <p style={{ color: 'var(--agni-text-muted)' }}>The module you are looking for does not exist.</p>
+              <h2 className="text-2xl font-bold mb-2">404 — Page Not Found</h2>
+              <p style={{ color: 'var(--ifrit-text-muted)' }}>The page you're looking for doesn't exist.</p>
             </div>
           } />
         </Route>

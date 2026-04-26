@@ -15,32 +15,25 @@ export default function MainLayout() {
         useUIStore.setState({ sidebarCollapsed: true });
       }
     };
-    handleResize(); // Initial check
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   return (
-    <div className="min-h-screen text-[var(--agni-text-primary)]" style={{ backgroundColor: 'var(--agni-bg-secondary)' }}>
-      {/* Mobile Overlay */}
+    <div className="min-h-screen text-[var(--ifrit-text-primary)]" style={{ backgroundColor: 'var(--ifrit-bg-secondary)' }}>
+      {/* Mobile Overlay — solid dark, no blur */}
       {!collapsed && (
         <div 
-          className="fixed inset-0 bg-black/40 z-40 md:hidden backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity"
           onClick={toggle}
         />
       )}
 
-      {/* Sidebar Component */}
       <Sidebar />
 
       {/* Main Content Area */}
-      <div
-        className="transition-all duration-300 min-h-screen flex flex-col"
-        style={{ 
-           // md:left margin respects collapsed state, mobile ignores it (sidebar overlaps)
-        }}
-      >
-        {/* We use a wrapper that applies margin only on desktop */}
+      <div className="transition-all duration-300 min-h-screen flex flex-col">
         <div className={`flex flex-col flex-1 ${collapsed ? 'md:ml-16' : 'md:ml-64'}`}>
           <Header />
           <main className="p-4 sm:p-6 lg:p-8 flex-1 animate-fade-in">
