@@ -23,6 +23,7 @@ from app.core.config import settings
 from app.core.db import supabase
 from app.services import sensor_service
 from app.api.ws_manager import manager
+from app.services.whatsapp import send_whatsapp_message
 from app.ai import registry
 
 logger = logging.getLogger(__name__)
@@ -244,7 +245,41 @@ async def _create_alert(
     
     # Broadcast alert via websocket
     if res.data:
+        alert_data = res.data[0]
         asyncio.create_task(manager.broadcast({
             "type": "NEW_ALERT",
-            "data": res.data[0]
+            "data": alert_data
         }))
+
+        # --- WhatsApp Notification System ---
+        # Fetch active contacts
+        contacts_res = supabase.table("contacts").select("phone").eq("is_active", True).execute()
+        active_contacts = contacts_res.data
+        
+        if active_contacts:
+            # Fetch room name for better message
+            room_name = "Unknown Room"
+            if room_id:
+                room_res = supabase.table("rooms").select("name").eq("id", str(room_id)).execute()
+                if room_res.data:
+                    room_name = room_res.data[0].get("name")
+            
+            # Format message
+            risk_color = "🔴" if risk_level.upper() == "CRITICAL" else "🟠"
+            wa_message = (
+                f"🚨 *PERINGATAN DARURAT: TERDETEKSI API!*\n\n"
+                f"*Lokasi:* {room_name}\n"
+                f"*Tingkat Risiko:* {risk_color} *{risk_level.upper()}* (Skor: {fusion_score*100:.1f}%)\n\n"
+                f"*INSTRUKSI:*\n"
+                f"1. Segera lakukan pengecekan visual ke lokasi.\n"
+                f"2. Siapkan alat pemadam api ringan (APAR).\n"
+                f"3. Evakuasi penghuni jika api tidak terkendali.\n\n"
+                f"_Sistem AgniRaksha - Deteksi AI & IoT_"
+            )
+            
+            # Send to all active contacts as background tasks
+            for contact in active_contacts:
+                phone = contact.get("phone")
+                if phone:
+                    asyncio.create_task(send_whatsapp_message(phone=phone, message=wa_message))
+

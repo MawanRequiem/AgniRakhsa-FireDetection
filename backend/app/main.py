@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from app.api.routers import auth, notifications, detection, sensors, rooms, devices, dashboard, ws, alerts, cameras, camera_stream
+from app.api.routers import auth, notifications, detection, sensors, rooms, devices, dashboard, ws, alerts, cameras, camera_stream, contacts
 from app.core.config import settings
 from app.ai import registry
 from app.services.device_watchdog import run_watchdog
@@ -76,6 +76,7 @@ async def add_security_headers(request, call_next):
 
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(notifications.router, prefix=f"{settings.API_V1_STR}/notifications", tags=["notifications"])
+app.include_router(contacts.router, prefix=f"{settings.API_V1_STR}/contacts", tags=["contacts"])
 
 # --- AI & Core Functionality Routers ---
 app.include_router(detection.router, prefix=settings.API_V1_STR)

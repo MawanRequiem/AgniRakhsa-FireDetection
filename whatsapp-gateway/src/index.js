@@ -1,8 +1,12 @@
 import express from 'express'
+import cors from 'cors'
 import config from './config.js'
 import { connectToWhatsApp } from './baileys.js'
 
 const app = express()
+
+// CORS configuration
+app.use(cors())
 
 // JSON Body parser
 app.use(express.json())
