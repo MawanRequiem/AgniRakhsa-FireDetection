@@ -4,12 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Pencil, Trash2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function ContactTable({ contacts, onEdit, onDelete }) {
-  const handleTest = (name) => {
-    toast.success(`Test message sent to ${name}`, {
-      description: 'Check WhatsApp for the message.',
-    });
-  };
+export default function ContactTable({ contacts, onEdit, onDelete, onTest }) {
 
   return (
     <div className="border rounded-md" style={{ borderColor: 'var(--ifrit-border)' }}>
@@ -43,9 +38,9 @@ export default function ContactTable({ contacts, onEdit, onDelete }) {
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${contact.active ? 'bg-[var(--ifrit-safe)]' : 'bg-[var(--ifrit-text-muted)]'}`} />
-                  <span className="text-xs" style={{ color: contact.active ? 'var(--ifrit-safe)' : 'var(--ifrit-text-muted)' }}>
-                    {contact.active ? 'Active' : 'Inactive'}
+                  <div className={`w-2 h-2 rounded-full ${contact.is_active ? 'bg-[var(--ifrit-safe)]' : 'bg-[var(--ifrit-text-muted)]'}`} />
+                  <span className="text-xs" style={{ color: contact.is_active ? 'var(--ifrit-safe)' : 'var(--ifrit-text-muted)' }}>
+                    {contact.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
               </TableCell>
@@ -55,7 +50,7 @@ export default function ContactTable({ contacts, onEdit, onDelete }) {
                     variant="ghost" 
                     size="icon" 
                     className="h-8 w-8 text-[var(--ifrit-text-secondary)] hover:text-white hover:bg-[var(--ifrit-bg-tertiary)]"
-                    onClick={() => handleTest(contact.name)}
+                    onClick={() => onTest(contact)}
                     title="Send Test WA"
                   >
                     <Send className="w-4 h-4" />

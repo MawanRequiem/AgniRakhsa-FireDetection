@@ -27,18 +27,29 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'Invalid phone number format' })
         }
         
-        // Ensure WA connection is ready
+        // Ensure WA connection is ready and authenticated
         const sock = getWASocket()
-        if (!sock) {
-            return res.status(503).json({ error: 'Service Unavailable: WhatsApp is not connected' })
+        if (!sock || !sock.user) {
+            return res.status(503).json({ 
+                error: 'Service Unavailable: WhatsApp is not authenticated. Please scan the QR code first.' 
+            })
         }
         
         // Cek apakah nomor WA valid / terdaftar di server WA untuk mencegah Baileys Crash
-        const [result] = await sock.onWhatsApp(targetJid)
-        if (!result || !result.exists) {
+        let results;
+        try {
+            results = await sock.onWhatsApp(targetJid)
+        } catch (err) {
+            console.error(`[API Error] onWhatsApp check failed for ${targetJid}:`, err.message)
+            return res.status(502).json({ error: 'WhatsApp server communication error' })
+        }
+
+        if (!results || results.length === 0 || !results[0].exists) {
             console.error(`[API Error] Target ${targetJid} not registered on WhatsApp. Skipping.`)
             return res.status(404).json({ error: 'Phone number is not registered on WhatsApp' })
         }
+        
+        const result = results[0]
         
         // Attempt to send message
         await sock.sendMessage(targetJid, { text: message })

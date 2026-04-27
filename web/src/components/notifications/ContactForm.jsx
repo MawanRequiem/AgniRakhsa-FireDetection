@@ -10,20 +10,20 @@ export default function ContactForm({ open, onOpenChange, contact, onSave }) {
     name: '',
     phone: '+62',
     role: 'security',
-    active: true,
+    is_active: true,
   });
 
   useEffect(() => {
     if (contact) {
       setFormData(contact);
     } else {
-      setFormData({ name: '', phone: '+62', role: 'security', active: true });
+      setFormData({ name: '', phone: '+62', role: 'security', is_active: true });
     }
   }, [contact, open]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({ ...formData, id: contact?.id || `C${Date.now()}` });
+    onSave(formData);
     onOpenChange(false);
   };
 

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { customFetch } from '@/lib/api';
 import ContactTable from '@/components/notifications/ContactTable';
 import ContactForm from '@/components/notifications/ContactForm';
 import { Button } from '@/components/ui/button';
@@ -15,16 +16,54 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-// Local contacts data — will be replaced with a backend API when ready
-const INITIAL_CONTACTS = [
-  { id: 'C001', name: 'Budi Santoso', phone: '+6281234567890', role: 'admin', active: true, lastNotified: null },
-  { id: 'C002', name: 'Siti Rahayu', phone: '+6289876543210', role: 'security', active: true, lastNotified: null },
-];
-
 export default function Notifications() {
-  const [contacts, setContacts] = useState(INITIAL_CONTACTS);
+  const [contacts, setContacts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
+  const [whatsappConnected, setWhatsappConnected] = useState(false);
+
+  // Fetch contacts from backend
+  const fetchContacts = async () => {
+    setIsLoading(true);
+    try {
+      const res = await customFetch('/api/v1/contacts/');
+      if (res.ok) {
+        const data = await res.json();
+        setContacts(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch contacts:', err);
+      toast.error('Failed to load contact list');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Check WhatsApp Gateway status
+  const checkGatewayStatus = async () => {
+    try {
+      // We check via the backend to avoid CORS issues if the gateway is strictly local
+      const res = await fetch('http://127.0.0.1:3001/'); 
+      if (res.ok) {
+        const data = await res.json();
+        setWhatsappConnected(data.status === 'ok');
+      } else {
+        setWhatsappConnected(false);
+      }
+    } catch (err) {
+      setWhatsappConnected(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchContacts();
+    checkGatewayStatus();
+    
+    // Poll status every 30s
+    const interval = setInterval(checkGatewayStatus, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleAdd = () => {
     setEditingContact(null);
@@ -42,26 +81,68 @@ export default function Notifications() {
     setDeletingId(id);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deletingId) {
-      setContacts(contacts.filter(c => c.id !== deletingId));
-      toast.success('Contact removed successfully');
-      setDeletingId(null);
+      try {
+        const res = await customFetch(`/api/v1/contacts/${deletingId}`, {
+          method: 'DELETE'
+        });
+        
+        if (res.status === 204) {
+          setContacts(contacts.filter(c => c.id !== deletingId));
+          toast.success('Contact removed successfully');
+        } else {
+          toast.error('Failed to remove contact');
+        }
+      } catch (err) {
+        toast.error('Network error while deleting');
+      } finally {
+        setDeletingId(null);
+      }
     }
   };
 
-  const handleSave = (contact) => {
-    if (editingContact) {
-      setContacts(contacts.map(c => c.id === contact.id ? contact : c));
-      toast.success('Contact updated');
-    } else {
-      setContacts([...contacts, contact]);
-      toast.success('New contact added');
+  const handleSave = async (contact) => {
+    try {
+      const method = editingContact ? 'PATCH' : 'POST';
+      const endpoint = editingContact ? `/api/v1/contacts/${contact.id}` : '/api/v1/contacts/';
+      
+      const res = await customFetch(endpoint, {
+        method,
+        body: JSON.stringify(contact)
+      });
+
+      if (res.ok) {
+        toast.success(editingContact ? 'Contact updated' : 'New contact added');
+        fetchContacts(); // Refresh list
+      } else {
+        const errData = await res.json();
+        toast.error(errData.detail || 'Failed to save contact');
+      }
+    } catch (err) {
+      toast.error('Network error while saving');
     }
   };
 
-  // Simple WA gateway status — placeholder until real status endpoint
-  const whatsappConnected = false;
+  const handleTest = async (contact) => {
+    try {
+      const res = await customFetch('/api/v1/notifications/whatsapp', {
+        method: 'POST',
+        body: JSON.stringify({
+          phone: contact.phone,
+          message: `🛠 *[Ifrit] - Uji Coba Sistem*\n\nHalo ${contact.name}, ini adalah pesan otomatis untuk memastikan sistem notifikasi WhatsApp Anda telah aktif.\n\nJika Anda menerima pesan ini, berarti nomor Anda sudah terdaftar dalam sistem peringatan dini *Ifrit Fire Detection*. Tidak ada tindakan yang diperlukan saat ini.\n\n*Waktu Tes:* ${new Date().toLocaleString('id-ID')}`
+        })
+      });
+
+      if (res.ok) {
+        toast.success(`Test message sent to ${contact.name}`);
+      } else {
+        toast.error('Failed to send test message');
+      }
+    } catch (err) {
+      toast.error('Network error while testing');
+    }
+  };
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
@@ -106,7 +187,8 @@ export default function Notifications() {
         <ContactTable 
           contacts={contacts} 
           onEdit={handleEdit} 
-          onDelete={handleDelete} 
+          onDelete={handleDelete}
+          onTest={handleTest}
         />
       </div>
 
