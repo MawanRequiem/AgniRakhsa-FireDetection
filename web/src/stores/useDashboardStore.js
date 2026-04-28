@@ -95,7 +95,7 @@ export const useDashboardStore = create((set, get) => ({
 
     // Use absolute URL based on window location but change protocol to ws/wss
     const protocol = globalThis.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = globalThis.location.hostname === 'localhost' ? 'localhost:8000' : globalThis.location.host;
+    const host = globalThis.location.hostname === 'localhost' ? 'localhost:8000' : `${globalThis.location.hostname}:8000`;
     const wsUrl = `${protocol}//${host}/api/v1/dashboard/ws`;
 
     const newSocket = new WebSocket(wsUrl);
