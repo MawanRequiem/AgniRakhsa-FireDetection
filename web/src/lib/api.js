@@ -1,10 +1,17 @@
 import { useAuthStore } from '@/stores/useAuthStore';
 
 const getBaseUrl = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  const envUrl = import.meta.env.VITE_API_URL;
   const { hostname, protocol } = globalThis.location;
+
+  // Jika kita sedang di server (bukan localhost) tapi ENV masih tertulis localhost,
+  // maka kita paksa gunakan IP server saat ini agar tidak error.
+  if (hostname !== 'localhost' && envUrl && envUrl.includes('localhost')) {
+    return `${protocol}//${hostname}:8000`;
+  }
+
+  if (envUrl) return envUrl;
   if (hostname === 'localhost') return 'http://localhost:8000';
-  // Fallback to current host but on port 8000 for production
   return `${protocol}//${hostname}:8000`;
 };
 
