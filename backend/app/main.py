@@ -54,10 +54,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS — izinkan frontend dev server
+# CORS — izinkan frontend dev server dan production IP
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://20.198.89.199", # Azure VM IP
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
