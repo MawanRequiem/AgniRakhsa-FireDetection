@@ -15,47 +15,33 @@ export default function MainLayout() {
         useUIStore.setState({ sidebarCollapsed: true });
       }
     };
-    handleResize(); // Pengecekan awal
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   return (
-    // Menggunakan warna latar belakang gelap yang konsisten dengan Landing Page & Login
-    <div className="min-h-screen bg-[#0a0a0b] text-white overflow-x-hidden">
-      
-      {/* Mobile Overlay: Menutup sidebar saat diklik di perangkat mobile */}
+    <div className="min-h-screen text-[var(--ifrit-text-primary)]" style={{ backgroundColor: 'var(--ifrit-bg-secondary)' }}>
+      {/* Mobile Overlay — solid dark, no blur */}
       {!collapsed && (
         <div 
-          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm transition-opacity duration-300"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity"
           onClick={toggle}
         />
       )}
 
-      {/* Sidebar Component: Berisi menu Dashboard, CCTV, dll. */}
       <Sidebar />
 
       {/* Main Content Area */}
-      <div
-        className={`transition-all duration-300 min-h-screen flex flex-col ${
-          collapsed ? 'md:ml-16' : 'md:ml-64'
-        }`}
-      >
-        {/* Header: Berisi jam, profil, dan toggle sidebar */}
-        <Header />
-        
-        {/* Konten Utama: Tempat merender Dashboard, Rooms, dsb. */}
-        <main className="p-4 sm:p-6 lg:p-10 flex-1">
-          <div className="max-w-7xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Komponen dari Route akan muncul di sini (misal: Dashboard.jsx) */}
-            <Outlet />
-          </div>
-        </main>
-
-        {/* Footer Panel Admin */}
-        <footer className="p-6 text-center text-gray-600 text-[10px] uppercase tracking-[0.2em] border-t border-white/5">
-          &copy; 2026 AgniRaksha Systems - PBL PNJ
-        </footer>
+      <div className="transition-all duration-300 min-h-screen flex flex-col">
+        <div className={`flex flex-col flex-1 ${collapsed ? 'md:ml-16' : 'md:ml-64'}`}>
+          <Header />
+          <main className="p-4 sm:p-6 lg:p-8 flex-1 animate-fade-in">
+            <div className="max-w-7xl mx-auto w-full">
+              <Outlet />
+            </div>
+          </main>
+        </div>
       </div>
     </div>
   );

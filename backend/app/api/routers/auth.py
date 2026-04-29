@@ -10,6 +10,7 @@ router = APIRouter()
 
 @router.post("/login")
 def login(
+    request: Request,
     response: Response,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ):
@@ -40,12 +41,12 @@ def login(
     # 3. Generate JWT access token menggunakan ID user dari Supabase
     access_token = security.create_access_token(subject=user.id, csrf_token=csrf_token)
     
-    # 4. Set JWT ke dalam HttpOnly, Secure cookie
+    # Set the JWT as an HttpOnly, Secure cookie
     response.set_cookie(
         key="access_token",
         value=f"Bearer {access_token}",
         httponly=True,
-        secure=True, # Set True untuk produksi/HTTPS
+        secure=True, # Should be False for localhost HTTP development, but True is best practice
         samesite="lax",
         max_age=8 * 24 * 60 * 60 # Berlaku 8 hari
     )
@@ -61,16 +62,17 @@ def login(
     }
 
 @router.post("/logout")
-def logout(response: Response):
+def logout(request: Request, response: Response):
     """
     Menghapus cookie access token untuk logout.
     """
+    is_secure = request.url.scheme == "https"
     response.delete_cookie(
         key="access_token", 
         path="/", 
         samesite="lax",
         httponly=True,
-        secure=True
+        secure=is_secure
     )
     return {"message": "Successfully logged out"}
 

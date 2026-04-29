@@ -2,18 +2,18 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* Warm Industrial — Plus Jakarta Sans + JetBrains Mono (imported in index.html) */
+/* IFRIT — Plus Jakarta Sans + JetBrains Mono */
 
 @custom-variant dark (&:is(.dark *));
 
 /* ==============================
-   AgniRaksha — Warm Industrial Theme
+   IFRIT — Monitoring Dashboard Theme
    ============================== */
 
 :root {
-    /* Base Shadcn tokens modified for Light Mode */
-    --background: oklch(1 0 0); /* white */
-    --foreground: oklch(0.14 0.01 260); /* dark gray text */
+    /* Base Shadcn tokens — Light Mode */
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.14 0.01 260);
     --card: oklch(1 0 0);
     --card-foreground: oklch(0.14 0.01 260);
     --popover: oklch(1 0 0);
@@ -27,35 +27,40 @@
     --accent: oklch(0.96 0.01 260);
     --accent-foreground: oklch(0.2 0.01 260);
     --destructive: oklch(0.65 0.18 25);
-    --border: oklch(0.9 0.01 260); /* soft gray border */
+    --border: oklch(0.9 0.01 260);
     --input: oklch(0.9 0.01 260);
     --ring: oklch(0.2 0.01 260);
     --radius: 0.5rem;
-    
-    /* AgniRaksha Custom Light Tokens */
-    --agni-amber: #f59e0b; 
-    --agni-amber-hover: #d97706;
-    --agni-safe: #10b981; 
-    --agni-warning: #f59e0b; 
-    --agni-fire: #ef4444; 
-    --agni-info: #3b82f6; 
-    
-    /* True Light Theme Backgrounds */
-    --agni-bg-primary: #ffffff;      /* Pure white for outer background */
-    --agni-bg-secondary: #f8fafc;    /* Very light gray for panels/cards */
-    --agni-bg-tertiary: #f1f5f9;     /* Slightly darker gray for headers/accents */
-    --agni-border: #e2e8f0;          /* Soft border */
-    --agni-border-light: #f1f5f9; 
-    
-    /* Dark Text for Readability */
-    --agni-text-primary: #0f172a;    /* Near black */
-    --agni-text-secondary: #475569;  /* Medium gray */
-    --agni-text-muted: #94a3b8;      /* Light gray */
+
+    /* IFRIT Brand */
+    --ifrit-brand: #DC2626;
+    --ifrit-brand-hover: #B91C1C;
+    --ifrit-brand-subtle: rgba(220, 38, 38, 0.08);
+
+    /* Semantic Status Colors */
+    --ifrit-safe: #10b981;
+    --ifrit-warning: #f59e0b;
+    --ifrit-amber: #f59e0b;
+    --ifrit-amber-hover: #d97706;
+    --ifrit-fire: #ef4444;
+    --ifrit-info: #3b82f6;
+
+    /* Light Theme Backgrounds */
+    --ifrit-bg-primary: #ffffff;
+    --ifrit-bg-secondary: #f8fafc;
+    --ifrit-bg-tertiary: #f1f5f9;
+    --ifrit-border: #e2e8f0;
+    --ifrit-border-light: #f1f5f9;
+
+    /* Dark Text */
+    --ifrit-text-primary: #0f172a;
+    --ifrit-text-secondary: #475569;
+    --ifrit-text-muted: #94a3b8;
 }
 
 .dark {
-    /* Base Shadcn tokens for Dark Mode */
-    --background: oklch(0.14 0.01 260); 
+    /* Base Shadcn tokens — Dark Mode */
+    --background: oklch(0.14 0.01 260);
     --foreground: oklch(0.98 0 0);
     --card: oklch(0.14 0.01 260);
     --card-foreground: oklch(0.98 0 0);
@@ -70,25 +75,25 @@
     --accent: oklch(0.2 0.01 260);
     --accent-foreground: oklch(0.98 0 0);
     --destructive: oklch(0.65 0.18 25);
-    --border: oklch(0.2 0.01 260); 
+    --border: oklch(0.2 0.01 260);
     --input: oklch(0.2 0.01 260);
     --ring: oklch(0.9 0.01 260);
 
-    /* True Dark Theme Backgrounds */
-    --agni-bg-primary: #0F1117;
-    --agni-bg-secondary: #171B24;
-    --agni-bg-tertiary: #1E2330;
-    --agni-border: #334155;
-    --agni-border-light: #475569;
-    
-    /* Light Text for Readability */
-    --agni-text-primary: #F0F1F3;
-    --agni-text-secondary: #94a3b8;
-    --agni-text-muted: #64748b;
+    /* Dark Theme Backgrounds */
+    --ifrit-bg-primary: #0F1117;
+    --ifrit-bg-secondary: #171B24;
+    --ifrit-bg-tertiary: #1E2330;
+    --ifrit-border: #334155;
+    --ifrit-border-light: #475569;
+
+    /* Light Text */
+    --ifrit-text-primary: #F0F1F3;
+    --ifrit-text-secondary: #94a3b8;
+    --ifrit-text-muted: #64748b;
 }
 
 @theme inline {
-    --font-sans: 'Inter', system-ui, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
@@ -130,22 +135,22 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 
     /* Custom colors for Tailwind */
-    --color-agni-amber: var(--agni-amber);
-    --color-agni-safe: var(--agni-safe);
-    --color-agni-warning: var(--agni-warning);
-    --color-agni-fire: var(--agni-fire);
-    --color-agni-info: var(--agni-info);
+    --color-ifrit-brand: var(--ifrit-brand);
+    --color-ifrit-safe: var(--ifrit-safe);
+    --color-ifrit-warning: var(--ifrit-warning);
+    --color-ifrit-fire: var(--ifrit-fire);
+    --color-ifrit-info: var(--ifrit-info);
 }
 
 @layer base {
     * {
-        border-color: var(--agni-border);
+        border-color: var(--ifrit-border);
         @apply outline-ring/50;
     }
     body {
-        background-color: var(--agni-bg-primary);
-        color: var(--agni-text-primary);
-        font-family: 'Inter', system-ui, sans-serif;
+        background-color: var(--ifrit-bg-primary);
+        color: var(--ifrit-text-primary);
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
         -webkit-font-smoothing: antialiased;
         letter-spacing: -0.01em;
         @apply antialiased;
@@ -153,6 +158,12 @@
     html {
         @apply font-sans;
         scroll-behavior: smooth;
+    }
+
+    /* Focus visible for accessibility */
+    :focus-visible {
+        outline: 2px solid var(--ifrit-brand);
+        outline-offset: 2px;
     }
 }
 
@@ -164,7 +175,7 @@
     }
 }
 
-/* Hard industrial indicators */
+/* Status LED indicators */
 .led-fire {
     background-color: rgba(239, 68, 68, 0.15);
     border: 1px solid rgba(239, 68, 68, 0.8);
@@ -179,25 +190,6 @@
     border: 1px solid rgba(245, 158, 11, 0.8);
 }
 
-/* Sharp industrial panel shadow (no soft blur) */
-.card-shadow {
-    box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.1);
-    border: 1px solid var(--agni-border);
-    border-radius: 2px;
-}
-
-/* Hazard stripe pattern but lighter */
-.hazard-stripe {
-    background: repeating-linear-gradient(
-        45deg,
-        rgba(239, 68, 68, 0.05),
-        rgba(239, 68, 68, 0.05) 10px,
-        transparent 10px,
-        transparent 20px
-    );
-    opacity: 1; /* Remove old opacity */
-}
-
 /* Minimal Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
@@ -207,11 +199,11 @@
     background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: var(--agni-border);
+    background: var(--ifrit-border);
     border-radius: 10px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: var(--agni-text-muted);
+    background: var(--ifrit-text-muted);
 }
 
 /* Animations */
@@ -231,7 +223,7 @@
 }
 
 .animate-fade-in {
-    animation: fade-in 0.3s ease-out;
+    animation: fadeIn 0.3s ease-out;
 }
 
 .animate-slide-up {

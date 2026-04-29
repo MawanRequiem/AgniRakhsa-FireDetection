@@ -1,0 +1,45 @@
+name: Deploy to Azure VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Execute Deployment over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          WEB_ENV: ${{ secrets.WEB_ENV }}
+          BACKEND_ENV: ${{ secrets.BACKEND_ENV }}
+          GATEWAY_ENV: ${{ secrets.GATEWAY_ENV }}
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USERNAME }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          envs: WEB_ENV,BACKEND_ENV,GATEWAY_ENV
+          script: |
+            # Navigate to the target directory, create if doesn't exist
+            mkdir -p ~/AgniRakhsa-FireDetection
+            cd ~/AgniRakhsa-FireDetection
+            
+            # Clone if it's the first time, otherwise pull
+            if [ ! -d ".git" ]; then
+              # Note: If your repo is private, you will need to configure a Deploy Key or PAT on the VM first.
+              # Assuming public for now or SSH agent forwarding.
+              git clone https://github.com/MawanRequiem/AgniRakhsa-FireDetection.git .
+            else
+              git fetch --all
+              git reset --hard origin/main
+            fi
+            
+            # Write Environment files from GitHub Secrets
+            echo "$WEB_ENV" > web/.env
+            echo "$BACKEND_ENV" > backend/.env
+            echo "$GATEWAY_ENV" > whatsapp-gateway/.env
+            
+            # Rebuild and start the Docker containers
+            docker compose up -d --build

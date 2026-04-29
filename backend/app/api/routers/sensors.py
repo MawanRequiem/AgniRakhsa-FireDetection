@@ -81,7 +81,42 @@ async def get_sensor_history(
     )
 
 
+@router.get("/health")
+async def check_sensor_health(
+    sensor_id: Optional[UUID] = None,
+    room_id: Optional[UUID] = None,
+    device_id: Optional[UUID] = None,
+    window_minutes: int = Query(5, ge=1, le=60),
+):
+    """
+    Diagnose sensor health based on recent readings.
+
+    Detects broken, stuck, dead, saturated, erratic, and stale sensors.
+    Filter by sensor_id, room_id, or device_id.
+    If no filter is provided, checks ALL sensors.
+    """
+    results = await sensor_service.diagnose_sensor_health(
+        sensor_id=sensor_id,
+        room_id=room_id,
+        device_id=device_id,
+        window_minutes=window_minutes,
+    )
+
+    # Summary counts
+    status_counts = {}
+    for r in results:
+        s = r["status"]
+        status_counts[s] = status_counts.get(s, 0) + 1
+
+    return {
+        "total": len(results),
+        "summary": status_counts,
+        "sensors": results,
+    }
+
+
 @router.get("/", response_model=list[SensorOut])
 async def list_sensors(room_id: Optional[UUID] = None):
     """List all registered sensors."""
     return await sensor_service.get_all_sensors(room_id=room_id)
+

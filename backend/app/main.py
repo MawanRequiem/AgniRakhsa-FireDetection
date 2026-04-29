@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from app.api.routers import auth, notifications, detection, sensors, rooms, devices, dashboard, ws, alerts, cameras, camera_stream, nlp_routes
+from app.api.routers import auth, notifications, detection, sensors, rooms, devices, dashboard, ws, alerts, cameras, camera_stream, nlp_routes, contacts
 from app.core.config import settings
 from app.ai import registry
 from app.services.device_watchdog import run_watchdog
@@ -19,8 +19,17 @@ async def lifespan(app: FastAPI):
             input_size=settings.MODEL_INPUT_SIZE
         )
     except Exception as e:
+        import logging
         logging.getLogger(__name__).error(f"AI Model failed to load: {e}")
     
+    # Load sensor anomaly detection model (Isolation Forest)
+    try:
+        registry.load_sensor_detector(model_dir=settings.SENSOR_MODEL_DIR)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Sensor ML model failed to load: {e}")
+    
+    # Start the device watchdog as a background task
     import asyncio
     watchdog_task = asyncio.create_task(run_watchdog())
     
@@ -41,10 +50,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS — izinkan frontend dev server
+# CORS — izinkan frontend dev server dan production IP
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://20.198.89.199", # Azure VM IP
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -63,6 +76,7 @@ async def add_security_headers(request, call_next):
 
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(notifications.router, prefix=f"{settings.API_V1_STR}/notifications", tags=["notifications"])
+app.include_router(contacts.router, prefix=f"{settings.API_V1_STR}/contacts", tags=["contacts"])
 
 # --- AI & Core Functionality Routers ---
 app.include_router(detection.router, prefix=settings.API_V1_STR)

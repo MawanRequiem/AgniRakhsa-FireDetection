@@ -11,14 +11,14 @@ export default function SensorGauge({ type, value, unit, safeMax, warnMax }) {
   const isFire = value > warnMax;
   const isWarning = value > safeMax && value <= warnMax;
   
-  const fillColor = isFire ? 'var(--agni-fire)' 
-                  : isWarning ? 'var(--agni-warning)' 
-                  : 'var(--agni-safe)';
+  const fillColor = isFire ? 'var(--ifrit-fire)' 
+                  : isWarning ? 'var(--ifrit-warning)' 
+                  : 'var(--ifrit-safe)';
 
   return (
     <div className="mb-4">
       <div className="flex justify-between items-baseline mb-2">
-        <span className="text-sm font-medium" style={{ color: 'var(--agni-text-primary)' }}>
+        <span className="text-sm font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>
           {type}
         </span>
         <div className="flex items-baseline gap-1">
@@ -28,7 +28,7 @@ export default function SensorGauge({ type, value, unit, safeMax, warnMax }) {
           >
             {value}
           </span>
-          <span className="text-xs" style={{ color: 'var(--agni-text-muted)' }}>
+          <span className="text-xs" style={{ color: 'var(--ifrit-text-muted)' }}>
             {unit}
           </span>
         </div>
@@ -36,7 +36,7 @@ export default function SensorGauge({ type, value, unit, safeMax, warnMax }) {
       
       <div 
         className="relative h-2.5 rounded-full w-full overflow-hidden"
-        style={{ backgroundColor: 'var(--agni-bg-secondary)' }}
+        style={{ backgroundColor: 'var(--ifrit-bg-secondary)' }}
       >
         <div 
           className="absolute top-0 left-0 h-full rounded-full transition-all duration-500 ease-out"
@@ -53,15 +53,15 @@ export default function SensorGauge({ type, value, unit, safeMax, warnMax }) {
           className="absolute top-0 flex flex-col items-center -ml-3"
           style={{ left: `${safePct}%` }}
         >
-          <div className="w-0.5 h-1.5 bg-[var(--agni-border)] mb-0.5" />
-          <span className="text-[9px] font-mono" style={{ color: 'var(--agni-text-muted)' }}>{safeMax}</span>
+          <div className="w-0.5 h-1.5 bg-[var(--ifrit-border)] mb-0.5" />
+          <span className="text-[9px] font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>{safeMax}</span>
         </div>
         <div 
           className="absolute top-0 flex flex-col items-center -ml-3"
           style={{ left: `${warnPct}%` }}
         >
-          <div className="w-0.5 h-1.5 bg-[var(--agni-fire)] opacity-50 mb-0.5" />
-          <span className="text-[9px] font-mono" style={{ color: 'var(--agni-text-muted)' }}>{warnMax}</span>
+          <div className="w-0.5 h-1.5 bg-[var(--ifrit-fire)] opacity-50 mb-0.5" />
+          <span className="text-[9px] font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>{warnMax}</span>
         </div>
       </div>
     </div>

@@ -19,10 +19,13 @@ class Settings(BaseSettings):
     GATEWAY_API_KEY: str = "agniraksha-secure-key-2026"
     
     # AI Model Configuration
-    MODEL_PATH: str = "app/ai/fire_detection_model.pt"
+    MODEL_PATH: str = "app/ai/yolo/fire_detection_model.pt"
     MODEL_TYPE: str = "yolo"  # "yolo" | "custom_rf", etc.
     MODEL_CONFIDENCE_THRESHOLD: float = 0.25
     MODEL_INPUT_SIZE: int = 416
+
+    # Sensor Anomaly Model (Isolation Forest)
+    SENSOR_MODEL_DIR: str = "app/ai/iot_sensor"
 
     # Late Fusion Weights
     FUSION_WEIGHT_IMAGE: float = 0.6
