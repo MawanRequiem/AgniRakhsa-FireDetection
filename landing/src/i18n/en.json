@@ -1,0 +1,150 @@
+{
+  "nav": {
+    "home": "Home",
+    "about": "About Us",
+    "solutions": "Solutions",
+    "contact": "Contact",
+    "requestDemo": "Request Demo"
+  },
+  "hero": {
+    "tagline": "Intelligent Fire Guardian",
+    "subtitle": "AI-powered fire detection integrating Computer Vision, IoT Sensor Fusion, and real-time alerting — before flames become disaster.",
+    "cta": "Request Demo",
+    "ctaSecondary": "Learn More"
+  },
+  "problem": {
+    "label": "THE PROBLEM",
+    "title": "Traditional Systems Fail When It Matters",
+    "description": "Conventional smoke detectors only react after fire has grown. Without visual intelligence and data analysis, early detection is impossible.",
+    "stats": [
+      { "value": "40%", "label": "Detection failures in conventional systems" },
+      { "value": "7 min", "label": "Average manual response time without AI" },
+      { "value": "82%", "label": "Fires preventable with detection under 60 seconds" }
+    ]
+  },
+  "features": {
+    "label": "CAPABILITIES",
+    "title": "Three Pillars of Protection",
+    "items": [
+      {
+        "title": "AI Computer Vision",
+        "description": "YOLO and Semantic Segmentation analyze CCTV feeds in real-time. Detecting smoke, fire, and visual anomalies before traditional sensors react.",
+        "tag": "VISION"
+      },
+      {
+        "title": "IoT Sensor Fusion",
+        "description": "Data from MQ gas sensors, temperature, and humidity are fused through machine learning algorithms for multi-dimensional risk assessment.",
+        "tag": "SENSOR"
+      },
+      {
+        "title": "Real-Time Alerting",
+        "description": "Instant notifications via WhatsApp, live monitoring dashboard, and automatic escalation to security teams within seconds.",
+        "tag": "RESPONSE"
+      }
+    ]
+  },
+  "techStack": {
+    "label": "ARCHITECTURE",
+    "title": "Built for Reliability",
+    "description": "Scalable microservices architecture, designed for 24/7 operation with zero downtime.",
+    "layers": [
+      { "name": "Perception", "items": ["CCTV Stream", "IoT Sensors", "ESP32-S3"] },
+      { "name": "Intelligence", "items": ["YOLO v8", "Random Forest", "FastAPI"] },
+      { "name": "Action", "items": ["WhatsApp Bot", "Dashboard", "Supabase"] }
+    ]
+  },
+  "ctaBanner": {
+    "title": "Ready to see IFRIT in action?",
+    "subtitle": "Schedule a live demo and see how AI protects your facility.",
+    "cta": "Schedule Demo"
+  },
+  "trust": {
+    "label": "PERFORMANCE",
+    "title": "Numbers Speak",
+    "stats": [
+      { "value": 3, "suffix": "sec", "label": "Average detection time" },
+      { "value": 97, "suffix": "%", "label": "AI detection accuracy" },
+      { "value": 99.9, "suffix": "%", "label": "System uptime" },
+      { "value": 24, "suffix": "/7", "label": "Non-stop monitoring" }
+    ]
+  },
+  "contactCta": {
+    "title": "Protect Your Facility",
+    "subtitle": "Contact us for a free consultation and product demo.",
+    "form": {
+      "name": "Full Name",
+      "email": "Email",
+      "company": "Company",
+      "message": "Message",
+      "submit": "Submit Request",
+      "interest": "I'm interested in",
+      "options": ["Product Demo", "Consultation", "Pricing & Packages", "Partnership"]
+    }
+  },
+  "about": {
+    "heroTitle": "About IFRIT",
+    "heroSubtitle": "Building the future of fire safety with artificial intelligence.",
+    "mission": {
+      "label": "MISSION",
+      "title": "Preventing Disaster Before It Happens",
+      "description": "IFRIT was born from the belief that AI technology can save lives. We develop fire detection systems that don't just react, but predict and prevent."
+    },
+    "values": {
+      "label": "VALUES",
+      "title": "Our Principles",
+      "items": [
+        { "title": "Reliability", "description": "Systems that work when needed most." },
+        { "title": "Innovation", "description": "Continuously pushing detection technology boundaries." },
+        { "title": "Transparency", "description": "Open and auditable technology." },
+        { "title": "Rapid Response", "description": "Every second counts in an emergency." }
+      ]
+    }
+  },
+  "solutions": {
+    "heroTitle": "Solutions",
+    "heroSubtitle": "Intelligent fire protection for every type of facility.",
+    "useCases": {
+      "label": "INDUSTRIES",
+      "title": "Tailored to Your Needs",
+      "items": [
+        {
+          "title": "Office Buildings",
+          "description": "Multi-floor monitoring with existing CCTV integration and IoT sensors in every zone.",
+          "icon": "building"
+        },
+        {
+          "title": "Warehouses & Factories",
+          "description": "Hazardous gas detection, abnormal temperature monitoring, and open fire detection in material storage areas.",
+          "icon": "warehouse"
+        },
+        {
+          "title": "Public Facilities",
+          "description": "Protection for hospitals, schools, and shopping centers with mass alerting capabilities.",
+          "icon": "hospital"
+        },
+        {
+          "title": "Data Centers",
+          "description": "High-precision temperature monitoring and environmental anomaly detection for critical infrastructure.",
+          "icon": "server"
+        }
+      ]
+    }
+  },
+  "contact": {
+    "heroTitle": "Contact Us",
+    "heroSubtitle": "Ready to discuss your facility's safety.",
+    "info": {
+      "email": "info@ifrit.id",
+      "phone": "+62 812 3456 7890",
+      "location": "Jakarta, Indonesia"
+    }
+  },
+  "footer": {
+    "description": "AI-powered fire detection system for your facility's security.",
+    "links": {
+      "product": "Product",
+      "company": "Company"
+    },
+    "copyright": "© 2026 IFRIT. All rights reserved."
+  }
+}

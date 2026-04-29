@@ -17,10 +17,10 @@ const Alerts = lazy(() => import('@/pages/Alerts'));
 const Notifications = lazy(() => import('@/pages/Notifications'));
 const DeviceManagement = lazy(() => import('@/pages/DeviceManagement'));
 
-// Fallback spinner saat loading komponen lazy
+// Common suspense fallback
 const PageFallback = () => (
   <div className="flex items-center justify-center p-12 w-full h-64">
-    <div className="w-8 h-8 rounded-full border-2 border-orange-500/20 border-t-orange-500 animate-spin" />
+    <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--ifrit-border)', borderTopColor: 'var(--ifrit-brand)' }} />
   </div>
 );
 
@@ -65,7 +65,7 @@ function App() {
   }, [setAuth, clearAuth]);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white">
+    <div className="min-h-screen" style={{ color: 'var(--ifrit-text-primary)', backgroundColor: 'var(--ifrit-bg-primary)' }}>
       <Routes>
         {/* Jika admin sudah login, akses ke "/" automatik ke "/dashboard" */}
         <Route
@@ -116,8 +116,8 @@ function App() {
 
           <Route path="*" element={
             <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-              <h2 className="text-2xl font-bold mb-2">404 - Not Found</h2>
-              <p className="text-gray-500">Modul AgniRaksha tidak ditemukan.</p>
+              <h2 className="text-2xl font-bold mb-2">404 — Page Not Found</h2>
+              <p style={{ color: 'var(--ifrit-text-muted)' }}>The page you're looking for doesn't exist.</p>
             </div>
           } />
         </Route>

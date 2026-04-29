@@ -40,16 +40,18 @@ export async function connectToWhatsApp() {
         }
         
         if (connection === 'close') {
+            waSocket = null
             const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut
             console.log('Connection closed due to ', lastDisconnect.error?.message || lastDisconnect.error)
             
             // Reconnect if not logged out
             if (shouldReconnect) {
                 console.log('Reconnecting...')
-                connectToWhatsApp()
+                setTimeout(() => connectToWhatsApp(), 3000) // Small delay before reconnect
             }
         } else if (connection === 'open') {
             console.log('✅ WhatsApp connection opened successfully')
+            waSocket = sock
         }
     })
 

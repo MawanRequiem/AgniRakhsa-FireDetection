@@ -1,56 +1,44 @@
-import { motion } from 'framer-motion';
-import PropTypes from 'prop-types';
+import { cn } from '@/lib/utils';
 
-export default function MetricCard({ title, value, icon: Icon, trend, trendLabel, color = 'blue' }) {
-  const colorVariants = {
-    blue: 'border-[var(--agni-border)] text-blue-500 bg-[var(--agni-bg-primary)]',
-    amber: 'border-amber-500/50 text-amber-500 bg-amber-500/5',
-    red: 'border-red-500/80 text-red-500 bg-red-500/10',
-    green: 'border-green-500/50 text-green-500 bg-green-500/5',
-    purple: 'border-[var(--agni-border)] text-purple-500 bg-[var(--agni-bg-primary)]',
-  };
+const colorMap = {
+  blue: { icon: 'var(--ifrit-info)', bg: 'rgba(59, 130, 246, 0.08)' },
+  green: { icon: 'var(--ifrit-safe)', bg: 'rgba(16, 185, 129, 0.08)' },
+  red: { icon: 'var(--ifrit-fire)', bg: 'rgba(239, 68, 68, 0.08)' },
+  default: { icon: 'var(--ifrit-text-muted)', bg: 'var(--ifrit-bg-secondary)' },
+};
 
-  const styleClass = colorVariants[color] || colorVariants.blue;
+export default function MetricCard({ title, value, subtext, icon: Icon, color = 'default' }) {
+  const palette = colorMap[color] || colorMap.default;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`relative overflow-hidden card-shadow p-5 ${styleClass} transition-shadow hover:shadow-md border`}
+    <div
+      className="rounded-lg p-4 border transition-colors flex flex-col justify-between"
+      style={{
+        backgroundColor: 'var(--ifrit-bg-primary)',
+        borderColor: 'var(--ifrit-border)',
+        minHeight: '110px'
+      }}
     >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
-          <h3 className="mt-2 font-mono text-3xl font-bold tracking-tight text-foreground">{value}</h3>
-          
-          {trend && (
-            <div className="mt-2 flex items-center font-mono text-xs">
-              <span className={`font-semibold ${trend.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>
-                {trend}
-              </span>
-              <span className="ml-1 text-muted-foreground font-sans uppercase text-[10px] tracking-wider">{trendLabel}</span>
-            </div>
-          )}
-        </div>
-        
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--ifrit-text-muted)' }}>
+          {title}
+        </span>
         {Icon && (
-          <div className={`p-2 opacity-80`}>
-            <Icon className="h-6 w-6" strokeWidth={2} />
+          <div className="p-1.5 rounded-md" style={{ backgroundColor: palette.bg }}>
+            <Icon className="w-4 h-4" style={{ color: palette.icon }} />
           </div>
         )}
       </div>
-      
-      {/* Accent Line for Industrial Feel instead of blur */}
-      <div className={`absolute left-0 top-0 bottom-0 w-1 ${color === 'blue' || color === 'purple' ? 'bg-transparent' : 'bg-current opacity-70'}`} />
-    </motion.div>
+      <div>
+        <div className="text-2xl font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>
+          {value}
+        </div>
+        {subtext && (
+          <div className="text-xs mt-1" style={{ color: 'var(--ifrit-text-secondary)' }}>
+            {subtext}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
-
-MetricCard.propTypes = {
-  title: PropTypes.string.isRequired,
-  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-  icon: PropTypes.elementType,
-  trend: PropTypes.string,
-  trendLabel: PropTypes.string,
-  color: PropTypes.oneOf(['blue', 'amber', 'red', 'green', 'purple'])
-};

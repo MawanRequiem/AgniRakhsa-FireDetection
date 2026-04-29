@@ -73,19 +73,19 @@ export default function AddCameraDialog({ open, onOpenChange, rooms, onSuccess }
       <DialogContent
         className="max-w-md border"
         style={{
-          backgroundColor: 'var(--agni-bg-secondary)',
-          borderColor: 'var(--agni-border)',
+          backgroundColor: 'var(--ifrit-bg-secondary)',
+          borderColor: 'var(--ifrit-border)',
         }}
       >
-        <DialogTitle className="flex items-center gap-2 text-lg font-semibold" style={{ color: 'var(--agni-text-primary)' }}>
-          <Camera className="w-5 h-5" style={{ color: 'var(--agni-amber)' }} />
+        <DialogTitle className="flex items-center gap-2 text-lg font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>
+          <Camera className="w-5 h-5" style={{ color: 'var(--ifrit-amber)' }} />
           Register New Camera
         </DialogTitle>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           {/* Camera Name */}
           <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--agni-text-muted)' }}>
+            <Label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ifrit-text-muted)' }}>
               Camera Name *
             </Label>
             <Input
@@ -94,33 +94,33 @@ export default function AddCameraDialog({ open, onOpenChange, rooms, onSuccess }
               placeholder="e.g. Warehouse A - North"
               className="border"
               style={{
-                backgroundColor: 'var(--agni-bg-primary)',
-                borderColor: 'var(--agni-border)',
-                color: 'var(--agni-text-primary)',
+                backgroundColor: 'var(--ifrit-bg-primary)',
+                borderColor: 'var(--ifrit-border)',
+                color: 'var(--ifrit-text-primary)',
               }}
             />
           </div>
 
           {/* Camera Type */}
           <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--agni-text-muted)' }}>
+            <Label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ifrit-text-muted)' }}>
               Camera Type
             </Label>
             <Select value={cameraType} onValueChange={setCameraType}>
               <SelectTrigger
                 className="border"
                 style={{
-                  backgroundColor: 'var(--agni-bg-primary)',
-                  borderColor: 'var(--agni-border)',
-                  color: 'var(--agni-text-primary)',
+                  backgroundColor: 'var(--ifrit-bg-primary)',
+                  borderColor: 'var(--ifrit-border)',
+                  color: 'var(--ifrit-text-primary)',
                 }}
               >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent
                 style={{
-                  backgroundColor: 'var(--agni-bg-secondary)',
-                  borderColor: 'var(--agni-border)',
+                  backgroundColor: 'var(--ifrit-bg-secondary)',
+                  borderColor: 'var(--ifrit-border)',
                 }}
               >
                 <SelectItem value="webcam">Webcam (USB / PC)</SelectItem>
@@ -132,24 +132,24 @@ export default function AddCameraDialog({ open, onOpenChange, rooms, onSuccess }
 
           {/* Room Assignment */}
           <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--agni-text-muted)' }}>
+            <Label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ifrit-text-muted)' }}>
               Assign to Room (optional)
             </Label>
             <Select value={roomId} onValueChange={setRoomId}>
               <SelectTrigger
                 className="border"
                 style={{
-                  backgroundColor: 'var(--agni-bg-primary)',
-                  borderColor: 'var(--agni-border)',
-                  color: 'var(--agni-text-primary)',
+                  backgroundColor: 'var(--ifrit-bg-primary)',
+                  borderColor: 'var(--ifrit-border)',
+                  color: 'var(--ifrit-text-primary)',
                 }}
               >
                 <SelectValue placeholder="No room assigned" />
               </SelectTrigger>
               <SelectContent
                 style={{
-                  backgroundColor: 'var(--agni-bg-secondary)',
-                  borderColor: 'var(--agni-border)',
+                  backgroundColor: 'var(--ifrit-bg-secondary)',
+                  borderColor: 'var(--ifrit-border)',
                 }}
               >
                 <SelectItem value="none">— No Room —</SelectItem>
@@ -164,7 +164,7 @@ export default function AddCameraDialog({ open, onOpenChange, rooms, onSuccess }
 
           {/* Stream URL */}
           <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--agni-text-muted)' }}>
+            <Label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ifrit-text-muted)' }}>
               Stream URL (optional)
             </Label>
             <Input
@@ -173,12 +173,12 @@ export default function AddCameraDialog({ open, onOpenChange, rooms, onSuccess }
               placeholder="rtsp://192.168.1.100:554/stream"
               className="border"
               style={{
-                backgroundColor: 'var(--agni-bg-primary)',
-                borderColor: 'var(--agni-border)',
-                color: 'var(--agni-text-primary)',
+                backgroundColor: 'var(--ifrit-bg-primary)',
+                borderColor: 'var(--ifrit-border)',
+                color: 'var(--ifrit-text-primary)',
               }}
             />
-            <p className="text-[10px]" style={{ color: 'var(--agni-text-muted)' }}>
+            <p className="text-[10px]" style={{ color: 'var(--ifrit-text-muted)' }}>
               For webcam testing, leave blank and use the webcam_stream.py script.
             </p>
           </div>
@@ -196,8 +196,8 @@ export default function AddCameraDialog({ open, onOpenChange, rooms, onSuccess }
               onClick={() => onOpenChange(false)}
               className="border"
               style={{
-                borderColor: 'var(--agni-border)',
-                color: 'var(--agni-text-secondary)',
+                borderColor: 'var(--ifrit-border)',
+                color: 'var(--ifrit-text-secondary)',
               }}
             >
               Cancel
@@ -207,7 +207,7 @@ export default function AddCameraDialog({ open, onOpenChange, rooms, onSuccess }
               disabled={isSubmitting}
               className="flex items-center gap-2"
               style={{
-                backgroundColor: 'var(--agni-amber)',
+                backgroundColor: 'var(--ifrit-amber)',
                 color: '#000',
               }}
             >
