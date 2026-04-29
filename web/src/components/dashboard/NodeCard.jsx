@@ -10,7 +10,7 @@ export default function NodeCard({ device, roomName, latestReadings }) {
   
   // Format specific sensor readings
   const temp = latestReadings?.SHTC3_TEMP?.toFixed(1) || '--';
-  const hum = latestReadings?.SHTC3_HUM?.toFixed(1) || '--';
+  const hum = latestReadings?.SHTC3_HUMIDITY?.toFixed(1) || '--';
   
   // Gas sensors (ppm)
   const mqSensors = ['MQ2', 'MQ4', 'MQ5', 'MQ6', 'MQ7', 'MQ9B', 'MQ135'];
@@ -20,7 +20,7 @@ export default function NodeCard({ device, roomName, latestReadings }) {
   })).filter(g => g.value !== null);
   
   // Flame IR
-  const flameRaw = latestReadings?.FLAME_IR;
+  const flameRaw = latestReadings?.FLAME;
   const isFire = flameRaw !== undefined && flameRaw < 1000; // Assuming threshold
   
   // Determine card status border
