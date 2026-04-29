@@ -12,13 +12,15 @@ import {
   Wifi,
 } from 'lucide-react';
 
+// PERBAIKAN: Menambahkan awalan /dashboard pada semua item navigasi
+// agar sesuai dengan struktur nested routes di App.jsx
 const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/rooms', icon: DoorOpen, label: 'Rooms' },
-  { to: '/cctv', icon: Camera, label: 'CCTV' },
-  { to: '/devices', icon: Wifi, label: 'Devices' },
-  { to: '/alerts', icon: Bell, label: 'Alerts' },
-  { to: '/settings/notifications', icon: Smartphone, label: 'Notifications' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/dashboard/rooms', icon: DoorOpen, label: 'Rooms' },
+  { to: '/dashboard/cctv', icon: Camera, label: 'CCTV' },
+  { to: '/dashboard/devices', icon: Wifi, label: 'Devices' },
+  { to: '/dashboard/alerts', icon: Bell, label: 'Alerts' },
+  { to: '/dashboard/settings/notifications', icon: Smartphone, label: 'Notifications' },
 ];
 
 export default function Sidebar() {
@@ -35,27 +37,28 @@ export default function Sidebar() {
         borderColor: 'var(--agni-border)',
       }}
     >
-      {/* Logo */}
+      {/* Logo AgniRaksha */}
       <div className={`flex items-center gap-2 px-4 h-16 border-b`} style={{ borderColor: 'var(--agni-border)' }}>
         <div className="flex items-center justify-center w-8 h-8 rounded-md" style={{ backgroundColor: 'var(--agni-amber)' }}>
           <Flame className="w-5 h-5 text-white" />
         </div>
-        {(!collapsed || typeof window !== 'undefined' && window.innerWidth < 768) && (
+        {(!collapsed || (typeof window !== 'undefined' && window.innerWidth < 768)) && (
           <span className="font-semibold text-lg tracking-tight" style={{ color: 'var(--agni-text-primary)' }}>
             AgniRaksha
           </span>
         )}
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 py-3 px-2 space-y-1">
+      {/* Navigation - Area Menu Utama */}
+      <nav className="flex-1 py-3 px-2 space-y-1 relative">
         {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            // Menggunakan end={true} untuk /dashboard agar tidak aktif saat di sub-halaman
+            end={to === '/dashboard'}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors cursor-pointer
+              `flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors cursor-pointer relative
               ${isActive
                 ? 'text-[var(--agni-amber)]'
                 : 'text-[var(--agni-text-secondary)] hover:text-[var(--agni-text-primary)] hover:bg-white/5'
@@ -81,9 +84,8 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Bottom Section */}
+      {/* Section Bawah - Tombol Collapse Sidebar */}
       <div className="px-3 py-3 border-t space-y-3" style={{ borderColor: 'var(--agni-border)' }}>
-        {/* Collapse Toggle */}
         <button
           onClick={toggle}
           className="flex items-center justify-center w-full py-2 rounded-md transition-colors cursor-pointer hover:bg-white/5"

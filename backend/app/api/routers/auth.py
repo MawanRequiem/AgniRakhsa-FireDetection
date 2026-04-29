@@ -14,53 +14,56 @@ def login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ):
     """
-    Login endpoint. Checks credentials against the DB,
-    sets a secure HttpOnly cookie for the JWT, and returns a CSRF token.
+    Login endpoint. Menggunakan Supabase Auth untuk verifikasi (menghapus bcrypt manual),
+    menetapkan cookie HttpOnly untuk JWT, dan mengembalikan token CSRF.
     """
-    # Fetch user from DB
-    user_res = supabase.table("users").select("*").eq("email", form_data.username).execute()
-    users = user_res.data
-    
-    if not users or not security.verify_password(form_data.password, users[0]["password_hash"]):
+    try:
+        # 1. Pengecekan email & password langsung melalui layanan Autentikasi Supabase
+        # Ini menghapus kebutuhan untuk security.verify_password dan pengecekan bcrypt manual
+        auth_res = supabase.auth.sign_in_with_password({
+            "email": form_data.username, 
+            "password": form_data.password
+        })
+        
+        user = auth_res.user
+        
+    except Exception:
+        # Jika email atau password salah, Supabase akan melempar exception
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
-        
-    user = users[0]
-    if not user.get("is_active", True):
-        raise HTTPException(status_code=400, detail="Inactive user")
 
-    # Generate a random CSRF token
+    # 2. Generate token CSRF random (tetap menggunakan sistem keamanan Anda yang sudah ada)
     csrf_token = secrets.token_urlsafe(32)
 
-    # Generate the JWT including the CSRF token
-    access_token = security.create_access_token(subject=user["id"], csrf_token=csrf_token)
+    # 3. Generate JWT access token menggunakan ID user dari Supabase
+    access_token = security.create_access_token(subject=user.id, csrf_token=csrf_token)
     
-    # Set the JWT as an HttpOnly, Secure cookie
+    # 4. Set JWT ke dalam HttpOnly, Secure cookie
     response.set_cookie(
         key="access_token",
         value=f"Bearer {access_token}",
         httponly=True,
-        secure=True, # Should be False for localhost HTTP development, but True is best practice
+        secure=True, # Set True untuk produksi/HTTPS
         samesite="lax",
-        max_age=8 * 24 * 60 * 60 # 8 days in seconds
+        max_age=8 * 24 * 60 * 60 # Berlaku 8 hari
     )
 
     return {
         "message": "Successfully logged in",
         "csrf_token": csrf_token,
         "user": {
-            "id": user["id"],
-            "email": user["email"],
-            "role": user["role"]
+            "id": user.id,
+            "email": user.email,
+            "role": "admin" # Anda bisa menyesuaikan ini sesuai logika metadata user di Supabase
         }
     }
 
 @router.post("/logout")
 def logout(response: Response):
     """
-    Clears the access token cookie to log the user out.
+    Menghapus cookie access token untuk logout.
     """
     response.delete_cookie(
         key="access_token", 
@@ -80,12 +83,13 @@ def read_users_me(
     current_user: Annotated[security.Any, Depends(app.api.deps.get_current_user)]
 ):
     """
-    Get current user profile based on HttpOnly cookie and expose CSRF token.
+    Mendapatkan profil user saat ini berdasarkan cookie dan mengekspos token CSRF.
     """
     token = request.cookies.get("access_token")
     if token:
         try:
-            payload = jwt.decode(token, app.core.config.settings.SECRET_KEY, algorithms=["HS256"])
+            # Mengambil SECRET_KEY dari konfigurasi sistem Anda
+            payload = jwt.decode(token, security.config.settings.SECRET_KEY, algorithms=["HS256"])
             csrf_token = payload.get("csrf_token")
             if csrf_token:
                response.headers["X-CSRF-Token"] = csrf_token

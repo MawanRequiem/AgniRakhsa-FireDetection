@@ -1,0 +1,363 @@
+import pandas as pd
+import os
+import re
+import string
+from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
+
+# --- 1. KONFIGURASI PATH ---
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
+RAW_DATA = os.path.join(PROJECT_ROOT, 'data', 'processed', 'train_preprocess.tsv')
+OUT_CLEAN = os.path.join(PROJECT_ROOT, 'data', 'processed', 'dataset_preprocessed_agni.csv')
+
+# --- 2. DATA AUGMENTASI (Sudah dibersihkan dari duplikat) ---
+extra_data = [
+    # ========================== NEGATIVE (Bahaya) ==========================
+    ["Tolong ada api besar di belakang gedung PNJ pusat!", "negative"],
+    ["Asap hitam pekat membumbung tinggi di kawasan Margonda, ngeri banget.", "negative"],
+    ["Kebakaran melanda ruko di dekat kampus, api sulit dikendalikan.", "negative"],
+    ["Ada kebakaran hebat di kantin PNJ, api makin besar!", "negative"],
+    ["Tolong api merembet ke gedung direktorat PNJ!", "negative"],
+    ["Asap hitam keluar dari lab elektro PNJ, bahaya!", "negative"],
+    ["Kebakaran di area parkir motor PNJ pusat!", "negative"],
+    ["Ada kobaran api di lantai 2 gedung elektro PNJ, tolong!", "negative"],
+    ["Ledakan di lab mesin PNJ memicu kebakaran hebat!", "negative"],
+    ["Warga panik! Api besar terlihat dari jendela lantai 5 apartemen dekat kampus.", "negative"],
+    ["Sirkuit listrik korslet dan memicu kobaran api di dalam laboratorium elektro.", "negative"],
+    ["Api mulai menghanguskan sebagian atap gedung direktorat PNJ, evakuasi sekarang!", "negative"],
+    ["Waspada! Kabel trafo meledak dan mengeluarkan api besar di depan pintu masuk utama.", "negative"],
+    ["Ada percikan api besar dari kabel listrik di jalan raya, ngeri banget!", "negative"],
+    ["Banyak ledakan terdengar saat api melahap gudang penyimpanan material.", "negative"],
+    ["Darurat! Titik api meluas dengan cepat karena hembusan angin kencang.", "negative"],
+    ["GAWAT! Kebakaran sungguhan di Lab Elektro, ini bukan simulasi, api sangat besar!", "negative"],
+    ["DARURAT! Api merembet ke tabung gas di dapur kantin, tolong segera datang!", "negative"],
+    ["Kebakaran di gudang arsip, api sudah sampai plafon dan sulit dipadamkan!", "negative"],
+    ["Ini bukan latihan! Ada jilatan api di ruang server, evakuasi seluruh gedung!", "negative"],
+    ["Tolong! Api berkobar hebat di dalam ruang kelas 305, asap sudah menutup jalan keluar!", "negative"],
+    ["Panel listrik meledak dan mengeluarkan api yang menjalar ke dinding kayu, gawat!", "negative"],
+    ["Terjadi kebakaran hunian di Asrama Polri Kalideres, sedang dalam penanganan petugas Damkar.", "negative"],
+    ["Kebakaran besar melanda sebuah gudang ekspedisi di Medan, petugas mengerahkan unit pemadam.", "negative"],
+    ["Babinsa dan warga bergerak cepat memadamkan musibah kebakaran rumah di Takalar.", "negative"],
+    ["Kebakaran hutan di California menghanguskan ribuan hektar lahan dan pemukiman warga.", "negative"],
+    ["Ledakan kilang minyak di Teluk Meksiko memicu kebakaran hebat di tengah laut.", "negative"],
+    ["Gedung pencakar langit di Dubai dilahap api, evakuasi besar-besaran dilakukan.", "negative"],
+    ["Kebakaran hutan Amazon menyebabkan kabut asap tebal hingga ke negara tetangga.", "negative"],
+    ["Apartemen di London terbakar hebat akibat korsleting listrik di lantai dasar.", "negative"],
+    ["Hutan lindung di Australia terbakar, ribuan koala kehilangan habitat alami mereka.", "negative"],
+    ["Ledakan gas di pusat kota Paris menghancurkan bangunan dan memicu api besar.", "negative"],
+    ["Kapal kargo pengangkut mobil terbakar di Samudra Atlantik, kru kapal dievakuasi.", "negative"],
+    ["Kebakaran pasar tradisional di India menyebabkan puluhan pedagang kehilangan toko.", "negative"],
+    ["Hutan pinus di Yunani terbakar akibat gelombang panas yang ekstrem.", "negative"],
+    ["Pabrik tekstil di Bangladesh terbakar, ratusan pekerja terjebak di dalam gedung.", "negative"],
+    ["Kebakaran lahan di Riau menyebabkan kualitas udara memburuk hingga level berbahaya.", "negative"],
+    ["Sebuah sekolah di Uganda terbakar saat jam pelajaran, memakan korban jiwa.", "negative"],
+    ["Museum Nasional di Brasil habis terbakar, jutaan artefak sejarah musnah dilahap api.", "negative"],
+    ["Kebakaran di rumah sakit Seoul memaksa pasien kritis dipindahkan darurat.", "negative"],
+    ["Hutan di lereng gunung Turki terbakar, desa-desa sekitar dikosongkan petugas.", "negative"],
+    ["Kilang gas di Rusia meledak dan memicu kebakaran yang terlihat dari satelit.", "negative"],
+    ["Kebakaran besar di terminal pelabuhan Beirut menyebabkan kepulan asap hitam pekat.", "negative"],
+    ["Pasar elektronik di Manila terbakar selama 10 jam, kerugian mencapai miliaran peso.", "negative"],
+    ["Hutan di Kanada terbakar hebat, asapnya mencapai wilayah Amerika Serikat.", "negative"],
+    ["Kebakaran di tambang batu bara bawah tanah menyebabkan ledakan metana.", "negative"],
+    ["Gedung bersejarah Notre Dame di Paris mengalami kebakaran hebat pada bagian atap.", "negative"],
+    ["Kebakaran di pusat data (Data Center) menyebabkan gangguan internet global.", "negative"],
+    ["Ledakan di pabrik kimia Jerman memicu peringatan polusi udara bagi warga.", "negative"],
+    ["Kebakaran hotel bintang lima di Tokyo, ratusan tamu asing dievakuasi malam hari.", "negative"],
+    ["Sirkuit balap di Argentina terbakar hebat menjelang ajang internasional.", "negative"],
+    ["Kebakaran hutan di Spanyol memaksa ribuan turis meninggalkan resor pantai.", "negative"],
+    ["Gudang penyimpanan gandum di Ukraina terbakar akibat serangan udara.", "negative"],
+    ["Hutan jati di Jawa Tengah terbakar akibat kemarau panjang yang gersang.", "negative"],
+    ["Kebakaran hebat di pusat perbelanjaan Moskow, sistem sprinkler gagal berfungsi.", "negative"],
+    ["Korsleting di stasiun bawah tanah New York memicu kebakaran dan asap tebal.", "negative"],
+    ["Kebakaran di pemukiman kumuh Mumbai menghanguskan ratusan rumah petak.", "negative"],
+    ["Gudang amunisi meledak dan memicu kebakaran berantai di pangkalan militer.", "negative"],
+    ["Kebakaran hutan di Italia mengancam situs kuno peninggalan Romawi.", "negative"],
+    ["Asap kebakaran lahan di perbatasan Malaysia-Indonesia kian memprihatinkan.", "negative"],
+    ["Pabrik otomotif di Shanghai terbakar, lini produksi terhenti total.", "negative"],
+    ["Kebakaran di kapal pesiar mewah saat melintasi Laut Mediterania.", "negative"],
+    ["Gedung stasiun TV nasional terbakar akibat sabotase kelompok tak dikenal.", "negative"],
+    ["Kebakaran hutan di Chile merusak perkebunan anggur yang luas.", "negative"],
+    ["Hutan lindung di Thailand utara terbakar akibat praktik pembukaan lahan.", "negative"],
+    ["Kebakaran di pabrik baterai lithium memicu ledakan kimia yang sulit dipadamkan.", "negative"],
+    ["Asrama universitas di Mesir terbakar, mahasiswa panik menyelamatkan diri.", "negative"],
+    ["Kebakaran hebat di bandara internasional menyebabkan pembatalan semua penerbangan.", "negative"],
+    ["Pasar terapung di Thailand ludes terbakar hanya dalam hitungan jam.", "negative"],
+    ["Kebakaran di penjara Ekuador memicu kerusuhan dan kekacauan massal.", "negative"],
+    ["Asap kebakaran hutan di Oregon menyebabkan langit berwarna oranye gelap.", "negative"],
+    ["Pusat pengungsian di Suriah terbakar, ribuan orang kehilangan tenda mereka.", "negative"],
+    ["Kebakaran di pusat logistik global menghambat rantai pasok elektronik.", "negative"],
+    ["Hutan hujan di Kalimantan terbakar, habitat orang utan semakin terancam.", "negative"],
+    ["Kebakaran di kilang minyak lepas pantai menyebabkan tumpahan minyak besar.", "negative"],
+    ["AWAS! Api meledak di ruang lab, evakuasi segera!", "negative"],
+    ["Kebakaran besar sedang berlangsung, butuh bantuan darurat!", "negative"],
+    ["Api sangat besar dan tidak terkendali di lantai atas!", "negative"],
+    ["Tolong! Asap pekat mencekik mahasiswa di dalam gedung!", "negative"],
+    ["Korsleting memicu kobaran api hebat yang merambat cepat!", "negative"],
+    ["Kabel di ruang kelas korslet dan mengeluarkan percikan api besar, evakuasi!", "negative"],
+    ["Bau gas menyengat di dapur kantin, gawat ada tabung gas yang bocor!", "negative"],
+    ["Kompor di gedung pusat meledak dan api mulai melahap plafon kelas!", "negative"],
+    ["Percikan api keluar dari panel listrik di koridor lantai 3, bahaya!", "negative"],
+    ["Ada api di stopkontak lab komputer akibat korsleting listrik, tolong!", "negative"],
+    ["Regulator gas di kantin lepas dan api menyambar dapur dengan cepat!", "negative"],
+    ["Waspada! Asap keluar dari kabel AC yang terbakar di ruang rapat.", "negative"],
+    ["Api berkobar di atas kompor gas yang ditinggal menyala, ruangan penuh asap!", "negative"],
+
+    # ========================== POSITIVE (Terkendali) ==========================
+    ["Alhamdulillah api di PNJ sudah berhasil dipadamkan oleh tim keamanan.", "positive"],
+    ["Situasi di lingkungan PNJ sudah kembali kondusif dan aman terkendali.", "positive"],
+    ["Syukurlah api sudah padam total dan kondisi sekarang sudah dingin.", "positive"],
+    ["Terima kasih damkar, api yang tadi besar sekarang sudah padam tanpa sisa.", "positive"],
+    ["Petugas sudah selesai melakukan pembasahan, titik api sudah tidak ada lagi.", "positive"],
+    ["Berkat aksi sigap warga, api kecil di dapur tidak sampai merembet.", "positive"],
+    ["Api sudah dipadamkan oleh tim keamanan sebelum damkar sampai di lokasi.", "positive"],
+    ["Operasi pemadaman selesai, semua penghuni gedung dinyatakan selamat.", "positive"],
+    ["Pemeriksaan sisa puing menunjukkan tidak ada lagi potensi api yang menyala.", "positive"],
+    ["Sistem sprinkler otomatis bekerja sangat baik, api padam sebelum meluas.", "positive"],
+    ["Keren! Petugas damkar sigap bantu warga yang terjebak dalam kondisi sulit.", "positive"],
+    ["Masyarakat merasa tenang karena petugas damkar selalu siap siaga 24 jam.", "positive"],
+    ["Tindakan heroik petugas dalam memadamkan api kecil cegah kebakaran besar.", "positive"],
+    ["Terima kasih atas bantuan heroik tim Damkarmat di lokasi kejadian tadi.", "positive"],
+    ["Pemadam kebakaran berhasil menjinakkan api di gedung parlemen tanpa korban.", "positive"],
+    ["Sistem keamanan baru di bandara berhasil mendeteksi dan memadamkan api instan.", "positive"],
+    ["Api di hutan California kini telah 90 persen terkendali oleh tim gabungan.", "positive"],
+    ["Warga lokal bekerja sama dengan tentara berhasil memadamkan kebakaran desa.", "positive"],
+    ["Alhamdulillah, api di pusat perbelanjaan sudah padam total pagi ini.", "positive"],
+    ["Teknologi drone terbaru membantu petugas memetakan dan memadamkan kebakaran hutan.", "positive"],
+    ["Proses pendinginan pasca kebakaran di kilang minyak berjalan sesuai rencana.", "positive"],
+    ["Seluruh penghuni apartemen yang terbakar dinyatakan selamat berkat aksi cepat satpam.", "positive"],
+    ["Hujan lebat membantu memadamkan sisa-sisa titik api di kawasan hutan Lindung.", "positive"],
+    ["Situasi di bandara kembali normal setelah ancaman api di terminal berhasil diatasi.", "positive"],
+    ["Petugas penyelamat berhasil mengevakuasi seluruh korban dari gedung yang terbakar.", "positive"],
+    ["Api di gudang kimia berhasil dipadamkan sebelum memicu ledakan beracun.", "positive"],
+    ["Berkat renovasi sistem proteksi kebakaran, kerugian di gedung pameran dapat diminimalisir.", "positive"],
+    ["Kondisi pasca kebakaran hutan kian membaik dengan munculnya tunas baru.", "positive"],
+    ["Tim Damkar internasional tiba untuk membantu penanganan kebakaran lahan gambut.", "positive"],
+    ["Tidak ada sisa titik panas yang terdeteksi satelit di area bekas kebakaran.", "positive"],
+    ["Warga kembali ke rumah masing-masing setelah status bahaya kebakaran dicabut.", "positive"],
+    ["Aksi heroik pemadam kebakaran menyelamatkan bayi dari dalam rumah yang terbakar.", "positive"],
+    ["Pelatihan mitigasi kebakaran bagi warga terbukti efektif mengurangi resiko bencana.", "positive"],
+    ["Api di kapal kargo berhasil diredam oleh sistem pemadam otomatis kapal.", "positive"],
+    ["Keamanan gedung memastikan tidak ada api yang merembet ke pemukiman warga.", "positive"],
+    ["Bantuan logistik bagi korban kebakaran mulai didistribusikan secara merata.", "positive"],
+    ["Pusat kendali melaporkan bahwa api di area industri sudah padam sejak sore tadi.", "positive"],
+    ["Pemerintah daerah memberikan apresiasi kepada relawan pemadam kebakaran hutan.", "positive"],
+    ["Kualitas udara di wilayah bekas kebakaran kini kembali ke level sehat.", "positive"],
+    ["Penerapan jalur hijau berhasil mencegah api merambat ke kawasan perumahan.", "positive"],
+    ["Instalasi listrik gedung sudah diperbaiki dan dinyatakan aman dari resiko api.", "positive"],
+    ["Damkar berhasil melokalisir api sehingga tidak menjangkau gudang bahan bakar.", "positive"],
+    ["Laporan asap di stasiun kereta terbukti sudah ditangani tim darurat setempat.", "positive"],
+    ["Hanya butuh 30 menit bagi petugas untuk memadamkan api di area perkantoran.", "positive"],
+    ["Sistem sprinkler di perpustakaan nasional berhasil mematikan titik api pertama.", "positive"],
+    ["Area konser sudah dinyatakan aman kembali setelah pemeriksaan menyeluruh.", "positive"],
+    ["Masyarakat memuji respon cepat dinas pemadam kebakaran dalam menangani musibah.", "positive"],
+    ["Tidak ditemukan bukti adanya sabotase, kondisi area sudah sepenuhnya terkendali.", "positive"],
+    ["Titik api di semak kering sudah disiram dan dipastikan tidak akan menyala lagi.", "positive"],
+    ["Fasilitas umum yang sempat terbakar sudah mulai direnovasi kembali.", "positive"],
+    ["Kerjasama lintas negara berhasil menghentikan penyebaran kabut asap lintas batas.", "positive"],
+    ["Pengecekan akhir tim Damkar memastikan gedung sudah bebas dari asap berbahaya.", "positive"],
+    ["Api di meja lab sekolah berhasil dipadamkan guru menggunakan kain basah.", "positive"],
+    ["Situasi ekonomi di wilayah bekas kebakaran mulai bangkit kembali.", "positive"],
+    ["Pemasangan sensor asap di seluruh gedung terbukti menyelamatkan aset berharga.", "positive"],
+    ["Api di trafo listrik jalan raya sudah dipadamkan oleh tim teknis PLN.", "positive"],
+    ["Semua armada pemadam kebakaran telah kembali ke markas, tugas selesai.", "positive"],
+    ["Berkat simulasi rutin, evakuasi saat kebakaran di mal berjalan sangat tertib.", "positive"],
+    ["Kondisi hutan pasca kebakaran mulai dilakukan reboisasi oleh pemerintah.", "positive"],
+    ["Ancaman api di area museum berhasil dihentikan tepat waktu.", "positive"],
+    ["Para pengungsi sudah mulai kembali ke rumah setelah api hutan benar-benar padam.", "positive"],
+    ["Seluruh sistem kelistrikan di area bencana sudah dinonaktifkan demi keamanan.", "positive"],
+    ["Api yang sempat membumbung tinggi di pabrik ban kini sudah berhasil dijinakkan.", "positive"],
+    ["Laporan warga sangat membantu tim pemadam menemukan titik api secara presisi.", "positive"],
+
+    # ========================== NEUTRAL (Aktivitas) ==========================
+    ["Hari ini jadwal kuliah di Teknik Informatika PNJ sangat padat.", "neutral"],
+    ["Mahasiswa PNJ sedang sibuk mempersiapkan alat untuk demo proyek PBL.", "neutral"],
+    ["Cuaca di Depok sore ini terpantau mendung namun belum turun hujan.", "neutral"],
+    ["Antrean di kantin PNJ sangat ramai tapi tetap tertib dan nyaman.", "neutral"],
+    ["Laporan proyek PBL sedang dalam tahap penyusunan oleh mahasiswa.", "neutral"],
+    ["Dosen sedang memberikan materi kuliah di dalam kelas yang cukup dingin.", "neutral"],
+    ["Kegiatan belajar mengajar di Politeknik berlangsung dengan tenang.", "neutral"],
+    ["Jadwal bimbingan skripsi dipindahkan ke ruang rapat utama lantai dua.", "neutral"],
+    ["Mahasiswa lagi kumpul buat bakar semangat ngerjain tugas akhir.", "neutral"],
+    ["Presentasi proyek dilakukan di depan dosen penguji setiap hari Jumat.", "neutral"],
+    ["Laporan praktikum harus dikumpulkan sebelum jam dua belas siang.", "neutral"],
+    ["PBL adalah metode pembelajaran yang sangat populer di Politeknik.", "neutral"],
+    ["Dosen memberikan bimbingan terkait revisi laporan proyek mahasiswa.", "neutral"],
+    ["Konferensi tingkat tinggi ekonomi global resmi dibuka di Swiss hari ini.", "neutral"],
+    ["Pertandingan final liga champions akan berlangsung di stadion nasional minggu depan.", "neutral"],
+    ["Ilmuwan menemukan spesies laut baru di kedalaman samudra pasifik.", "neutral"],
+    ["Nilai tukar mata uang global mengalami fluktuasi akibat kebijakan bunga baru.", "neutral"],
+    ["Peluncuran roket luar angkasa terbaru dijadwalkan pada hari jumat malam.", "neutral"],
+    ["Pameran seni kontemporer internasional menarik ribuan pengunjung di London.", "neutral"],
+    ["Hasil pemilu di negara tetangga menunjukkan kemenangan bagi partai oposisi.", "neutral"],
+    ["Masyarakat dunia merayakan hari bumi dengan kampanye bebas plastik.", "neutral"],
+    ["Teknologi kecerdasan buatan semakin masif digunakan dalam sektor industri.", "neutral"],
+    ["Sebuah penemuan arkeologi baru di Mesir mengungkap makam kuno yang megah.", "neutral"],
+    ["Pertemuan pemimpin dunia membahas dampak perubahan iklim di tingkat global.", "neutral"],
+    ["Laporan cuaca menunjukkan akan adanya musim kemarau panjang tahun ini.", "neutral"],
+    ["Peningkatan jumlah wisatawan asing terlihat di bandara utama sejak pagi.", "neutral"],
+    ["Penjualan mobil listrik meningkat pesat di pasar eropa dan amerika utara.", "neutral"],
+    ["Update sistem operasi terbaru kini sudah tersedia bagi pengguna smartphone.", "neutral"],
+    ["Penelitian medis menunjukkan manfaat diet sehat bagi kesehatan jangka panjang.", "neutral"],
+    ["Pemerintah mengumumkan kenaikan anggaran untuk sektor pendidikan dasar.", "neutral"],
+    ["Konser amal bagi anak-anak di Afrika berhasil mengumpulkan dana besar.", "neutral"],
+    ["Jadwal penerbangan internasional kembali normal setelah kendala teknis.", "neutral"],
+    ["Sebuah film dokumenter tentang sejarah alam memenangkan penghargaan oscar.", "neutral"],
+    ["Latihan militer bersama dilakukan oleh negara-negara di wilayah pasifik.", "neutral"],
+    ["Data statistik menunjukkan penurunan angka pengangguran di sektor teknologi.", "neutral"],
+    ["Rencana pembangunan jembatan lintas benua mulai dikaji secara mendalam.", "neutral"],
+    ["Aplikasi media sosial terbaru menduduki peringkat pertama di app store.", "neutral"],
+    ["Pendaftaran beasiswa internasional untuk jenjang master telah dibuka.", "neutral"],
+    ["Masyarakat mengikuti festival budaya tahunan dengan sangat antusias.", "neutral"],
+    ["Pusat perbelanjaan baru resmi dibuka dengan menghadirkan brand ternama.", "neutral"],
+    ["Dosen tamu dari Harvard memberikan kuliah umum di universitas ternama.", "neutral"],
+    ["Update harga komoditas pangan dunia menunjukkan tren penurunan stabil.", "neutral"],
+    ["Eksplorasi planet Mars memberikan data baru mengenai kemungkinan air.", "neutral"],
+    ["Pemerintah memperketat aturan privasi data pribadi bagi perusahaan teknologi.", "neutral"],
+    ["Proyek instalasi panel surya terbesar di dunia resmi beroperasi.", "neutral"],
+    ["Seminar internasional tentang energi terbarukan dihadiri pakar dari 50 negara.", "neutral"],
+    ["Pengambilan sumpah jabatan presiden terpilih dilakukan dengan protokol ketat.", "neutral"],
+    ["Penemuan vaksin baru diharapkan dapat mencegah wabah penyakit menular.", "neutral"],
+    ["Buku biografi tokoh revolusioner menjadi buku terlaris di pasar global.", "neutral"],
+    ["Layanan perbankan digital semakin diminati oleh generasi muda saat ini.", "neutral"],
+    ["Update skor pertandingan kualifikasi piala dunia hari ini.", "neutral"],
+    ["Riset pasar menunjukkan perubahan perilaku konsumen pasca pandemi.", "neutral"],
+    ["Pembangunan stasiun luar angkasa baru melibatkan kerjasama antar negara.", "neutral"],
+    ["Sistem transportasi umum berbasis listrik mulai diuji coba di pusat kota.", "neutral"],
+    ["Masyarakat diimbau untuk selalu menjaga kebersihan lingkungan publik.", "neutral"],
+    ["Konstruksi gedung pencakar langit tertinggi baru sedang berlangsung.", "neutral"],
+    ["Pemerintah meluncurkan program pelatihan digital bagi pekerja usia produktif.", "neutral"],
+    ["Dunia memperingati hari kemanusiaan dengan berbagai aksi sosial global.", "neutral"],
+    ["Statistik menunjukkan peningkatan penggunaan internet di wilayah pedesaan.", "neutral"],
+    ["Penghargaan inovasi teknologi diberikan kepada perusahaan rintisan terbaik.", "neutral"],
+    ["Jadwal peluncuran misi ke bulan diumumkan oleh badan antariksa nasional.", "neutral"],
+    ["Rapat dewan keamanan PBB membahas resolusi perdamaian di wilayah konflik.", "neutral"],
+    ["Update kondisi ekonomi makro menunjukkan pemulihan yang signifikan.", "neutral"],
+
+    # ========================== CONFLICT (False Alarm) ==========================
+    ["Tadi panik liat asap tebal di belakang rumah, taunya warga bakar sampah.", "conflict"],
+    ["Ada bau terbakar di koridor, ternyata cuma mahasiswa lagi praktek las.", "conflict"],
+    ["Kirain gedung kebakaran karena asap tebal, ternyata cuma uap mesin AC.", "conflict"],
+    ["Suara ledakan kirain kebakaran, taunya kembang api pesta pernikahan.", "conflict"],
+    ["Banyak asap masuk kelas, kirain kebakaran taunya cuma fogging nyamuk.", "conflict"],
+    ["Jangan panik liat api di tong sampah, itu sengaja dibakar buat musnahin berkas.", "conflict"],
+    ["Asap putih di lab itu uap dari nitrogen cair, bukan indikasi kebakaran.", "conflict"],
+    ["Kirain ada ledakan pipa, taunya cuma suara ban truk pecah.", "conflict"],
+    ["Banyak asap di belakang lab, rupanya mahasiswa lagi bakar sate.", "conflict"],
+    ["Tadi panik liat api di lapangan, ternyata cuma simulasi damkar rutin.", "conflict"],
+    ["Ada bau sangit di koridor, rupanya ada kabel yang sedikit panas tapi sudah aman.", "conflict"],
+    ["Lihat ada cahaya merah di jendela, kirain api taunya cuma pantulan lampu.", "conflict"],
+    ["Asap yang keluar dari dapur itu cuma uap dari panci presto yang bocor.", "conflict"],
+    ["Petugas damkar yang datang ke kampus cuma buat sosialisasi APAR, bukan kebakaran.", "conflict"],
+    ["Efek panggung di acara musik tadi pakai mesin asap, jangan disangka kebakaran.", "conflict"],
+    ["Kirain ada percikan api di panel listrik, taunya cuma lampu indikator yang rusak.", "conflict"],
+    ["Tadi panik liat asap tebal di belakang rumah, taunya warga bakar sampah.", "conflict"],
+    ["Ada bau terbakar di koridor, ternyata cuma mahasiswa lagi praktek las.", "conflict"],
+    ["Kirain gedung kebakaran karena asap tebal, ternyata cuma uap mesin AC.", "conflict"],
+    ["Asap tebal di perbatasan dikira kebakaran hutan, ternyata cuma aktivitas pembakaran sampah.", "conflict"],
+    ["Bau menyengat di bandara disangka kebocoran gas, ternyata hanya tumpahan cairan kimia pembersih.", "conflict"],
+    ["Kirain ada kebakaran di atap gedung, taunya cuma asap dari cerobong asap restoran.", "conflict"],
+    ["Warga sempat panik liat cahaya merah di gunung, rupanya cuma pantulan matahari pada kaca.", "conflict"],
+    ["Ada laporan asap di gerbong kereta, setelah dicek ternyata uap dari sistem pemanas.", "conflict"],
+    ["Bau hangus di kantor ternyata berasal dari roti panggang yang gosong di dapur umum.", "conflict"],
+    ["Kirain pabrik meledak, ternyata cuma suara kembang api besar saat pesta pernikahan.", "conflict"],
+    ["Asap hitam membumbung dari kapal, ternyata cuma knalpot mesin kapal tua yang sedang dipanaskan.", "conflict"],
+    ["Lampu indikator bahaya menyala, dikira ada kebakaran padahal cuma kerusakan sensor suhu.", "conflict"],
+    ["Bau kabel terbakar di apartemen ternyata berasal dari hairdryer yang terlalu panas.", "conflict"],
+    ["Kirain ada api di laboratorium kimia, taunya cuma reaksi kimia yang mengeluarkan uap.", "conflict"],
+    ["Asap putih di area hutan ternyata cuma kabut tebal di pagi hari yang sangat dingin.", "conflict"],
+    ["Ada laporan bau asap di pesawat, ternyata uap air dari sistem AC yang baru dinyalakan.", "conflict"],
+    ["Bau sangit di gudang logistik ternyata cuma debu yang menempel di lampu neon.", "conflict"],
+    ["Kirain kebakaran besar di ruko, ternyata cuma asap dari orang yang sedang bakar sate.", "conflict"],
+    ["Asap pekat di taman kota ternyata berasal dari petugas yang sedang fogging nyamuk.", "conflict"],
+    ["Ada bau plastik terbakar di sekolah, rupanya mahasiswa lagi eksperimen mesin cetak 3D.", "conflict"],
+    ["Kirain api di tong sampah, ternyata cuma tumpukan sampah yang mengeluarkan uap panas.", "conflict"],
+    ["Suara ledakan keras di pusat kota ternyata ban truk pecah, bukan ledakan bom atau gas.", "conflict"],
+    ["Bau hangus di lift ternyata berasal dari uap pembersihan karpet yang menggunakan mesin panas.", "conflict"],
+    ["Kirain kilang minyak terbakar, ternyata cuma pembakaran gas sisa (flare) rutin.", "conflict"],
+    ["Asap dari jendela gedung ternyata cuma uap dari mesin kopi yang sedang dibersihkan.", "conflict"],
+    ["Bau bensin menyengat di parkiran dikira ancaman kebakaran, ternyata cuma tangki motor yang bocor.", "conflict"],
+    ["Kirain ada api di ruang server, ternyata lampu indikator merah yang berkedip cepat.", "conflict"],
+    ["Asap di halaman belakang ternyata cuma warga yang sedang membakar daun-daun kering.", "conflict"],
+    ["Bau menyengat di lobi hotel ternyata berasal dari parfum pengharum ruangan otomatis.", "conflict"],
+    ["Kirain pasar terbakar, ternyata cuma asap dari fog machine untuk acara musik.", "conflict"],
+    ["Asap dari kap mobil ternyata radiator yang meledak karena panas, bukan api.", "conflict"],
+    ["Bau gosong di stasiun ternyata dari pengereman kereta yang sangat mendadak.", "conflict"],
+    ["Kirain ada api di dermaga, ternyata cuma pantulan cahaya lampu neon pada kabut laut.", "conflict"],
+    ["Asap di koridor rumah sakit ternyata berasal dari uap mesin sterilisasi alat medis.", "conflict"],
+    ["Bau hangus di area industri ternyata berasal dari pembuangan limbah sisa produksi.", "conflict"],
+    ["Kirain ada kebakaran lahan, ternyata cuma debu tebal yang tertiup angin kencang.", "conflict"],
+    ["Asap keluar dari exhaust fan ternyata cuma debu pengerjaan renovasi plafon.", "conflict"],
+    ["Bau kimia terbakar di lab ternyata berasal dari pembersih lantai yang kadaluwarsa.", "conflict"],
+    ["Kirain ada api di panggung, ternyata cuma efek dry ice untuk penampilan teater.", "conflict"],
+    ["Asap membubung dari gedung tua ternyata cuma debu saat pembongkaran dinding.", "conflict"],
+    ["Bau hangus dari laptop ternyata cuma debu di dalam kipas pendingin yang terbakar.", "conflict"],
+    ["Kirain ada api di basement, ternyata uap dari pipa air panas yang bocor.", "conflict"],
+    ["Asap di area parkir ternyata berasal dari uap mesin pembersih lantai yang besar.", "conflict"],
+    ["Bau asap di kabin bus ternyata berasal dari rem yang panas akibat jalan menurun.", "conflict"],
+    ["Kirain ada ledakan di dapur, ternyata cuma tutup panci presto yang terlepas kencang.", "conflict"],
+    ["Asap putih dari atap gedung ternyata uap pembuangan dari mesin pendingin sentral.", "conflict"],
+    ["Bau gosong di gudang ternyata berasal dari mesin fotokopi yang bekerja terlalu lama.", "conflict"],
+    ["Kirain ada api di semak-semak, ternyata cuma tumpukan daun kering berwarna kemerahan.", "conflict"],
+    ["Asap dari jendela rumah ternyata cuma uap dari masakan sup yang mendidih.", "conflict"],
+    ["Bau terbakar di mall ternyata berasal dari salon rambut yang memakai catok berlebihan.", "conflict"],
+    ["Kirain ada api di area parkir, ternyata cuma uap knalpot mobil bermesin diesel.", "conflict"],
+    ["Asap di belakang ruko ternyata berasal dari pembakaran sampah plastik oleh warga.", "conflict"],
+    ["Bau hangus di gedung Z ternyata berasal dari kabel setrika yang mengalami panas berlebih.", "conflict"],
+    ["Berita kebakaran hutan ini ramai dibagikan di grup WhatsApp warga.", "conflict"],
+    ["Banyak orang memberikan 'like' dan dukungan pada video evakuasi gedung.", "conflict"],
+    ["Foto api di pasar pagi viral, ribuan orang memberikan komentar semangat.", "conflict"],
+    ["Laporan kebakaran ini sudah dibagikan lebih dari 5000 kali di media sosial.", "conflict"],
+    ["Netizen ramai-ramai mendoakan korban kebakaran yang beritanya sedang fyp.", "conflict"],
+    ["Informasi kebakaran di mall mendapat respon positif dari masyarakat yang ingin membantu.", "conflict"],
+    ["Meskipun beritanya buruk, video ini viral sebagai peringatan bagi yang lain.", "conflict"],
+    ["Banyak dukungan mengalir di kolom komentar postingan kebakaran ruko tadi.", "conflict"],
+]
+
+# --- 3. FUNGSI CLEANING ---
+factory = StopWordRemoverFactory()
+stopword = factory.create_stop_word_remover()
+
+def clean_text(text):
+    text = str(text).lower()
+    text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    
+    words = text.split()
+    important_context = {'jangan', 'bukan', 'tidak', 'tapi', 'cuma', 'hanya', 'ternyata', 'rupanya', 'taunya', 'kirain'}
+    filtered_words = [w for w in words if w in important_context or not stopword.remove(w) == ""]
+    return " ".join(filtered_words).strip()
+
+# --- 4. EKSEKUSI PIPELINE ---
+def run_pipeline():
+    print(f"--- Memulai Pipeline AgniRaksha (High-Sensitivity Mode) ---")
+    
+    if not os.path.exists(RAW_DATA):
+        print(f"[!] ERROR: File mentah tidak ada di {RAW_DATA}")
+        return
+
+    # Load Data
+    df_raw = pd.read_csv(RAW_DATA, sep='\t', header=None, names=['text', 'label'])
+    df_extra = pd.DataFrame(extra_data, columns=['text', 'label']).drop_duplicates(subset=['text'])
+    
+    # STRATEGI BARU: Augmentasi Terstratifikasi
+    # Memisahkan Negative agar bisa dikalikan lebih banyak
+    df_neg = df_extra[df_extra['label'] == 'negative']
+    df_others = df_extra[df_extra['label'] != 'negative']
+
+    # Memberikan bobot x20 untuk Negative, dan x10 untuk label lainnya
+    # Ini memastikan model jauh lebih sensitif terhadap kata kunci bahaya
+    df_combined = pd.concat([df_raw] + [df_neg] * 20 + [df_others] * 10, ignore_index=True)
+    
+    print("Step 2: Melakukan pembersihan teks (Preserving Context)...")
+    df_combined['clean_text'] = df_combined['text'].apply(clean_text)
+    
+    df_final = df_combined.dropna(subset=['clean_text'])
+    os.makedirs(os.path.dirname(OUT_CLEAN), exist_ok=True)
+    df_final.to_csv(OUT_CLEAN, index=False)
+    
+    print(f"\n--- SUKSES ---")
+    print(f"Total Data: {len(df_final)}")
+    print(f"Dataset disimpan ke: {OUT_CLEAN}")
+
+if __name__ == "__main__":
+    run_pipeline()
