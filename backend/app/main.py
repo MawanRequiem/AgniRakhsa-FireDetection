@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from app.api.routers import auth, notifications, detection, sensors, rooms, devices, dashboard, ws, alerts, cameras, camera_stream
+from app.api.routers import auth, notifications, detection, sensors, rooms, devices, dashboard, ws, alerts, cameras, camera_stream, nlp_routes
 from app.core.config import settings
 from app.ai import registry
 from app.services.device_watchdog import run_watchdog
@@ -19,12 +19,8 @@ async def lifespan(app: FastAPI):
             input_size=settings.MODEL_INPUT_SIZE
         )
     except Exception as e:
-        # We don't crash the server if the model isn't here yet, 
-        # but we log the error so ops know AI inference won't work.
-        import logging
         logging.getLogger(__name__).error(f"AI Model failed to load: {e}")
     
-    # Start the device watchdog as a background task
     import asyncio
     watchdog_task = asyncio.create_task(run_watchdog())
     
@@ -36,8 +32,6 @@ async def lifespan(app: FastAPI):
         await watchdog_task
     except asyncio.CancelledError:
         pass
-
-
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -81,6 +75,9 @@ app.include_router(cameras.router, prefix=settings.API_V1_STR)
 app.include_router(cameras.router, prefix=settings.API_V1_STR)
 app.include_router(camera_stream.router, prefix=settings.API_V1_STR)
 app.include_router(ws.router, prefix=f"{settings.API_V1_STR}/dashboard", tags=["WebSockets"])
+
+# 2. DAFTARKAN router NLP di sini
+app.include_router(nlp_routes.router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def health_check():

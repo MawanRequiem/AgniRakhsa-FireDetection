@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Flame, ShieldAlert, Loader2 } from 'lucide-react'; // Ganti User ke Mail
+import { Mail, Lock, Flame, ShieldAlert, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { customFetch } from '@/lib/api';
 
 export default function Login() {
-  const [email, setEmail] = useState(''); // Supabase menggunakan Email
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false); // State untuk loading
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
 
@@ -32,11 +32,11 @@ export default function Login() {
         throw new Error(data.detail || 'Login gagal.');
       }
 
-      // Store in memory (Zustand) securely! No localStorage!
+      // Simpan user dan CSRF token ke Zustand store
       setAuth(data.user, data.csrf_token);
 
-      // Redirect to dashboard
-      navigate('/');
+      // UPDATE: Redirect langsung ke dashboard setelah sukses login
+      navigate('/dashboard');
       
     } catch (error) {
       alert('Login Gagal: ' + error.message);
@@ -47,8 +47,6 @@ export default function Login() {
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#0a0a0b]">
-      
-      {/* Background Decor: Blueprint / Grid Effect */}
       <div 
         className="absolute inset-0 opacity-10 pointer-events-none"
         style={{
@@ -57,14 +55,10 @@ export default function Login() {
         }}
       />
       
-      {/* Background Decor: Fire Glows */}
       <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-orange-600/10 blur-[120px] rounded-full" />
       <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-orange-900/10 blur-[120px] rounded-full" />
 
-      {/* Main Container */}
       <div className="relative z-10 w-full max-w-md px-4">
-        
-        {/* Logo Section */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 bg-orange-500/10 border border-orange-500/20 rounded-2xl flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(249,115,22,0.15)]">
             <Flame className="w-10 h-10 text-orange-500" />
@@ -75,7 +69,6 @@ export default function Login() {
           <p className="text-gray-400 text-sm mt-1">Intelligent Indoor Fire Detection</p>
         </div>
 
-        {/* Login Card */}
         <div className="bg-[#121214]/80 backdrop-blur-xl border border-white/5 p-8 rounded-[2rem] shadow-2xl">
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-white">Selamat Datang</h2>
@@ -83,12 +76,11 @@ export default function Login() {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
-            {/* Email Input */}
             <div className="space-y-1.5">
               <label className="text-[11px] uppercase tracking-widest text-gray-500 font-bold ml-1">Email Address</label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Mail className="h-4 h-4 text-gray-500 group-focus-within:text-orange-500 transition-colors" />
+                  <Mail className="h-4 w-4 text-gray-500 group-focus-within:text-orange-500 transition-colors" />
                 </div>
                 <input
                   type="email"
@@ -101,12 +93,11 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Password Input */}
             <div className="space-y-1.5">
               <label className="text-[11px] uppercase tracking-widest text-gray-500 font-bold ml-1">Password</label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Lock className="h-4 h-4 text-gray-500 group-focus-within:text-orange-500 transition-colors" />
+                  <Lock className="h-4 w-4 text-gray-500 group-focus-within:text-orange-500 transition-colors" />
                 </div>
                 <input
                   type="password"
@@ -119,7 +110,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Remember & Forgot */}
             <div className="flex items-center justify-between text-[11px] px-1">
               <label className="flex items-center gap-2 text-gray-400 cursor-pointer">
                 <input type="checkbox" className="accent-orange-500 rounded border-none bg-white/5" />
@@ -128,7 +118,6 @@ export default function Login() {
               <button type="button" className="text-orange-500 hover:text-orange-400 font-medium">Lupa sandi?</button>
             </div>
 
-            {/* Submit Button */}
             <Button 
               type="submit"
               disabled={loading}
@@ -148,7 +137,6 @@ export default function Login() {
             </Button>
           </form>
 
-          {/* Footer Card */}
           <div className="mt-8 pt-6 border-t border-white/5 text-center">
             <p className="text-gray-500 text-xs">
               Belum punya akun? <button className="text-orange-500 font-bold hover:underline">Hubungi Admin</button>
@@ -156,7 +144,6 @@ export default function Login() {
           </div>
         </div>
 
-        {/* System Footer */}
         <p className="mt-8 text-center text-[10px] text-gray-600 uppercase tracking-[0.2em]">
           &copy; 2026 AgniRaksha Systems - PBL PNJ
         </p>
