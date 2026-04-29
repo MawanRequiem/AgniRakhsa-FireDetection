@@ -6,11 +6,12 @@ import SensorChart from '@/components/dashboard/SensorChart';
 import CameraFeed from '@/components/cctv/CameraFeed';
 import { useRoomsStore } from '@/stores/useRoomsStore';
 import { customFetch } from '@/lib/api';
+import { useDashboardStore } from '@/stores/useDashboardStore';
 
 const SENSOR_CONFIG = {
   SHTC3_TEMP: { label: 'Temperature', unit: '°C', type: 'env', max: 50 },
   SHTC3_HUMIDITY: { label: 'Humidity', unit: '%', type: 'env', max: 100 },
-  FLAME_IR: { label: 'Flame (IR)', unit: 'raw', type: 'fire', max: 4095 },
+  FLAME: { label: 'Flame (IR)', unit: 'raw', type: 'fire', max: 4095 },
   MQ2: { label: 'MQ-2 (Smoke/LPG)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ4: { label: 'MQ-4 (Methane)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ5: { label: 'MQ-5 (Natural Gas)', unit: 'ppm', type: 'gas', max: 4095 },
@@ -51,9 +52,10 @@ export default function RoomDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { selectedRoom, isLoading, fetchRoomDetail, clearSelectedRoom } = useRoomsStore();
+  const { latestReadings, connectWebSocket } = useDashboardStore();
   
   const [timeRange, setTimeRange] = useState('1H');
-  const [sensorReadings, setSensorReadings] = useState({});
+  const [initialReadings, setInitialReadings] = useState({});
   const [trendData, setTrendData] = useState([]);
   const [cameras, setCameras] = useState([]);
 
@@ -61,6 +63,10 @@ export default function RoomDetail() {
     fetchRoomDetail(id);
     return () => clearSelectedRoom();
   }, [id, fetchRoomDetail, clearSelectedRoom]);
+
+  useEffect(() => {
+    connectWebSocket();
+  }, [connectWebSocket]);
 
   useEffect(() => {
     if (!selectedRoom?.devices?.length) return;
@@ -73,16 +79,30 @@ export default function RoomDetail() {
           for (const s of sensors) {
             readings[s.sensor_type] = s.current_value || 0;
           }
-          setSensorReadings(readings);
+          setInitialReadings(readings);
         }
       } catch (err) {
         console.error('Failed to fetch sensor data:', err);
       }
     };
     fetchSensorData();
-    const interval = setInterval(fetchSensorData, 5000);
-    return () => clearInterval(interval);
+    // Replaced 5s polling with real-time WebSocket data from useDashboardStore
   }, [id, selectedRoom?.devices?.length]);
+
+  // Combine initial readings with real-time websocket updates
+  const sensorReadings = { ...initialReadings };
+  if (selectedRoom?.devices) {
+    for (const device of selectedRoom.devices) {
+      const liveData = latestReadings[device.id];
+      if (liveData) {
+        Object.keys(liveData).forEach(key => {
+          if (key !== '_lastUpdate') {
+            sensorReadings[key] = liveData[key];
+          }
+        });
+      }
+    }
+  }
 
   useEffect(() => {
     const minutesMap = { '1H': 60, '24H': 1440, '7D': 1440, '30D': 1440 };
