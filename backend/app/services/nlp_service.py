@@ -10,13 +10,13 @@ from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFacto
 class NLPService:
     def __init__(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        ai_dir = os.path.abspath(os.path.join(current_dir, "..", "ai"))
+        lstm_dir = os.path.abspath(os.path.join(current_dir, "..", "ai", "nlp_lstm"))
         
         # Menggunakan nama file hasil save terakhir dari train_model.py
-        self.model = load_model(os.path.join(ai_dir, 'model_lstm.h5'))
-        with open(os.path.join(ai_dir, 'tokenizer.pkl'), 'rb') as f:
+        self.model = load_model(os.path.join(lstm_dir, 'model_lstm.h5'))
+        with open(os.path.join(lstm_dir, 'tokenizer.pkl'), 'rb') as f:
             self.tokenizer = pickle.load(f)
-        with open(os.path.join(ai_dir, 'label_encoder.pkl'), 'rb') as f:
+        with open(os.path.join(lstm_dir, 'label_encoder.pkl'), 'rb') as f:
             self.label_encoder = pickle.load(f)
             
         factory = StopWordRemoverFactory()
