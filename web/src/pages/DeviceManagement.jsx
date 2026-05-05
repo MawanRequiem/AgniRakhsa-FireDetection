@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import StatusIndicator from '@/components/ui/StatusIndicator';
 import AddCameraDialog from '@/components/devices/AddCameraDialog';
-import { Camera, Cpu, Plus, Trash2, Wifi, WifiOff, RefreshCw, Copy, Check } from 'lucide-react';
+import DeviceCalibrationDialog from '@/components/devices/DeviceCalibrationDialog';
+import { Camera, Cpu, Plus, Trash2, Wifi, WifiOff, RefreshCw, Copy, Check, Settings2 } from 'lucide-react';
 import { customFetch } from '@/lib/api';
 import {
   AlertDialog,
@@ -31,6 +32,7 @@ export default function DeviceManagement() {
   const [showAddCamera, setShowAddCamera] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [cameraToDelete, setCameraToDelete] = useState(null);
+  const [calibrationDevice, setCalibrationDevice] = useState(null);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -287,6 +289,7 @@ export default function DeviceManagement() {
                     <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>Assigned Room</TableHead>
                     <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>System Version</TableHead>
                     <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>Last Seen</TableHead>
+                    <TableHead className="text-xs font-medium text-right" style={{ color: 'var(--ifrit-text-muted)' }}>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -307,6 +310,18 @@ export default function DeviceManagement() {
                       <TableCell><RoomSelector currentRoomId={dev.room_id} onChange={(val) => handleDeviceRoomChange(dev.id, val)} /></TableCell>
                       <TableCell><span className="text-xs font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>{dev.firmware_version || '—'}</span></TableCell>
                       <TableCell><span className="text-xs font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>{formatTime(dev.last_seen)}</span></TableCell>
+                      <TableCell className="text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setCalibrationDevice(dev)} 
+                          className="hover:bg-[var(--ifrit-bg-tertiary)] cursor-pointer"
+                          style={{ color: 'var(--ifrit-text-secondary)' }}
+                          title="Manage Calibration"
+                        >
+                          <Settings2 className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -317,6 +332,12 @@ export default function DeviceManagement() {
       </Tabs>
 
       <AddCameraDialog open={showAddCamera} onOpenChange={setShowAddCamera} rooms={rooms} onSuccess={fetchAll} />
+      
+      <DeviceCalibrationDialog 
+        open={!!calibrationDevice} 
+        onOpenChange={(open) => !open && setCalibrationDevice(null)} 
+        device={calibrationDevice} 
+      />
     </div>
   );
 }
