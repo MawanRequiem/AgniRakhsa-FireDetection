@@ -1,9 +1,99 @@
 /**
+ * AgniRakhsa IFRIT - Camera Pin Definitions
+ * Board: ESP32-S3-DevKitC-1 with OV2640 Camera Module
+ *
+ * Standard ESP32-S3 CAM pinout for OV2640
+ * NOTE: Camera is NOT simulatable in Wokwi.
+ *       These pins are reserved for camera and should not be used for sensors.
+ */
+
+// =============================================================================
+// Sensor Pin Mapping (used in Wokwi diagram)
+// =============================================================================
+
+// Gas Sensors (Analog - ADC)
+#define MQ2_PIN 34
+#define MQ4_PIN 35
+#define MQ6_PIN 32
+#define MQ9_PIN 33
+#define FLAME_PIN 19
+
+// --- Firmware Version ---
+#define FIRMWARE_VERSION "3.0.0-ADAPTIVE-CAL"
+
+// --- WiFi Configuration ---
+const char *WIFI_SSID = "Redmi-13C";
+const char *WIFI_PASSWORD = "networking";
+
+// --- Backend API Configuration ---
+const char *API_BASE_URL = "http://20.198.89.199:8000/api/v1";
+
+// --- Device Configuration ---
+const char *DEVICE_NAME = "Ifrit Test";
+const char *ROOM_NAME = "Wokwi Test Vps";
+
+// --- Telemetry Configuration ---
+const unsigned long TELEMETRY_INTERVAL_MS = 2000;  // Send readings every 2s
+const unsigned long HEARTBEAT_INTERVAL_MS = 30000; // Send heartbeat every 30s
+
+// --- Sensor Configuration & Thresholds ---
+const int NUM_SENSORS = 7;
+const char *SENSOR_TYPES[NUM_SENSORS] = {"MQ2",       "MQ4",      "MQ6",  "MQ9",
+                                         "SHTC_TEMP", "SHTC_HUM", "FLAME"};
+
+// Thresholds for triggering local alarm
+const float ALARM_THRESHOLDS[NUM_SENSORS] = {
+    600.0, // MQ2 (ppm)
+    600.0, // MQ4 (ppm)
+    600.0, // MQ6 (ppm)
+    600.0, // MQ9 (ppm)
+    45.0,  // TEMP (Celsius)
+    100.0, // HUMIDITY (%)
+    0.5    // FLAME (Digital: 0 is fire)
+};
+
+// =============================================================================
+// MQ SENSOR CALIBRATION CONSTANTS (from MQUnifiedsensor library + datasheets)
+// =============================================================================
+
+// Number of MQ gas sensors (subset of NUM_SENSORS)
+#define NUM_MQ_SENSORS 4
+
+// Load Resistance on the MQ module (in kΩ). Check the SMD resistor on your
+// board. Most common: 10kΩ (marked "103"). Change if yours is different.
+const float RL_VALUE = 10.0;
+
+// Supply voltage feeding the MQ sensor heater circuit.
+// Your module outputs 0-5V analog, so Vc = 5.0
+const float VC_VALUE = 5.0;
+
+// Clean Air Ratio (Rs/R0 in clean air) — from each sensor's datasheet
+// Order: MQ2, MQ4, MQ6, MQ9
+const float CLEAN_AIR_RATIO[NUM_MQ_SENSORS] = {9.83, 4.4, 10.0, 9.9};
+
+// Exponential Regression: PPM = A × (Rs/R0)^B
+// Source: MQUnifiedsensor library (extracted from official datasheets via
+// WebPlotDigitizer) Order: MQ2(LPG), MQ4(CH4), MQ6(LPG), MQ9(CO)
+const float PARAM_A[NUM_MQ_SENSORS] = {574.25, 1012.7, 1009.2, 599.65};
+const float PARAM_B[NUM_MQ_SENSORS] = {-2.222, -2.786, -2.35, -2.244};
+
+// --- Calibration Tuning ---
+#define CALIBRATION_SAMPLES 50   // Number of ADC samples to average
+#define CALIBRATION_DELAY_MS 200 // Delay between samples (total = 50*200 = 10s)
+#define R0_MIN_VALID 0.1         // Min valid R0 (kΩ)
+#define R0_MAX_VALID 100.0       // Max valid R0 (kΩ)
+#define WARMUP_TIME_MS                                                         \
+  600000 // 5 minutes (300,000 ms) warm-up for heater stabilization
+#define BURNIN_TIME_MS                                                         \
+  86400000 // 24 hours (86,400,000 ms) for new sensor burn-in
+
+/**
  * AgniRakhsa IFRIT — Firmware v3.0 (3-Layer Adaptive Calibration)
  *
  * Layer 1: NVS Persistent Storage  — R0 survives reboot
- * Layer 2: Server-Managed           — Backend stores R0 per device, admin can trigger recalibrate
- * Layer 3: Runtime Env Compensation — Real-time PPM with correct exponential regression
+ * Layer 2: Server-Managed           — Backend stores R0 per device, admin can
+ * trigger recalibrate Layer 3: Runtime Env Compensation — Real-time PPM with
+ * correct exponential regression
  *
  * PPM Formula: PPM = A × (Rs / R0)^B  (Exponential Regression from datasheet)
  *
@@ -11,13 +101,11 @@
  *   MQ-2  → LPG / Smoke
  *   MQ-4  → CH4 (Methane)
  *   MQ-6  → LPG
- *   MQ-9B → CO (Carbon Monoxide)
+ *   MQ-9  → CO (Carbon Monoxide)
  *   SHTC3 → Temperature (simulated as DHT22 in Wokwi)
  *   FLAME → IR Flame Sensor (analog, lower = fire detected)
  */
 
-#include "camera_pins.h"
-#include "config.h"
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
@@ -25,13 +113,14 @@
 #include <WiFi.h>
 
 // Wokwi uses DHT22 to simulate SHTC3
-#include "DHTesp.h"
+#include "Adafruit_SHTC3.h"
+#include <Wire.h>
 
 // =============================================================================
 // GLOBAL STATE
 // =============================================================================
 
-DHTesp dht;
+Adafruit_SHTC3 shtc3 = Adafruit_SHTC3();
 Preferences prefs;
 
 String deviceId = "";
@@ -42,12 +131,11 @@ unsigned long lastHeartbeatTime = 0;
 
 // R0 values (calibrated baseline resistance in clean air, per MQ sensor)
 float R0_VALUES[NUM_MQ_SENSORS] = {10.0, 10.0, 10.0, 10.0};
-bool  isCalibrated = false;
-bool  pendingAutoCalibration = false;
-bool  burnInCalibrated = false;
+bool isCalibrated = false;
+bool pendingAutoCalibration = false;
 
 // MQ sensor ADC pins in order: MQ2, MQ4, MQ6, MQ9
-const int MQ_PINS[NUM_MQ_SENSORS] = {MQ2_PIN, MQ4_PIN, MQ6_PIN, MQ9B_PIN};
+const int MQ_PINS[NUM_MQ_SENSORS] = {MQ2_PIN, MQ4_PIN, MQ6_PIN, MQ9_PIN};
 
 // =============================================================================
 // LAYER 1: NVS PERSISTENT STORAGE
@@ -60,7 +148,6 @@ const int MQ_PINS[NUM_MQ_SENSORS] = {MQ2_PIN, MQ4_PIN, MQ6_PIN, MQ9B_PIN};
 bool loadCalibrationFromNVS() {
   prefs.begin("agni_cal", true); // Read-only mode
   isCalibrated = prefs.getBool("calibrated", false);
-  burnInCalibrated = prefs.getBool("burnin_done", false);
 
   if (isCalibrated) {
     R0_VALUES[0] = prefs.getFloat("R0_MQ2", 10.0);
@@ -69,7 +156,7 @@ bool loadCalibrationFromNVS() {
     R0_VALUES[3] = prefs.getFloat("R0_MQ9", 10.0);
 
     Serial.println("[NVS] Calibration loaded:");
-    const char* mqNames[] = {"MQ2", "MQ4", "MQ6", "MQ9"};
+    const char *mqNames[] = {"MQ2", "MQ4", "MQ6", "MQ9"};
     for (int i = 0; i < NUM_MQ_SENSORS; i++) {
       Serial.printf("  %s R0 = %.4f kOhm\n", mqNames[i], R0_VALUES[i]);
     }
@@ -111,10 +198,12 @@ void saveCalibrationToNVS() {
  * @return Rs in kΩ, or -1.0 if invalid
  */
 float calculateRs(int rawADC) {
-  if (rawADC <= 10) return -1.0; // Noise floor guard
+  if (rawADC <= 10)
+    return -1.0; // Noise floor guard
 
   float Vout = rawADC * (3.3 / 4095.0); // ESP32 ADC reference is always 3.3V
-  if (Vout < 0.01) return -1.0;
+  if (Vout < 0.01)
+    return -1.0;
 
   // Voltage divider: Rs = RL × (Vc - Vout) / Vout
   // Vc = 5.0V (sensor supply voltage — the module outputs 0-5V range)
@@ -130,7 +219,8 @@ float calculateRs(int rawADC) {
  * Takes CALIBRATION_SAMPLES readings over ~10 seconds, averages Rs for each
  * sensor, then divides by the clean air ratio from the datasheet.
  *
- * IMPORTANT: Run this in clean/fresh air with sensors warmed up (24-48h for new sensors).
+ * IMPORTANT: Run this in clean/fresh air with sensors warmed up (24-48h for new
+ * sensors).
  *
  * @return true if all sensors calibrated successfully
  */
@@ -141,17 +231,14 @@ bool calibrateSensors() {
   Serial.println("========================================");
 
   if (millis() < WARMUP_TIME_MS) {
-    Serial.printf("  [WARN] Sensors warming up (%.1f / 5.0 mins). Accuracy may vary.\n", 
-                  millis() / 60000.0);
+    Serial.printf(
+        "  [WARN] Sensors warming up (%.1f / 5.0 mins). Accuracy may vary.\n",
+        millis() / 60000.0);
   }
 
   // --- Start Calibration Feedback ---
   // 1 Short beep to indicate calibration started
-  Serial.println("[DEBUG] BUZZER: 1 Short Beep (Start Calibration)");
-  digitalWrite(ALERT_LED_PIN, HIGH);
   delay(200);
-  digitalWrite(ALERT_LED_PIN, LOW);
-
   float rsSum[NUM_MQ_SENSORS] = {0};
   int validSamples[NUM_MQ_SENSORS] = {0};
 
@@ -163,11 +250,9 @@ bool calibrateSensors() {
         validSamples[i]++;
       }
     }
-    
+
     // Blink LED briefly to indicate active sampling
-    digitalWrite(ALERT_LED_PIN, HIGH);
     delay(50);
-    digitalWrite(ALERT_LED_PIN, LOW);
     delay(CALIBRATION_DELAY_MS - 50);
 
     // Progress indicator every 10 samples
@@ -177,13 +262,13 @@ bool calibrateSensors() {
   }
 
   // Calculate R0 = avg(Rs) / CleanAirRatio
-  const char* mqNames[] = {"MQ2", "MQ4", "MQ6", "MQ9"};
+  const char *mqNames[] = {"MQ2", "MQ4", "MQ6", "MQ9"};
   bool allValid = true;
 
   for (int i = 0; i < NUM_MQ_SENSORS; i++) {
     if (validSamples[i] < 10) {
       Serial.printf("  [FAIL] %s: only %d valid samples (need >=10)\n",
-                     mqNames[i], validSamples[i]);
+                    mqNames[i], validSamples[i]);
       allValid = false;
       continue;
     }
@@ -192,17 +277,17 @@ bool calibrateSensors() {
     float newR0 = avgRs / CLEAN_AIR_RATIO[i];
 
     // Sanity check: R0 must be in a reasonable range
-    if (isnan(newR0) || isinf(newR0) ||
-        newR0 < R0_MIN_VALID || newR0 > R0_MAX_VALID) {
+    if (isnan(newR0) || isinf(newR0) || newR0 < R0_MIN_VALID ||
+        newR0 > R0_MAX_VALID) {
       Serial.printf("  [FAIL] %s: R0=%.4f out of range [%.1f, %.1f]\n",
-                     mqNames[i], newR0, R0_MIN_VALID, R0_MAX_VALID);
+                    mqNames[i], newR0, R0_MIN_VALID, R0_MAX_VALID);
       allValid = false;
       continue;
     }
 
     R0_VALUES[i] = newR0;
     Serial.printf("  [ OK ] %s: R0 = %.4f kOhm (%d samples, avgRs=%.2f)\n",
-                   mqNames[i], newR0, validSamples[i], avgRs);
+                  mqNames[i], newR0, validSamples[i], avgRs);
   }
 
   if (allValid) {
@@ -210,14 +295,11 @@ bool calibrateSensors() {
     Serial.println("========================================");
     Serial.println("  CALIBRATION COMPLETE — saved to NVS");
     Serial.println("========================================\n");
-    
+
     // --- Success Feedback ---
     // 2 Short beeps
-    Serial.println("[DEBUG] BUZZER: 2 Short Beeps (Success)");
-    for(int b=0; b<2; b++) {
-      digitalWrite(ALERT_LED_PIN, HIGH);
+    for (int b = 0; b < 2; b++) {
       delay(150);
-      digitalWrite(ALERT_LED_PIN, LOW);
       delay(150);
     }
   } else {
@@ -225,13 +307,10 @@ bool calibrateSensors() {
     Serial.println("  CALIBRATION PARTIAL FAILURE");
     Serial.println("  Some sensors may use default R0");
     Serial.println("========================================\n");
-    
+
     // --- Failure Feedback ---
     // 1 Long beep
-    Serial.println("[DEBUG] BUZZER: 1 Long Beep (Failure)");
-    digitalWrite(ALERT_LED_PIN, HIGH);
     delay(1000);
-    digitalWrite(ALERT_LED_PIN, LOW);
   }
 
   return allValid;
@@ -246,10 +325,12 @@ bool calibrateSensors() {
  * @return Estimated gas concentration in PPM, clamped to [0, 10000]
  */
 float calculatePPM(int rawADC, int sensorIndex) {
-  if (sensorIndex < 0 || sensorIndex >= NUM_MQ_SENSORS) return 0.0;
+  if (sensorIndex < 0 || sensorIndex >= NUM_MQ_SENSORS)
+    return 0.0;
 
   float rs = calculateRs(rawADC);
-  if (rs < 0) return 0.0;
+  if (rs < 0)
+    return 0.0;
 
   float ratio = rs / R0_VALUES[sensorIndex];
 
@@ -257,8 +338,10 @@ float calculatePPM(int rawADC, int sensorIndex) {
   float ppm = PARAM_A[sensorIndex] * pow(ratio, PARAM_B[sensorIndex]);
 
   // Clamp to sensor's practical range
-  if (ppm < 0) ppm = 0;
-  if (ppm > 10000) ppm = 10000;
+  if (ppm < 0)
+    ppm = 0;
+  if (ppm > 10000)
+    ppm = 10000;
 
   return ppm;
 }
@@ -331,7 +414,8 @@ bool provisionDevice() {
     }
   } else {
     Serial.println("[PROVISION] HTTP error: " + String(httpCode));
-    if (httpCode > 0) Serial.println("  Body: " + http.getString());
+    if (httpCode > 0)
+      Serial.println("  Body: " + http.getString());
   }
 
   http.end();
@@ -347,7 +431,8 @@ bool provisionDevice() {
  * Called after calibration and on boot.
  */
 void sendCalibrationToServer() {
-  if (deviceId == "") return;
+  if (deviceId == "")
+    return;
 
   HTTPClient http;
   String url = String(API_BASE_URL) + "/calibration/" + deviceId;
@@ -380,7 +465,8 @@ void sendCalibrationToServer() {
  * Called during heartbeat cycle.
  */
 void checkRemoteCalibrationCommand() {
-  if (deviceId == "") return;
+  if (deviceId == "")
+    return;
 
   HTTPClient http;
   String url = String(API_BASE_URL) + "/calibration/" + deviceId + "/commands";
@@ -431,7 +517,8 @@ void checkRemoteCalibrationCommand() {
 
 /** Send periodic heartbeat to backend. */
 void sendHeartbeat() {
-  if (deviceId == "") return;
+  if (deviceId == "")
+    return;
 
   HTTPClient http;
   String url = String(API_BASE_URL) + "/devices/" + deviceId + "/heartbeat";
@@ -456,6 +543,46 @@ void sendHeartbeat() {
   checkRemoteCalibrationCommand();
 }
 
+/** Download latest calibration from the server (Plug & Play) */
+bool downloadCalibrationFromServer() {
+  if (deviceId == "")
+    return false;
+
+  HTTPClient http;
+  String url = String(API_BASE_URL) + "/calibration/" + deviceId + "/latest";
+  http.begin(url);
+  int httpCode = http.GET();
+
+  bool success = false;
+  if (httpCode == 200) {
+    String response = http.getString();
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, response);
+
+    if (!err && doc.containsKey("r0_mq2") && !doc["r0_mq2"].isNull()) {
+      R0_VALUES[0] = doc["r0_mq2"].as<float>();
+      R0_VALUES[1] = doc["r0_mq4"].as<float>();
+      R0_VALUES[2] = doc["r0_mq6"].as<float>();
+      R0_VALUES[3] = doc["r0_mq9"].as<float>();
+
+      Serial.println("[SERVER] Downloaded calibration data:");
+      Serial.printf("  MQ2: %.4f | MQ4: %.4f | MQ6: %.4f | MQ9: %.4f\n",
+                    R0_VALUES[0], R0_VALUES[1], R0_VALUES[2], R0_VALUES[3]);
+
+      saveCalibrationToNVS();
+      success = true;
+    } else {
+      Serial.println("[SERVER] No valid calibration data on server.");
+    }
+  } else {
+    Serial.println("[SERVER] Failed to download calibration: " +
+                   String(httpCode));
+  }
+
+  http.end();
+  return success;
+}
+
 // =============================================================================
 // ARDUINO SETUP & LOOP
 // =============================================================================
@@ -468,12 +595,14 @@ void setup() {
   Serial.println("  3-Layer Adaptive Calibration System");
   Serial.println("=============================================\n");
 
-  // Pin setup
-  pinMode(ALERT_LED_PIN, OUTPUT);
-  // pinMode(BUZZER_PIN, OUTPUT); // Disabled for debug
+  pinMode(FLAME_PIN, INPUT);
 
-  // DHT22 simulates SHTC3 in Wokwi
-  dht.setup(SHTC3_SDA_PIN, DHTesp::DHT22);
+  // Inisialisasi SHTC3 via I2C
+  if (!shtc3.begin()) {
+    Serial.println("Warning: SHTC3 tidak terdeteksi! Cek kabel SDA/SCL.");
+  } else {
+    Serial.println("SHTC3 OK!");
+  }
 
   // ADC setup (ESP32 12-bit: 0-4095)
   analogReadResolution(12);
@@ -485,7 +614,8 @@ void setup() {
   } else {
     // First boot or NVS cleared — schedule auto-calibration
     Serial.println("[BOOT] No saved calibration. Device will use default R0.");
-    Serial.printf("[BOOT] Auto-calibration scheduled after %d ms warm-up.\n", WARMUP_TIME_MS);
+    Serial.printf("[BOOT] Auto-calibration scheduled after %d ms warm-up.\n",
+                  WARMUP_TIME_MS);
     Serial.println("[BOOT] (Ensure sensors are in CLEAN AIR and warmed up!)");
     pendingAutoCalibration = true;
   }
@@ -495,15 +625,25 @@ void setup() {
   connectWiFi();
 
   // ─── Provision with backend ───
-  Serial.println("\n[BOOT] Step 3: Provisioning device...");
+  Serial.println("
+[BOOT] Step 3: Provisioning device...");
   while (!provisionDevice()) {
     Serial.println("  Retrying in 5 seconds...");
     delay(5000);
   }
 
-  // ─── LAYER 2: Upload calibration to server ───
-  Serial.println("\n[BOOT] Step 4: Uploading calibration to server...");
-  sendCalibrationToServer();
+  // ─── NEW: LAYER 2.5: Download Calibration ───
+  Serial.println("
+[BOOT] Step 4: Checking server for existing calibration...");
+  if (downloadCalibrationFromServer()) {
+    Serial.println(
+        "[BOOT] Plug & Play successful! Warm-up calibration bypassed.");
+    pendingAutoCalibration = false; // We have valid data!
+  } else {
+    Serial.println("
+[BOOT] Step 5: Uploading (initial/default) calibration to server...");
+    sendCalibrationToServer();
+  }
 
   Serial.println("\n=============================================");
   Serial.println("  INITIALIZATION COMPLETE");
@@ -520,34 +660,12 @@ void loop() {
 
   // ─── WARM-UP & SCHEDULED AUTO-CALIBRATION ───
   if (pendingAutoCalibration && currentMillis >= WARMUP_TIME_MS) {
-    Serial.println("\n[WARM-UP COMPLETE] Running scheduled auto-calibration...");
+    Serial.println(
+        "\n[WARM-UP COMPLETE] Running scheduled auto-calibration...");
     if (calibrateSensors()) {
       sendCalibrationToServer();
     }
     pendingAutoCalibration = false;
-  }
-
-  // ─── 24H BURN-IN AUTO-CALIBRATION ───
-  if (!burnInCalibrated && currentMillis >= BURNIN_TIME_MS) {
-    // Only calibrate if the flame sensor is NOT detecting a fire
-    if (analogRead(FLAME_PIN) > ALARM_THRESHOLDS[5]) { 
-      Serial.println("\n[BURN-IN COMPLETE] 24 Hours continuous uptime reached.");
-      Serial.println("Running final high-accuracy auto-calibration...");
-      
-      if (calibrateSensors()) {
-        sendCalibrationToServer();
-        
-        // Save flag to NVS so we don't repeat the 24h burn-in calibration on future reboots
-        prefs.begin("agni_cal", false);
-        prefs.putBool("burnin_done", true);
-        prefs.end();
-        burnInCalibrated = true;
-      }
-    } else {
-      Serial.println("\n[BURN-IN] 24h reached, but FIRE detected! Postponing calibration...");
-      // Add a 1-hour delay by shifting BURNIN_TIME_MS conceptually (or just let it retry next loop)
-      // Since currentMillis will keep growing, it will retry as soon as the fire is gone.
-    }
   }
 
   // ─── TELEMETRY CYCLE ───
@@ -562,22 +680,25 @@ void loop() {
       values[i] = calculatePPM(rawADC, i);
     }
 
-    // Read temperature from SHTC3 (simulated as DHT22)
-    TempAndHumidity tah = dht.getTempAndHumidity();
-    values[4] = tah.temperature; // SHTC3_TEMP
+    // Baca data lingkungan dari sensor digital SHTC3
+    sensors_event_t humidity, temp;
+    shtc3.getEvent(&humidity, &temp);
+    values[4] = temp.temperature;
+    values[5] = humidity.relative_humidity;
 
-    // Read flame sensor (analog — lower value = fire detected)
-    values[5] = analogRead(FLAME_PIN); // FLAME (raw ADC)
+    // Baca status api dari sensor Flame (Logika Biner)
+    values[6] = digitalRead(FLAME_PIN);
 
     // ─── Serial Debug Output ───
     Serial.println("=== SENSOR READINGS ===");
     Serial.printf("  MQ-2  (LPG)  : %.2f ppm\n", values[0]);
     Serial.printf("  MQ-4  (CH4)  : %.2f ppm\n", values[1]);
     Serial.printf("  MQ-6  (LPG)  : %.2f ppm\n", values[2]);
-    Serial.printf("  MQ-9B (CO)   : %.2f ppm\n", values[3]);
+    Serial.printf("  MQ-9  (CO)   : %.2f ppm\n", values[3]);
     Serial.printf("  Temp  (SHTC3): %.1f C\n", values[4]);
-    Serial.printf("  Flame (IR)   : %.0f %s\n", values[5],
-                   values[5] < ALARM_THRESHOLDS[5] ? "[FIRE!]" : "[Safe]");
+    Serial.printf("  Hum   (SHTC3): %.1f %%\n", values[5]);
+    Serial.printf("  Flame (IR)   : %.0f %s\n", values[6],
+                  values[6] == LOW ? "[FIRE!]" : "[Safe]");
     Serial.println("=======================");
 
     // ─── Local Alarm Logic ───
@@ -585,17 +706,15 @@ void loop() {
     for (int i = 0; i < NUM_SENSORS; i++) {
       if (strcmp(SENSOR_TYPES[i], "FLAME") == 0) {
         // Flame sensor: fire when value is LOW (pull-up logic)
-        if (values[i] < ALARM_THRESHOLDS[i]) alarmTriggered = true;
+        if (values[i] < ALARM_THRESHOLDS[i])
+          alarmTriggered = true;
       } else if (values[i] > ALARM_THRESHOLDS[i]) {
         alarmTriggered = true;
       }
     }
-
-    digitalWrite(ALERT_LED_PIN, alarmTriggered ? HIGH : LOW);
     if (alarmTriggered) {
       Serial.println("[DEBUG] BUZZER: ALARM SOUNDING!");
     }
-    // digitalWrite(BUZZER_PIN, alarmTriggered ? HIGH : LOW);
 
     // ─── Send Telemetry to Backend ───
     HTTPClient http;
@@ -608,7 +727,8 @@ void loop() {
 
     JsonArray readings = doc["readings"].to<JsonArray>();
     for (int i = 0; i < NUM_SENSORS; i++) {
-      if (sensorUuids[i] == "") continue;
+      if (sensorUuids[i] == "")
+        continue;
 
       JsonObject reading = readings.add<JsonObject>();
       reading["sensor_id"] = sensorUuids[i];

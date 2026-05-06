@@ -6,7 +6,8 @@ import { useDashboardStore } from '@/stores/useDashboardStore';
 export default function NodeCard({ device, roomName, latestReadings }) {
   const navigate = useNavigate();
   const sensorHealth = useDashboardStore((state) => state.sensorHealth);
-  const isOnline = device.status === 'online';
+  const isOnline = device.status === 'online' || device.status === 'calibrating';
+  const isCalibrating = device.status === 'calibrating';
   
   // Format specific sensor readings
   const temp = latestReadings?.SHTC3_TEMP?.toFixed(1) || '--';
@@ -25,7 +26,9 @@ export default function NodeCard({ device, roomName, latestReadings }) {
   
   // Determine card status border
   let statusColor = 'var(--ifrit-border)';
-  if (!isOnline) {
+  if (isCalibrating) {
+    statusColor = 'var(--ifrit-info)';
+  } else if (!isOnline) {
     statusColor = 'var(--ifrit-text-muted)';
   } else if (isFire) {
     statusColor = 'var(--ifrit-fire)';
@@ -44,7 +47,7 @@ export default function NodeCard({ device, roomName, latestReadings }) {
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <StatusIndicator status={isOnline ? (isFire ? 'critical' : 'online') : 'offline'} size="sm" />
+          <StatusIndicator status={isCalibrating ? 'calibrating' : isOnline ? (isFire ? 'critical' : 'online') : 'offline'} size="sm" />
           <div>
             <h3 className="text-sm font-semibold text-[var(--ifrit-text-primary)]">
               {roomName || 'Unassigned Node'}

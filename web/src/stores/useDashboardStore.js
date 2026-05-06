@@ -161,7 +161,7 @@ export const useDashboardStore = create((set, get) => ({
             );
             
             // Recalculate online count
-            const onlineCount = updatedDevices.filter((d) => d.status === 'online').length;
+            const onlineCount = updatedDevices.filter((d) => d.status === 'online' || d.status === 'calibrating').length;
             
             return {
               devices: updatedDevices,

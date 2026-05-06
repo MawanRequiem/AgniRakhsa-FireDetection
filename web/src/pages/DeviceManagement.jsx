@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import StatusIndicator from '@/components/ui/StatusIndicator';
 import AddCameraDialog from '@/components/devices/AddCameraDialog';
 import DeviceCalibrationDialog from '@/components/devices/DeviceCalibrationDialog';
-import { Camera, Cpu, Plus, Trash2, Wifi, WifiOff, RefreshCw, Copy, Check, Settings2 } from 'lucide-react';
+import { Camera, Cpu, Plus, Trash2, Wifi, WifiOff, RefreshCw, Copy, Check, Settings2, Loader2 } from 'lucide-react';
 import { customFetch } from '@/lib/api';
 import {
   AlertDialog,
@@ -297,8 +297,14 @@ export default function DeviceManagement() {
                     <TableRow key={dev.id} className="hover:bg-[var(--ifrit-bg-secondary)] transition-colors" style={{ borderColor: 'var(--ifrit-border)' }}>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {dev.status === 'online' ? <Wifi className="w-4 h-4 text-emerald-400" /> : <WifiOff className="w-4 h-4" style={{ color: 'var(--ifrit-text-muted)' }} />}
-                          <StatusIndicator status={dev.status === 'online' ? 'safe' : 'offline'} size="sm" />
+                          {dev.status === 'calibrating' ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+                          ) : dev.status === 'online' ? (
+                            <Wifi className="w-4 h-4 text-emerald-400" />
+                          ) : (
+                            <WifiOff className="w-4 h-4" style={{ color: 'var(--ifrit-text-muted)' }} />
+                          )}
+                          <StatusIndicator status={dev.status === 'calibrating' ? 'calibrating' : dev.status === 'online' ? 'safe' : 'offline'} size="sm" />
                         </div>
                       </TableCell>
                       <TableCell><span className="font-medium text-sm" style={{ color: 'var(--ifrit-text-primary)' }}>{dev.name}</span></TableCell>
