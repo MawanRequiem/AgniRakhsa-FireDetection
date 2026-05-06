@@ -188,4 +188,10 @@ async def acknowledge_command(device_id: UUID, command_id: UUID, ack: Calibratio
     if not res.data:
         raise HTTPException(404, "Command not found")
 
+    # Update device status to reflect calibration process
+    if ack.status == "in_progress":
+        supabase.table("devices").update({"status": "calibrating"}).eq("id", str(device_id)).execute()
+    elif ack.status == "completed":
+        supabase.table("devices").update({"status": "online"}).eq("id", str(device_id)).execute()
+
     return {"message": "Command acknowledged", "status": ack.status}

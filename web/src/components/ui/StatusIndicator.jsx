@@ -5,6 +5,7 @@ const variants = {
   warning: { color: 'var(--ifrit-warning)', label: 'Warning' },
   fire: { color: 'var(--ifrit-fire)', label: 'Critical' },
   info: { color: 'var(--ifrit-info)', label: 'Info' },
+  calibrating: { color: 'var(--ifrit-info)', label: 'Calibrating' },
   online: { color: 'var(--ifrit-safe)', label: 'Online' },
   offline: { color: 'var(--ifrit-text-muted)', label: 'Offline' },
 };
@@ -24,6 +25,7 @@ export default function StatusIndicator({ status, showLabel = false, size = 'md'
           'rounded-full flex-shrink-0',
           sizeClasses[size],
           status === 'fire' && 'led-fire',
+          status === 'calibrating' && 'led-calibrating',
           status === 'safe' && 'led-safe',
           status === 'warning' && 'led-warning',
         )}

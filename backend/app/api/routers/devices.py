@@ -110,17 +110,39 @@ async def device_heartbeat(device_id: UUID, heartbeat: DeviceHeartbeat):
     Record that a device is online.
     Does NOT require CSRF to allow lightweight calls from microcontrollers.
     """
+    dev_res = supabase.table("devices").select("status, created_at").eq("id", str(device_id)).execute()
+    if not dev_res.data:
+        raise HTTPException(404, "Device not found")
+        
+    dev = dev_res.data[0]
     update_data = {
-        "status": "online",
         "last_seen": datetime.now(timezone.utc).isoformat()
     }
+    if dev["status"] != "calibrating":
+        update_data["status"] = "online"
+        
     if heartbeat.firmware_version:
         update_data["firmware_version"] = heartbeat.firmware_version
         
-    res = supabase.table("devices").update(update_data).eq("id", str(device_id)).execute()
-    if not res.data:
-        raise HTTPException(404, "Device not found")
+    supabase.table("devices").update(update_data).eq("id", str(device_id)).execute()
+    
+    # ─── 24H BURN-IN TRIGGER ───
+    created_at = datetime.fromisoformat(dev["created_at"].replace("Z", "+00:00"))
+    if (datetime.now(timezone.utc) - created_at).total_seconds() >= 86400:
+        # Check if we already have a calibration after 24h
+        cal_res = supabase.table("device_calibrations").select("calibrated_at").eq("device_id", str(device_id)).execute()
+        has_burnin = any((datetime.fromisoformat(c["calibrated_at"].replace("Z", "+00:00")) - created_at).total_seconds() >= 86400 for c in (cal_res.data or []))
         
+        if not has_burnin:
+            # Check if command is already pending
+            cmd_res = supabase.table("device_commands").select("id").eq("device_id", str(device_id)).eq("command", "RECALIBRATE").in_("status", ["pending", "in_progress"]).execute()
+            if not cmd_res.data:
+                supabase.table("device_commands").insert({
+                    "device_id": str(device_id),
+                    "command": "RECALIBRATE",
+                    "status": "pending"
+                }).execute()
+
     return {"status": "ok"}
 
 
