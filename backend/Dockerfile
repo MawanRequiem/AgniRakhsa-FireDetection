@@ -40,7 +40,9 @@ RUN pip install --no-cache-dir \
     "websockets>=12.0" \
     "scikit-learn>=1.4.0" \
     "joblib>=1.3.0" \
-    "pandas>=2.1.0"
+    "pandas>=2.1.0" \
+    "tensorflow-cpu>=2.15.0" \
+    "Sastrawi>=1.0.1"
 
 COPY . .
 
