@@ -93,9 +93,11 @@ export const useDashboardStore = create((set, get) => ({
     const { socket } = get();
     if (socket?.readyState === WebSocket.OPEN) return;
 
-    // Use absolute URL based on window location but change protocol to ws/wss
+    // Use same-origin host behind reverse proxy; only add port in localhost dev
     const protocol = globalThis.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = globalThis.location.hostname === 'localhost' ? 'localhost:8000' : `${globalThis.location.hostname}:8000`;
+    const host = globalThis.location.hostname === 'localhost'
+      ? 'localhost:8000'
+      : globalThis.location.host; // host includes port if non-standard, otherwise just hostname
     const wsUrl = `${protocol}//${host}/api/v1/dashboard/ws`;
 
     const newSocket = new WebSocket(wsUrl);
