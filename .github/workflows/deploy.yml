@@ -7,39 +7,19 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    # Ini akan mencari agen di server Dalang Anda
+    runs-on: self-hosted
 
     steps:
-      - name: Execute Deployment over SSH
-        uses: appleboy/ssh-action@v1.0.3
-        env:
-          WEB_ENV: ${{ secrets.WEB_ENV }}
-          BACKEND_ENV: ${{ secrets.BACKEND_ENV }}
-          GATEWAY_ENV: ${{ secrets.GATEWAY_ENV }}
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USERNAME }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
-          envs: WEB_ENV,BACKEND_ENV,GATEWAY_ENV
-          command_timeout: 60m
-          script: |
-            # Navigate to the target directory, create if doesn't exist
-            mkdir -p ~/AgniRakhsa-FireDetection
-            cd ~/AgniRakhsa-FireDetection
-            
-            # Clone if it's the first time, otherwise pull
-            if [ ! -d ".git" ]; then
-              git clone https://github.com/MawanRequiem/AgniRakhsa-FireDetection.git .
-            else
-              git fetch --all
-              git reset --hard origin/main
-            fi
-            
-            # Write Environment files from GitHub Secrets
-            echo "$WEB_ENV" > web/.env
-            echo "$BACKEND_ENV" > backend/.env
-            echo "$GATEWAY_ENV" > whatsapp-gateway/.env
-            
-            # Rebuild and start the Docker containers
-            docker compose up -d --build
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Create Environment Files
+        run: |
+          echo "${{ secrets.WEB_ENV }}" > web/.env
+          echo "${{ secrets.BACKEND_ENV }}" > backend/.env
+          echo "${{ secrets.GATEWAY_ENV }}" > whatsapp-gateway/.env
+
+      - name: Deploy with Docker Compose
+        run: |
+          docker compose up -d --build
