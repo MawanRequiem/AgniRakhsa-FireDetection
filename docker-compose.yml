@@ -15,7 +15,9 @@ services:
       - app-network
 
   web:
-    build: ./web
+    build:
+      context: ./web
+      network: host
     restart: unless-stopped
     expose:
       - "80"
@@ -27,7 +29,9 @@ services:
       - app-network
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      network: host
     restart: unless-stopped
     expose:
       - "8000"
@@ -37,7 +41,9 @@ services:
       - app-network
 
   whatsapp-gateway:
-    build: ./whatsapp-gateway
+    build:
+      context: ./whatsapp-gateway
+      network: host
     restart: unless-stopped
     expose:
       - "3001"
