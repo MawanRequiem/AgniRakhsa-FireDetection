@@ -42,11 +42,12 @@ def login(
     access_token = security.create_access_token(subject=user.id, csrf_token=csrf_token)
     
     # Set the JWT as an HttpOnly, Secure cookie
+    is_secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
     response.set_cookie(
         key="access_token",
         value=f"Bearer {access_token}",
         httponly=True,
-        secure=True, # Should be False for localhost HTTP development, but True is best practice
+        secure=is_secure,
         samesite="lax",
         max_age=8 * 24 * 60 * 60 # Berlaku 8 hari
     )

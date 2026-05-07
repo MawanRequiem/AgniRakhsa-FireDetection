@@ -50,13 +50,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS — izinkan frontend dev server dan production IP
+# CORS — izinkan frontend dev server dan production domain
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:3000",
-        "http://20.198.89.199", # Azure VM IP
+        "https://ifrit.space",
+        "https://www.ifrit.space",
     ],
     allow_credentials=True,
     allow_methods=["*"],

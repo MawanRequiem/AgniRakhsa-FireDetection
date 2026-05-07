@@ -1,4 +1,4 @@
-name: Deploy to Azure VM
+name: Deploy to Production
 
 on:
   push:
@@ -17,9 +17,10 @@ jobs:
           BACKEND_ENV: ${{ secrets.BACKEND_ENV }}
           GATEWAY_ENV: ${{ secrets.GATEWAY_ENV }}
         with:
-          host: ${{ secrets.AZURE_VM_HOST }}
-          username: ${{ secrets.AZURE_VM_USERNAME }}
-          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USERNAME }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
           envs: WEB_ENV,BACKEND_ENV,GATEWAY_ENV
           command_timeout: 60m
           script: |
@@ -29,8 +30,6 @@ jobs:
             
             # Clone if it's the first time, otherwise pull
             if [ ! -d ".git" ]; then
-              # Note: If your repo is private, you will need to configure a Deploy Key or PAT on the VM first.
-              # Assuming public for now or SSH agent forwarding.
               git clone https://github.com/MawanRequiem/AgniRakhsa-FireDetection.git .
             else
               git fetch --all

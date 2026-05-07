@@ -2,17 +2,17 @@ import { useAuthStore } from '@/stores/useAuthStore';
 
 const getBaseUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL;
-  const { hostname, protocol } = globalThis.location;
 
-  // Jika kita sedang di server (bukan localhost) tapi ENV masih tertulis localhost,
-  // maka kita paksa gunakan IP server saat ini agar tidak error.
-  if (hostname !== 'localhost' && envUrl && envUrl.includes('localhost')) {
-    return `${protocol}//${hostname}:8000`;
-  }
-
+  // In local dev, use the explicit env override
   if (envUrl) return envUrl;
+
+  // In production behind Caddy reverse proxy, the API is on the same origin
+  // (Caddy routes /api/* to the backend container), so base URL is empty.
+  const { hostname } = globalThis.location;
   if (hostname === 'localhost') return 'http://localhost:8000';
-  return `${protocol}//${hostname}:8000`;
+
+  // Same-origin — Caddy proxies /api/* to backend
+  return '';
 };
 
 const BASE_URL = getBaseUrl();
