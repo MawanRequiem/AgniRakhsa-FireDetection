@@ -55,6 +55,8 @@ services:
       - "3001"
     env_file:
       - ./whatsapp-gateway/.env
+    volumes:
+      - whatsapp_auth:/app/auth_info_baileys
     depends_on:
       - backend
     networks:
@@ -76,6 +78,7 @@ volumes:
   caddy_data:
   caddy_config:
   redis_data:
+  whatsapp_auth:
 
 networks:
   app-network:
