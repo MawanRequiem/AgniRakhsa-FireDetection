@@ -16,19 +16,30 @@ async def get_whatsapp_status(
     current_user: CurrentUser
 ):
     """
-    Check if the WhatsApp Gateway is online.
+    Check if the WhatsApp Gateway is online and retrieve connection status & QR image.
     """
-    url = f"{settings.GATEWAY_URL.rstrip('/')}/"
+    url = f"{settings.GATEWAY_URL.rstrip('/')}/api/messages/status"
+    headers = {
+        "x-api-key": settings.GATEWAY_API_KEY
+    }
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
-            response = await client.get(url)
+            response = await client.get(url, headers=headers)
             if response.status_code == 200:
                 data = response.json()
-                return {"connected": data.get("status") == "ok"}
+                return {
+                    "connected": data.get("connected", False),
+                    "status": data.get("status", "disconnected"),
+                    "qr": data.get("qr")
+                }
     except Exception as e:
         print(f"[Gateway Status Error] Failed to contact gateway: {e}")
     
-    return {"connected": False}
+    return {
+        "connected": False,
+        "status": "disconnected",
+        "qr": None
+    }
 
 @router.post("/whatsapp")
 async def send_whatsapp(
