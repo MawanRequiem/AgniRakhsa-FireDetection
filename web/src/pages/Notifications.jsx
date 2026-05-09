@@ -43,11 +43,11 @@ export default function Notifications() {
   // Check WhatsApp Gateway status
   const checkGatewayStatus = async () => {
     try {
-      // We check via the backend to avoid CORS issues if the gateway is strictly local
-      const res = await fetch('http://127.0.0.1:3001/'); 
+      // We check via the backend to avoid CORS issues and local browser errors
+      const res = await customFetch('/api/v1/notifications/whatsapp/status'); 
       if (res.ok) {
         const data = await res.json();
-        setWhatsappConnected(data.status === 'ok');
+        setWhatsappConnected(data.connected === true);
       } else {
         setWhatsappConnected(false);
       }

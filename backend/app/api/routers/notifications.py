@@ -1,13 +1,34 @@
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
+import httpx
 from app.api.deps import CurrentUser
 from app.services.whatsapp import send_whatsapp_message
+from app.core.config import settings
 
 router = APIRouter()
 
 class WhatsAppMessageRequest(BaseModel):
     phone: str = Field(..., description="Phone number with country code")
     message: str = Field(..., min_length=1, max_length=4096)
+
+@router.get("/whatsapp/status")
+async def get_whatsapp_status(
+    current_user: CurrentUser
+):
+    """
+    Check if the WhatsApp Gateway is online.
+    """
+    url = f"{settings.GATEWAY_URL.rstrip('/')}/"
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            response = await client.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                return {"connected": data.get("status") == "ok"}
+    except Exception as e:
+        print(f"[Gateway Status Error] Failed to contact gateway: {e}")
+    
+    return {"connected": False}
 
 @router.post("/whatsapp")
 async def send_whatsapp(
