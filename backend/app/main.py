@@ -7,9 +7,18 @@ from app.core.config import settings
 from app.ai import registry
 from app.services.device_watchdog import run_watchdog
 
+from app.core.redis import redis_manager
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle events for FastAPI application."""
+    # Connect to Redis Cache Server
+    try:
+        redis_manager.connect()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Redis initialization failed: {e}")
+
     # Load AI model into memory on startup
     try:
         registry.load_detector(

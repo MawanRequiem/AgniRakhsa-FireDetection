@@ -154,6 +154,43 @@ export const useDashboardStore = create((set, get) => ({
           });
         }
 
+        if (message.type === 'SENSOR_BATCH_UPDATE') {
+          const { devices } = message.data || {};
+          if (!devices || Object.keys(devices).length === 0) return;
+
+          set((state) => {
+            const updatedLatest = { ...state.latestReadings };
+            const newPoints = [];
+
+            for (const [device_id, devData] of Object.entries(devices)) {
+              const { readings, timestamp } = devData;
+              if (!readings || readings.length === 0) continue;
+
+              const deviceReadings = {};
+              const historyPoint = { time: timestamp, device_id };
+
+              for (const r of readings) {
+                deviceReadings[r.sensor_type] = r.value;
+                historyPoint[r.sensor_type] = r.value;
+              }
+
+              // Update latestReadings for this device
+              updatedLatest[device_id] = {
+                ...(updatedLatest[device_id] || {}),
+                ...deviceReadings,
+                _lastUpdate: timestamp
+              };
+
+              newPoints.push(historyPoint);
+            }
+
+            return {
+              sensorHistory: [...state.sensorHistory, ...newPoints].slice(-180),
+              latestReadings: updatedLatest,
+            };
+          });
+        }
+
         if (message.type === 'DEVICE_STATUS_CHANGE') {
           const { device_id, status } = message.data;
           set((state) => {

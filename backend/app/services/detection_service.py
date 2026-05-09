@@ -32,10 +32,11 @@ async def run_detection(
     Returns:
         Dict containing the detection event record with DB id.
     """
+    import anyio
     detector = registry.get_detector()
     
-    # Run inference
-    result: DetectionResult = detector.detect(image)
+    # Run inference in a background thread to prevent blocking the asyncio event loop
+    result: DetectionResult = await anyio.to_thread.run_sync(detector.detect, image)
     
     logger.info(
         f"Detection complete: {len(result.detections)} objects found, "
