@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     
     # WhatsApp Gateway Configuration
     # WhatsApp Gateway Configuration
-    GATEWAY_URL: str = "http://localhost:3001"
+    GATEWAY_URL: str = "http://whatsapp-gateway:3001"
     GATEWAY_API_KEY: str = "agniraksha-secure-key-2026"
     
     # AI Model Configuration
