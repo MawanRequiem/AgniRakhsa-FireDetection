@@ -37,6 +37,12 @@ services:
       - "8000"
     env_file:
       - ./backend/.env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - USE_REDIS=true
+    depends_on:
+      - redis
     networks:
       - app-network
 
@@ -54,10 +60,24 @@ services:
     networks:
       - app-network
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Turn off database snapshots to maximize write speed for pure cache operation
+    command: redis-server --save "" --appendonly no
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
 volumes:
   caddy_data:
   caddy_config:
+  redis_data:
 
 networks:
   app-network:
     driver: bridge
+

@@ -18,76 +18,114 @@ logger = logging.getLogger(__name__)
 async def ingest_readings(device_id: UUID, readings: list[dict]) -> int:
     """
     Ingest a batch of sensor readings from an IoT device.
-    
-    Args:
-        device_id: Source device ID (used to update last_seen).
-        readings: List of dicts with sensor_id, value, reading_at.
-        
-    Returns:
-        Number of readings successfully stored.
+    Optimized for high concurrency using Postgres RPC and Redis metadata caching.
     """
-    # Prepare rows for batch insert
-    rows = []
+    if not readings:
+        return 0
+
+    # 1. Prepare readings for RPC JSONB
+    formatted_readings = []
     for r in readings:
         row = {
             "sensor_id": str(r["sensor_id"]),
-            "value": r["value"],
+            "value": float(r["value"]),
         }
         if r.get("reading_at"):
             row["reading_at"] = r["reading_at"]
-        rows.append(row)
-    
-    if not rows:
-        return 0
-    
-    # Batch insert readings
-    result = supabase.table("sensor_readings").insert(rows).execute()
-    inserted_count = len(result.data) if result.data else 0
-    
+        formatted_readings.append(row)
+
+    # 2. Call the atomic Postgres RPC (replaces 12 sequential DB hits with 1)
+    supabase.rpc("ingest_sensor_batch_rpc", {
+        "p_device_id": str(device_id),
+        "p_readings": formatted_readings
+    }).execute()
+
     now_utc = datetime.now(timezone.utc).isoformat()
+
+    # 3. Handle device state & room ID caching
+    from app.core.redis import redis_manager
+    r_client = redis_manager.get_client()
     
-    # Check if device was previously offline (for status change broadcast)
-    device_res = supabase.table("devices").select("status, name").eq("id", str(device_id)).execute()
+    room_id = None
+    device_name = "Device"
     was_offline = False
-    device_name = ""
-    if device_res.data:
-        was_offline = device_res.data[0].get("status") != "online"
-        device_name = device_res.data[0].get("name", "")
     
-    # Update device last_seen and status
-    supabase.table("devices").update(
-        {"last_seen": now_utc, "status": "online"}
-    ).eq("id", str(device_id)).execute()
-    
-    # Update each sensor's current_value and last_update
-    for r in readings:
-        supabase.table("sensors").update({
-            "current_value": r["value"],
-            "last_update": now_utc,
-        }).eq("id", str(r["sensor_id"])).execute()
-    
-    logger.info(f"Ingested {inserted_count} readings from device {device_id}")
-    
-    # Build sensor_type_map for broadcasting readable sensor types
+    if r_client:
+        # Try getting metadata from Redis cache
+        room_id = r_client.get(f"device:{device_id}:room_id")
+        device_name = r_client.get(f"device:{device_id}:name")
+        cached_status = r_client.get(f"device:{device_id}:status")
+        was_offline = cached_status != "online"
+        
+        # Cache miss: fetch from database and store in Redis
+        if not room_id or not device_name:
+            device_res = supabase.table("devices").select("room_id, name, status").eq("id", str(device_id)).execute()
+            if device_res.data:
+                dev_data = device_res.data[0]
+                room_id = dev_data.get("room_id")
+                device_name = dev_data.get("name", "Device")
+                was_offline = dev_data.get("status") != "online"
+                
+                if room_id:
+                    r_client.set(f"device:{device_id}:room_id", str(room_id))
+                r_client.set(f"device:{device_id}:name", device_name)
+        
+        # Update current status
+        r_client.set(f"device:{device_id}:status", "online")
+        
+        # Invalidate the room sensor snapshot cache
+        if room_id:
+            r_client.delete(f"room:{room_id}:sensor_snapshot")
+    else:
+        # Fallback: directly read Postgres if Redis is down
+        device_res = supabase.table("devices").select("room_id, name, status").eq("id", str(device_id)).execute()
+        if device_res.data:
+            dev_data = device_res.data[0]
+            room_id = dev_data.get("room_id")
+            device_name = dev_data.get("name", "Device")
+            was_offline = dev_data.get("status") != "online"
+
+    # 4. Fetch sensor types to build sensor_type_map (cached in Redis)
     sensor_ids = [str(r["sensor_id"]) for r in readings]
-    sensor_meta = supabase.table("sensors").select("id, sensor_type").in_("id", sensor_ids).execute()
-    sensor_type_map = {s["id"]: s["sensor_type"] for s in (sensor_meta.data or [])}
+    sensor_type_map = {}
+    missing_sensor_ids = []
     
-    # Broadcast SENSOR_UPDATE to connected dashboard clients
+    if r_client:
+        for s_id in sensor_ids:
+            s_type = r_client.get(f"sensor:{s_id}:type")
+            if s_type:
+                sensor_type_map[s_id] = s_type
+            else:
+                missing_sensor_ids.append(s_id)
+    else:
+        missing_sensor_ids = sensor_ids
+
+    if missing_sensor_ids:
+        sensor_meta = supabase.table("sensors").select("id, sensor_type").in_("id", missing_sensor_ids).execute()
+        for s in (sensor_meta.data or []):
+            sensor_type_map[s["id"]] = s["sensor_type"]
+            if r_client:
+                r_client.set(f"sensor:{s['id']}:type", s["sensor_type"])
+
+    # 5. Push telemetry update to throttled WebSocket manager
     from app.api.ws_manager import manager
-    await manager.broadcast({
-        "type": "SENSOR_UPDATE",
-        "data": {
-            "device_id": str(device_id),
-            "readings": [
-                {"sensor_type": sensor_type_map.get(str(r["sensor_id"]), "UNKNOWN"), "value": r["value"]}
-                for r in readings
-            ],
-            "timestamp": now_utc,
-        }
-    })
-    
-    # Broadcast DEVICE_STATUS_CHANGE if device just came back online
+    ws_readings = [
+        {"sensor_type": sensor_type_map.get(str(r["sensor_id"]), "UNKNOWN"), "value": r["value"]}
+        for r in readings
+    ]
+    if hasattr(manager, "push_telemetry_update"):
+        await manager.push_telemetry_update(str(device_id), ws_readings, now_utc)
+    else:
+        await manager.broadcast({
+            "type": "SENSOR_UPDATE",
+            "data": {
+                "device_id": str(device_id),
+                "readings": ws_readings,
+                "timestamp": now_utc
+            }
+        })
+
+    # 6. Broadcast DEVICE_STATUS_CHANGE if device just came back online
     if was_offline:
         logger.info(f"Device '{device_name}' ({device_id}) came back ONLINE")
         await manager.broadcast({
@@ -98,35 +136,22 @@ async def ingest_readings(device_id: UUID, readings: list[dict]) -> int:
                 "name": device_name,
             }
         })
-    
-    # Feed sensor anomaly detector buffer (for Isolation Forest ML model)
+
+    # 7. Feed sensor anomaly detector buffer (for Isolation Forest ML model)
     try:
         from app.ai import registry
         sensor_detector = registry.get_sensor_detector()
-        
-        # Look up room_id for this device
-        device_room = supabase.table("devices").select("room_id").eq("id", str(device_id)).execute()
-        room_id = device_room.data[0].get("room_id") if device_room.data else None
-        
         if room_id:
-            # Build snapshot: sensor_type → value
             snapshot = {
                 sensor_type_map.get(str(r["sensor_id"]), ""): r["value"]
                 for r in readings
             }
-            # Remove empty-key entries (sensors without metadata)
             snapshot = {k: v for k, v in snapshot.items() if k}
-            sensor_detector.ingest(room_id, snapshot)
-            logger.debug(
-                f"Fed sensor buffer for room {room_id}: {len(snapshot)} sensors, "
-                f"buffer={sensor_detector.get_buffer_status().get(room_id, 0)}/9"
-            )
-    except RuntimeError:
-        pass  # Sensor model not loaded — skip buffer feeding
+            sensor_detector.ingest(str(room_id), snapshot)
     except Exception as e:
         logger.warning(f"Failed to feed sensor anomaly buffer: {e}")
-    
-    return inserted_count
+
+    return len(readings)
 
 
 async def get_readings(
@@ -202,14 +227,29 @@ async def get_all_sensors(room_id: Optional[UUID] = None) -> list[dict]:
     return result.data or []
 
 
+import json
+
 async def get_room_sensor_snapshot(room_id: UUID) -> dict:
     """
     Get a snapshot of all current sensor values for a room.
     Used by the fusion engine to build sensor_snapshot JSONB.
+    Optimized to read from Redis cache first.
     
     Returns:
         Dict mapping sensor_type -> {value, unit, sensor_id}
     """
+    from app.core.redis import redis_manager
+    r_client = redis_manager.get_client()
+    
+    if r_client:
+        cached_snapshot = r_client.get(f"room:{room_id}:sensor_snapshot")
+        if cached_snapshot:
+            try:
+                return json.loads(cached_snapshot)
+            except Exception as e:
+                logger.error(f"Failed to parse cached sensor snapshot: {e}")
+                
+    # Fallback to database
     sensors = await get_all_sensors(room_id=room_id)
     
     snapshot = {}
@@ -221,7 +261,15 @@ async def get_room_sensor_snapshot(room_id: UUID) -> dict:
             "last_update": s.get("last_update"),
         }
     
+    if r_client and snapshot:
+        try:
+            # Cache snapshot for 10 minutes (600s)
+            r_client.set(f"room:{room_id}:sensor_snapshot", json.dumps(snapshot), ex=600)
+        except Exception as e:
+            logger.error(f"Failed to cache sensor snapshot in Redis: {e}")
+            
     return snapshot
+
 
 
 async def get_chart_history(
