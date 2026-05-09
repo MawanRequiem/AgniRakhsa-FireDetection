@@ -38,7 +38,7 @@ export default function NodeCard({ device, roomName, latestReadings }) {
   
   return (
     <div 
-      onClick={() => device.room_id && navigate(`/rooms/${device.room_id}`)}
+      onClick={() => device.room_id && navigate(`/dashboard/rooms/${device.room_id}`)}
       className="flex flex-col border rounded-lg p-4 cursor-pointer transition-all hover:bg-[var(--ifrit-bg-secondary)]"
       style={{ 
         backgroundColor: 'var(--ifrit-bg-primary)', 
