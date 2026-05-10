@@ -299,12 +299,16 @@ export default function DeviceManagement() {
                         <div className="flex items-center gap-2">
                           {dev.status === 'calibrating' ? (
                             <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+                          ) : dev.status === 'warming_up' ? (
+                            <Cpu className="w-4 h-4 text-orange-400 animate-pulse" />
+                          ) : dev.status === 'burn_in' ? (
+                            <Cpu className="w-4 h-4 text-yellow-400" />
                           ) : dev.status === 'online' ? (
                             <Wifi className="w-4 h-4 text-emerald-400" />
                           ) : (
                             <WifiOff className="w-4 h-4" style={{ color: 'var(--ifrit-text-muted)' }} />
                           )}
-                          <StatusIndicator status={dev.status === 'calibrating' ? 'calibrating' : dev.status === 'online' ? 'safe' : 'offline'} size="sm" />
+                          <StatusIndicator status={dev.status || 'offline'} size="sm" showLabel />
                         </div>
                       </TableCell>
                       <TableCell><span className="font-medium text-sm" style={{ color: 'var(--ifrit-text-primary)' }}>{dev.name}</span></TableCell>

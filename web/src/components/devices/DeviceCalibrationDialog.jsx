@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { RefreshCw, CheckCircle2, AlertCircle, Cpu, Clock } from 'lucide-react';
 import { customFetch } from '@/lib/api';
 
 export default function DeviceCalibrationDialog({ open, onOpenChange, device }) {
@@ -15,6 +15,12 @@ export default function DeviceCalibrationDialog({ open, onOpenChange, device }) 
   const [isLoading, setIsLoading] = useState(false);
   const [commandStatus, setCommandStatus] = useState('idle'); // idle, pending, in_progress
   const [error, setError] = useState(null);
+
+  const createdTime = device?.created_at ? new Date(device.created_at).getTime() : Date.now();
+  const elapsedMins = Math.floor((Date.now() - createdTime) / 60000);
+  const elapsedHours = Math.floor(elapsedMins / 60);
+  const remainingMins = elapsedMins % 60;
+  const burnInPercent = Math.min(100, Math.max(0, (elapsedMins / 1440) * 100));
 
   useEffect(() => {
     let intervalId;
@@ -97,6 +103,39 @@ export default function DeviceCalibrationDialog({ open, onOpenChange, device }) 
         </DialogHeader>
 
         <div className="py-4">
+          {device?.status === 'warming_up' && (
+            <div className="mb-4 flex flex-col gap-1.5 p-3.5 rounded-lg border bg-orange-500/10 text-orange-400 border-orange-500/20 text-xs animate-pulse">
+              <div className="flex items-center gap-2 font-semibold">
+                <AlertCircle className="w-4 h-4 text-orange-500" />
+                <span>Heater Warm-up Mode Active</span>
+              </div>
+              <p className="opacity-80 leading-relaxed">
+                The MQ-series gas sensors are currently pre-heating to stabilize their internal elements (5 minutes). Telemetry and remote calibration will activate as soon as the warm-up completes.
+              </p>
+            </div>
+          )}
+
+          {device?.status === 'burn_in' && (
+            <div className="mb-4 flex flex-col gap-2 p-3.5 rounded-lg border bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-xs">
+              <div className="flex items-center gap-2 font-semibold">
+                <Cpu className="w-4 h-4 text-yellow-500" />
+                <span>24-Hour Physical Element Burn-In</span>
+              </div>
+              <p className="opacity-80 leading-relaxed">
+                This device is within its initial 24-hour operation cycle. The chemical sensor baselines will adaptively self-calibrate and stabilize for industrial-grade accuracy.
+              </p>
+              <div className="mt-1 space-y-1">
+                <div className="flex justify-between text-[10px] font-mono opacity-90">
+                  <span>Progress: {burnInPercent.toFixed(1)}%</span>
+                  <span>{elapsedHours}h {remainingMins}m / 24h</span>
+                </div>
+                <div className="w-full h-1.5 bg-yellow-500/20 rounded-full overflow-hidden">
+                  <div className="h-full bg-yellow-500 rounded-full transition-all duration-1000" style={{ width: `${burnInPercent}%` }} />
+                </div>
+              </div>
+            </div>
+          )}
+
           {isLoading ? (
             <div className="flex justify-center py-6">
               <RefreshCw className="w-6 h-6 animate-spin" style={{ color: 'var(--ifrit-brand)' }} />
@@ -143,7 +182,7 @@ export default function DeviceCalibrationDialog({ open, onOpenChange, device }) 
           </p>
           <Button 
             onClick={handleRecalibrate} 
-            disabled={commandStatus !== 'idle' || device?.status !== 'online'}
+            disabled={commandStatus !== 'idle' || (device?.status !== 'online' && device?.status !== 'burn_in')}
             className="w-full flex items-center justify-center gap-2 cursor-pointer text-white" 
             style={{ backgroundColor: 'var(--ifrit-brand)' }}
           >

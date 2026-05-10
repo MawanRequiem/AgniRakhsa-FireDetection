@@ -6,8 +6,10 @@ import { useDashboardStore } from '@/stores/useDashboardStore';
 export default function NodeCard({ device, roomName, latestReadings }) {
   const navigate = useNavigate();
   const sensorHealth = useDashboardStore((state) => state.sensorHealth);
-  const isOnline = device.status === 'online' || device.status === 'calibrating';
+  const isOnline = device.status === 'online' || device.status === 'calibrating' || device.status === 'warming_up' || device.status === 'burn_in';
   const isCalibrating = device.status === 'calibrating';
+  const isWarmingUp = device.status === 'warming_up';
+  const isBurnIn = device.status === 'burn_in';
   
   // Format specific sensor readings
   const temp = latestReadings?.SHTC3_TEMP?.toFixed(1) || '--';
@@ -28,6 +30,10 @@ export default function NodeCard({ device, roomName, latestReadings }) {
   let statusColor = 'var(--ifrit-border)';
   if (isCalibrating) {
     statusColor = 'var(--ifrit-info)';
+  } else if (isWarmingUp) {
+    statusColor = '#f97316'; // warming up
+  } else if (isBurnIn) {
+    statusColor = '#eab308'; // burn in
   } else if (!isOnline) {
     statusColor = 'var(--ifrit-text-muted)';
   } else if (isFire) {
@@ -47,7 +53,7 @@ export default function NodeCard({ device, roomName, latestReadings }) {
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <StatusIndicator status={isCalibrating ? 'calibrating' : isOnline ? (isFire ? 'critical' : 'online') : 'offline'} size="sm" />
+          <StatusIndicator status={isCalibrating ? 'calibrating' : isWarmingUp ? 'warming_up' : isBurnIn ? 'burn_in' : isOnline ? (isFire ? 'fire' : 'online') : 'offline'} size="sm" />
           <div>
             <h3 className="text-sm font-semibold text-[var(--ifrit-text-primary)]">
               {roomName || 'Unassigned Node'}

@@ -191,7 +191,13 @@ async def acknowledge_command(device_id: UUID, command_id: UUID, ack: Calibratio
     # Update device status to reflect calibration process
     if ack.status == "in_progress":
         supabase.table("devices").update({"status": "calibrating"}).eq("id", str(device_id)).execute()
-    elif ack.status == "completed":
-        supabase.table("devices").update({"status": "online"}).eq("id", str(device_id)).execute()
+    elif ack.status in ["completed", "failed"]:
+        dev_res = supabase.table("devices").select("created_at").eq("id", str(device_id)).execute()
+        target_status = "online"
+        if dev_res.data:
+            created_at = datetime.fromisoformat(dev_res.data[0]["created_at"].replace("Z", "+00:00"))
+            if (datetime.now(timezone.utc) - created_at).total_seconds() < 86400:
+                target_status = "burn_in"
+        supabase.table("devices").update({"status": target_status}).eq("id", str(device_id)).execute()
 
     return {"message": "Command acknowledged", "status": ack.status}

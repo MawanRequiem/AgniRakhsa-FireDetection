@@ -119,7 +119,14 @@ async def device_heartbeat(device_id: UUID, heartbeat: DeviceHeartbeat):
         "last_seen": datetime.now(timezone.utc).isoformat()
     }
     if dev["status"] != "calibrating":
-        update_data["status"] = "online"
+        if heartbeat.status == "warming_up":
+            update_data["status"] = "warming_up"
+        else:
+            created_at = datetime.fromisoformat(dev["created_at"].replace("Z", "+00:00"))
+            if (datetime.now(timezone.utc) - created_at).total_seconds() < 86400:
+                update_data["status"] = "burn_in"
+            else:
+                update_data["status"] = "online"
         
     if heartbeat.firmware_version:
         update_data["firmware_version"] = heartbeat.firmware_version
