@@ -42,7 +42,8 @@ RUN pip install --no-cache-dir \
     "joblib>=1.3.0" \
     "pandas>=2.1.0" \
     "tensorflow-cpu>=2.15.0" \
-    "Sastrawi>=1.0.1"
+    "Sastrawi>=1.0.1" \
+    "redis>=7.4.0"
 
 COPY . .
 
