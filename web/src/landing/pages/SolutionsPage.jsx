@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
-import { useLanguage } from '@/hooks/useLanguage';
-import PageHero from '@/components/ui/PageHero';
-import SectionHeading from '@/components/ui/SectionHeading';
-import ScrollReveal from '@/components/ui/ScrollReveal';
-import Button from '@/components/ui/Button';
+import { useLanguage } from '@landing/hooks/useLanguage';
+import PageHero from '@landing/components/ui/PageHero';
+import SectionHeading from '@landing/components/ui/SectionHeading';
+import ScrollReveal from '@landing/components/ui/ScrollReveal';
+import Button from '@landing/components/ui/Button';
 
 const icons = {
   building: '🏢',

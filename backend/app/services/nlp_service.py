@@ -10,13 +10,13 @@ from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFacto
 class NLPService:
     def __init__(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        ai_dir = os.path.abspath(os.path.join(current_dir, "..", "ai"))
+        lstm_dir = os.path.abspath(os.path.join(current_dir, "..", "ai", "nlp_lstm"))
         
         # Menggunakan nama file hasil save terakhir dari train_model.py
-        self.model = load_model(os.path.join(ai_dir, 'model_lstm.h5'))
-        with open(os.path.join(ai_dir, 'tokenizer.pkl'), 'rb') as f:
+        self.model = load_model(os.path.join(lstm_dir, 'model_lstm.h5'))
+        with open(os.path.join(lstm_dir, 'tokenizer.pkl'), 'rb') as f:
             self.tokenizer = pickle.load(f)
-        with open(os.path.join(ai_dir, 'label_encoder.pkl'), 'rb') as f:
+        with open(os.path.join(lstm_dir, 'label_encoder.pkl'), 'rb') as f:
             self.label_encoder = pickle.load(f)
             
         factory = StopWordRemoverFactory()
@@ -54,12 +54,20 @@ class NLPService:
             found = [w for w in engagement if w in text_lower]
             return f"Terdeteksi potensi 'Conflict' (Konten negatif dengan interaksi publik yang tinggi: {', '.join(found) if found else 'viral'})."
         elif label == "NEGATIVE":
-            rindoor_triggers = ['korslet', 'listrik', 'gas', 'kompor', 'percikan', 'tabung']
+            indoor_triggers = [
+                'korslet', 'listrik', 'gas', 'kompor', 'percikan', 'tabung',
+                'gedung', 'apartemen', 'mall', 'ruko', 'kantor', 'basement',
+                'lantai', 'asap indoor', 'panel'
+            ] 
             found = [w for w in indoor_triggers if w in text_lower]
             if found:
-                return f"Bahaya nyata! Terdeteksi pemicu kebakaran indoor ({', '.join(found)})."
+                return f"Bahaya Nyata! Terdeteksi indikasi kebakaran pada area bangunan/indoor ({', '.join(found)})."
             return "Indikasi bahaya kebakaran nyata terdeteksi melalui pola kalimat darurat."
         elif label == "POSITIVE":
+            safe_triggers = ['pemadam', 'damkar', 'petugas', 'jinak', 'padam', 'aman']
+            found = [w for w in safe_triggers if w in text_lower]
+            if found:
+                return f"Situasi Terkendali! Kehadiran {', '.join(found)} memastikan kondisi berangsur aman."
             return "Informasi menunjukkan penanganan berhasil atau situasi sudah aman."
         return "Klasifikasi informasi umum atau aktivitas rutin kampus."
 
@@ -77,6 +85,22 @@ class NLPService:
         label = self.label_encoder.inverse_transform([result_idx])[0]
         confidence = float(np.max(pred))
         
+        # RULE-BASED OVERRIDE: 
+        text_lower = text.lower()
+        
+        # 1. Deteksi CONFLICT (Hate Speech/Toxic terhadap petugas)
+        toxic_keywords = ['lambat', 'lama', 'telat', 'payah', 'becus', 'parah', 'lemot', 'kecewa']
+        petugas_keywords = ['pemadam', 'damkar', 'petugas', 'unit']
+        
+        if any(p in text_lower for p in petugas_keywords) and any(t in text_lower for t in toxic_keywords):
+            label = "CONFLICT"
+            confidence = max(confidence, 0.90)
+        
+        # 2. Deteksi POSITIVE (Jika petugas berhasil & tidak ada hate speech)
+        elif any(h in text_lower for h in ['padam', 'jinak', 'aman', 'selamat']) and label.upper() == "NEGATIVE":
+            if "sedang" not in text_lower and "besar" not in text_lower:
+                label = "POSITIVE"
+                confidence = max(confidence, 0.85)
         return {
             "text": text,
             "label": label,
