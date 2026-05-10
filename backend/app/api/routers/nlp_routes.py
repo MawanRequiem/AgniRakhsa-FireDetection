@@ -25,4 +25,6 @@ async def analyze_report(payload: dict):
         result = nlp_service.predict_sentiment(text)
         return result
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Gagal menganalisis teks: {str(e)}")
