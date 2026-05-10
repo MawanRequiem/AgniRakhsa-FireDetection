@@ -38,7 +38,7 @@ fuzzywuzzy==0.18.0
 gast==0.6.0
 gensim==4.4.0
 google-pasta==0.2.0
-googletrans==3.1.0a0
+# googletrans==3.1.0a0 (removed due to httpx 0.13.3 conflict)
 graphviz==0.21
 grpcio==1.71.0
 gTTS==2.5.4
@@ -48,7 +48,7 @@ h5py==3.13.0
 hpack==3.0.0
 hstspreload==2025.1.1
 httpcore==1.0.9
-httpx==0.28.1
+httpx>=0.28.1
 hyperframe==5.2.0
 idna==2.10
 imageio==2.37.0

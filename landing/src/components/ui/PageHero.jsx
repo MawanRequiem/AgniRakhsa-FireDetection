@@ -16,7 +16,7 @@ export default function PageHero({ title, subtitle }) {
 
       <div className="container-wide relative z-10 py-32 text-center">
         <h1 className="text-5xl mb-4">{title}</h1>
-        <p className="text-lg text-text-on-dark-muted max-w-2xl mx-auto">{subtitle}</p>
+        <p className="text-lg text-text-on-dark-muted mx-auto">{subtitle}</p>
       </div>
     </section>
   );

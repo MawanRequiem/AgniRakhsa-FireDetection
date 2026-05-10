@@ -67,7 +67,7 @@ export default function SolutionsPage() {
             </h2>
           </ScrollReveal>
           <ScrollReveal delay={100}>
-            <p className="text-text-on-dark-muted text-lg max-w-xl mx-auto mb-8">
+            <p className="text-text-on-dark-muted text-lg mx-auto mb-8">
               {t('ctaBanner.subtitle')}
             </p>
           </ScrollReveal>
