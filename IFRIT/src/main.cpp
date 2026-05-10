@@ -26,7 +26,7 @@ const char *WIFI_SSID = "Redmi-13C";
 const char *WIFI_PASSWORD = "networking";
 
 // --- Backend API Configuration ---
-const char *API_BASE_URL = "http://20.198.89.199:8000/api/v1";
+const char *API_BASE_URL = "http://ifrit.space/api/v1";
 
 // --- Device Configuration ---
 const char *DEVICE_NAME = "Ifrit Test";
