@@ -12,8 +12,8 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # --- 1. KONFIGURASI PATH ---
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-# Mengarah ke backend/app/ai dari folder scripts
-AI_DIR = os.path.abspath(os.path.join(CURRENT_DIR, "..", "app", "ai"))
+# Mengarah ke backend/app/ai/nlp_lstm dari folder scripts
+AI_DIR = os.path.abspath(os.path.join(CURRENT_DIR, "..", "app", "ai", "nlp_lstm"))
 
 def clean_text(text):
     """Membersihkan teks sesuai standar data_pipeline.py"""

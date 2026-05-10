@@ -1,4 +1,4 @@
-import EmberCanvas from '@/components/ui/EmberCanvas';
+import EmberCanvas from '@landing/components/ui/EmberCanvas';
 
 export default function PageHero({ title, subtitle }) {
   return (

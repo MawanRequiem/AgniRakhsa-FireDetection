@@ -20,7 +20,7 @@ from sklearn.preprocessing import LabelEncoder
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
 DATA_PATH = os.path.join(PROJECT_ROOT, 'data', 'processed', 'dataset_preprocessed_agni.csv')
-AI_DIR = os.path.abspath(os.path.join(CURRENT_DIR, "..", "app", "ai"))
+AI_DIR = os.path.abspath(os.path.join(CURRENT_DIR, "..", "app", "ai", "nlp_lstm"))
 
 # --- 2. TEKNIK N-GRAMS (Mencegah False Alarm) ---
 # Menggabungkan kata bersebelahan menjadi satu unit (contoh: "bakar" + "sampah" = "bakar_sampah")

@@ -5,11 +5,22 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { customFetch } from '@/lib/api';
 
 // Eager load critical routes
-import LandingPage from './pages/LandingPage';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import Rooms from '@/pages/Rooms';
 import RoomDetail from '@/pages/RoomDetail';
+
+// Landing Pages (New)
+import LandingHeader from '@landing/components/layout/Header';
+import LandingFooter from '@landing/components/layout/Footer';
+import HomePage from '@landing/pages/HomePage';
+const AboutPage = lazy(() => import('@landing/pages/AboutPage'));
+const SolutionsPage = lazy(() => import('@landing/pages/SolutionsPage'));
+const ContactPage = lazy(() => import('@landing/pages/ContactPage'));
+const SentimenAnalisisX = lazy(() => import('@landing/pages/SentimenAnalisisX'));
+
+import '@landing/index.css';
+import { Outlet } from 'react-router-dom';
 
 // Lazy load non-critical / heavy routes
 const CCTVMonitor = lazy(() => import('@/pages/CCTVMonitor'));
@@ -41,6 +52,17 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// Landing Layout for non-dashboard routes
+const LandingLayout = () => (
+  <>
+    <LandingHeader />
+    <main id="main-content">
+      <Outlet />
+    </main>
+    <LandingFooter />
+  </>
+);
+
 function App() {
   const { isAuthenticated, setAuth, clearAuth } = useAuthStore();
 
@@ -67,11 +89,33 @@ function App() {
   return (
     <div className="min-h-screen" style={{ color: 'var(--ifrit-text-primary)', backgroundColor: 'var(--ifrit-bg-primary)' }}>
       <Routes>
-        {/* Jika admin sudah login, akses ke "/" automatik ke "/dashboard" */}
-        <Route
-          path="/"
-          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />}
-        />
+        {/* Landing Page Routes */}
+        <Route element={<LandingLayout />}>
+          <Route
+            path="/"
+            element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <HomePage />}
+          />
+          <Route path="/about" element={
+            <Suspense fallback={<PageFallback />}>
+              <AboutPage />
+            </Suspense>
+          } />
+          <Route path="/solutions" element={
+            <Suspense fallback={<PageFallback />}>
+              <SolutionsPage />
+            </Suspense>
+          } />
+          <Route path="/contact" element={
+            <Suspense fallback={<PageFallback />}>
+              <ContactPage />
+            </Suspense>
+          } />
+          <Route path="/sentimen-analisis" element={
+            <Suspense fallback={<PageFallback />}>
+              <SentimenAnalisisX />
+            </Suspense>
+          } />
+        </Route>
 
         {/* Jika sudah login, jangan biarkan admin masuk ke halaman /login lagi */}
         <Route

@@ -87,7 +87,7 @@
     --ifrit-border-light: #475569;
 
     /* Light Text */
-    --ifrit-text-primary: #F0F1F3;
+    --ifrit-text-primary: black;
     --ifrit-text-secondary: #94a3b8;
     --ifrit-text-muted: #64748b;
 }
