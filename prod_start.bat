@@ -15,20 +15,11 @@ if %errorlevel% neq 0 (
 )
 cd ..
 
-:: 2. Jalankan Backend dengan PM2
-echo [2/3] Menjalankan Backend di Background via PM2...
-:: Menyesuaikan dengan nama folder Anda (Backend)
-cd Backend
-call pm2 delete agni-backend >nul 2>&1
-call pm2 start "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4" --name agni-backend
-cd ..
-
-:: 3. Jalankan Frontend dengan PM2
-echo [3/3] Menjalankan Frontend di Background via PM2...
-cd web
-call pm2 delete agni-frontend >nul 2>&1
-call pm2 serve dist 5173 --name agni-frontend --spa
-cd ..
+:: 2. Jalankan Semuanya dengan PM2 Ecosystem
+echo [2/3] Menjalankan Backend ^& Frontend via PM2 Ecosystem...
+call pm2 delete all >nul 2>&1
+call pm2 start ecosystem.config.js
+echo.
 
 echo.
 echo ====================================================
