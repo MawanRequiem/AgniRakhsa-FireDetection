@@ -9,7 +9,7 @@ const getBaseUrl = () => {
   // In production behind Caddy reverse proxy, the API is on the same origin
   // (Caddy routes /api/* to the backend container), so base URL is empty.
   const { hostname } = globalThis.location;
-  if (hostname === 'localhost') return 'http://localhost:8000';
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return 'http://localhost:8000';
 
   // Same-origin — Caddy proxies /api/* to backend
   return '';

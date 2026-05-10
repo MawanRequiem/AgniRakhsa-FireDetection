@@ -1,13 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Flame, Send, BarChart3, Activity, 
-  Cpu, ShieldCheck, Zap, BookOpen 
+import {
+  Flame, Send, BarChart3, Activity,
+  Cpu, ShieldCheck, Zap, BookOpen
 } from 'lucide-react';
-import { 
-  PieChart, Pie, Cell, ResponsiveContainer, 
-  Tooltip 
+import {
+  PieChart, Pie, Cell, ResponsiveContainer,
+  Tooltip
 } from 'recharts';
 import { customFetch } from '@/lib/api';
 
@@ -309,7 +309,7 @@ export default function LandingPage() {
             <h1 className="text-7xl font-black tracking-tight text-white leading-none">
               SENTIMEN <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-600">ANALISIS</span>
             </h1>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto italic">
+            <p className="text-slate-400 text-lg mx-auto italic">
               Validasi laporan kebakaran secara instan menggunakan arsitektur Bi-LSTM.
             </p>
           </div>
@@ -388,11 +388,10 @@ export default function LandingPage() {
                 <button
                   key={f}
                   onClick={() => setActiveFilter(f)}
-                  className={`px-5 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
-                    activeFilter === f 
-                    ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' 
-                    : 'text-slate-400 hover:text-white'
-                  }`}
+                  className={`px-5 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeFilter === f
+                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                      : 'text-slate-400 hover:text-white'
+                    }`}
                 >
                   {f === 'all' ? 'SEMUA' : THEME[f]?.label || f}
                 </button>
