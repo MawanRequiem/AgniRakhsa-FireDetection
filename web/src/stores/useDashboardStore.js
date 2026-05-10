@@ -93,9 +93,11 @@ export const useDashboardStore = create((set, get) => ({
     const { socket } = get();
     if (socket?.readyState === WebSocket.OPEN) return;
 
-    // Use absolute URL based on window location but change protocol to ws/wss
+    // Use same-origin host behind reverse proxy; only add port in localhost dev
     const protocol = globalThis.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = globalThis.location.hostname === 'localhost' ? 'localhost:8000' : `${globalThis.location.hostname}:8000`;
+    const host = globalThis.location.hostname === 'localhost'
+      ? 'localhost:8000'
+      : globalThis.location.host; // host includes port if non-standard, otherwise just hostname
     const wsUrl = `${protocol}//${host}/api/v1/dashboard/ws`;
 
     const newSocket = new WebSocket(wsUrl);
@@ -152,6 +154,43 @@ export const useDashboardStore = create((set, get) => ({
           });
         }
 
+        if (message.type === 'SENSOR_BATCH_UPDATE') {
+          const { devices } = message.data || {};
+          if (!devices || Object.keys(devices).length === 0) return;
+
+          set((state) => {
+            const updatedLatest = { ...state.latestReadings };
+            const newPoints = [];
+
+            for (const [device_id, devData] of Object.entries(devices)) {
+              const { readings, timestamp } = devData;
+              if (!readings || readings.length === 0) continue;
+
+              const deviceReadings = {};
+              const historyPoint = { time: timestamp, device_id };
+
+              for (const r of readings) {
+                deviceReadings[r.sensor_type] = r.value;
+                historyPoint[r.sensor_type] = r.value;
+              }
+
+              // Update latestReadings for this device
+              updatedLatest[device_id] = {
+                ...(updatedLatest[device_id] || {}),
+                ...deviceReadings,
+                _lastUpdate: timestamp
+              };
+
+              newPoints.push(historyPoint);
+            }
+
+            return {
+              sensorHistory: [...state.sensorHistory, ...newPoints].slice(-180),
+              latestReadings: updatedLatest,
+            };
+          });
+        }
+
         if (message.type === 'DEVICE_STATUS_CHANGE') {
           const { device_id, status } = message.data;
           set((state) => {
@@ -161,7 +200,7 @@ export const useDashboardStore = create((set, get) => ({
             );
             
             // Recalculate online count
-            const onlineCount = updatedDevices.filter((d) => d.status === 'online').length;
+            const onlineCount = updatedDevices.filter((d) => d.status === 'online' || d.status === 'calibrating').length;
             
             return {
               devices: updatedDevices,

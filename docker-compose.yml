@@ -1,28 +1,86 @@
 services:
-  web:
-    build: ./web
+  caddy:
+    image: caddy:2-alpine
     restart: unless-stopped
     ports:
       - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data       # TLS certificates persist here
+      - caddy_config:/config
+    depends_on:
+      - web
+      - backend
+    networks:
+      - app-network
+
+  web:
+    build:
+      context: ./web
+      network: host
+    restart: unless-stopped
+    expose:
+      - "80"
     env_file:
       - ./web/.env
     depends_on:
       - backend
+    networks:
+      - app-network
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      network: host
     restart: unless-stopped
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     env_file:
       - ./backend/.env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - USE_REDIS=true
+    depends_on:
+      - redis
+    networks:
+      - app-network
 
   whatsapp-gateway:
-    build: ./whatsapp-gateway
+    build:
+      context: ./whatsapp-gateway
+      network: host
     restart: unless-stopped
-    ports:
-      - "3001:3001"
+    expose:
+      - "3001"
     env_file:
       - ./whatsapp-gateway/.env
+    volumes:
+      - whatsapp_auth:/app/auth_info_baileys
     depends_on:
       - backend
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Turn off database snapshots to maximize write speed for pure cache operation
+    command: redis-server --save "" --appendonly no
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
+volumes:
+  caddy_data:
+  caddy_config:
+  redis_data:
+  whatsapp_auth:
+
+networks:
+  app-network:
+    driver: bridge
+

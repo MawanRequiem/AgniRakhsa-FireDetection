@@ -17,7 +17,7 @@ export default function RoomCard({ room }) {
 
   return (
     <button
-      onClick={() => navigate(`/rooms/${room.id}`)}
+      onClick={() => navigate(`/dashboard/rooms/${room.id}`)}
       className="w-full text-left rounded-lg border p-4 transition-all cursor-pointer group"
       style={{
         backgroundColor: 'var(--ifrit-bg-primary)',

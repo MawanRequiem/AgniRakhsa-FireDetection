@@ -13,9 +13,16 @@ class Settings(BaseSettings):
     SUPABASE_URL: str
     SUPABASE_KEY: str
     
+    # Redis Cache Configuration
+    USE_REDIS: bool = True
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: str = ""
+    
     # WhatsApp Gateway Configuration
     # WhatsApp Gateway Configuration
-    GATEWAY_URL: str = "http://localhost:3001"
+    GATEWAY_URL: str = "http://whatsapp-gateway:3001"
     GATEWAY_API_KEY: str = "agniraksha-secure-key-2026"
     
     # AI Model Configuration

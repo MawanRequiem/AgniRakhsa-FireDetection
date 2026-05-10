@@ -40,6 +40,7 @@ class DeviceHeartbeat(BaseModel):
     """Device heartbeat payload (sent periodically by IoT devices)."""
     firmware_version: Optional[str] = None
     uptime_seconds: Optional[int] = None
+    status: Optional[str] = None
 
 class DeviceProvisionRequest(BaseModel):
     """Sent by MCU on boot to self-register and get sensor UUIDs."""

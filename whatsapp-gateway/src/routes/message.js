@@ -1,11 +1,25 @@
 import { Router } from 'express'
 import { apiKeyMiddleware, sanitizePhoneNumber } from '../utils/security.js'
-import { getWASocket } from '../baileys.js'
+import { getWASocket, getWASessionStatus } from '../baileys.js'
 
 const router = Router()
 
 // Apply security middleware to all routes in this router
 router.use(apiKeyMiddleware)
+
+/**
+ * GET /api/messages/status
+ * Exposes the connection status and any pending QR code image to authenticated backend requests.
+ */
+router.get('/status', (req, res) => {
+    try {
+        const status = getWASessionStatus()
+        res.json(status)
+    } catch (error) {
+        console.error('[API Error] Failed to get session status:', error.message)
+        res.status(500).json({ error: 'Internal server error while fetching connection status' })
+    }
+})
 
 /**
  * POST /api/messages

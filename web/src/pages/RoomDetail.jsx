@@ -9,15 +9,15 @@ import { customFetch } from '@/lib/api';
 import { useDashboardStore } from '@/stores/useDashboardStore';
 
 const SENSOR_CONFIG = {
-  SHTC3_TEMP: { label: 'Temperature', unit: '°C', type: 'env', max: 50 },
-  SHTC3_HUMIDITY: { label: 'Humidity', unit: '%', type: 'env', max: 100 },
+  SHTC_TEMP: { label: 'Temperature', unit: '°C', type: 'env', max: 50 },
+  SHTC_HUM: { label: 'Humidity', unit: '%', type: 'env', max: 100 },
   FLAME: { label: 'Flame (IR)', unit: 'raw', type: 'fire', max: 4095 },
   MQ2: { label: 'MQ-2 (Smoke/LPG)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ4: { label: 'MQ-4 (Methane)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ5: { label: 'MQ-5 (Natural Gas)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ6: { label: 'MQ-6 (LPG)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ7: { label: 'MQ-7 (CO)', unit: 'ppm', type: 'gas', max: 4095 },
-  MQ9B: { label: 'MQ-9B (CO/Methane)', unit: 'ppm', type: 'gas', max: 4095 },
+  MQ9: { label: 'MQ-9 (CO/Methane)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ135: { label: 'MQ-135 (Air Quality)', unit: 'ppm', type: 'gas', max: 4095 },
 };
 

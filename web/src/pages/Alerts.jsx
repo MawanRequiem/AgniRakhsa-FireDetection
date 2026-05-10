@@ -141,7 +141,7 @@ export default function Alerts() {
                       borderColor: 'var(--ifrit-border)',
                       backgroundColor: isCritical && !alert.is_acknowledged ? 'rgba(248,113,113,0.05)' : 'transparent'
                     }}
-                    onClick={() => alert.room_id && navigate(`/rooms/${alert.room_id}`)}
+                    onClick={() => alert.room_id && navigate(`/dashboard/rooms/${alert.room_id}`)}
                   >
                     <TableCell>
                       <StatusIndicator status={alert.severity === 'critical' ? 'fire' : alert.severity === 'high' ? 'warning' : 'info'} showLabel size="sm" />
