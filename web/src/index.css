@@ -194,6 +194,16 @@
     border: 1px solid rgba(59, 130, 246, 0.8);
     animation: spin-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+.led-warming-up {
+    background-color: rgba(249, 115, 22, 0.15); /* orange */
+    border: 1px solid rgba(249, 115, 22, 0.8);
+    animation: spin-pulse-orange 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.led-burn-in {
+    background-color: rgba(234, 179, 8, 0.15); /* yellow */
+    border: 1px solid rgba(234, 179, 8, 0.8);
+    animation: spin-pulse-yellow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
 
 /* Minimal Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
@@ -221,6 +231,18 @@
     0% { transform: scale(0.95); opacity: 0.7; box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
     70% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0); }
     100% { transform: scale(0.95); opacity: 0.7; box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+@keyframes spin-pulse-orange {
+    0% { transform: scale(0.95); opacity: 0.7; box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7); }
+    70% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 0 4px rgba(249, 115, 22, 0); }
+    100% { transform: scale(0.95); opacity: 0.7; box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+}
+
+@keyframes spin-pulse-yellow {
+    0% { transform: scale(0.95); opacity: 0.7; box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); }
+    70% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 0 4px rgba(234, 179, 8, 0); }
+    100% { transform: scale(0.95); opacity: 0.7; box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
 }
 
 @keyframes fadeIn {

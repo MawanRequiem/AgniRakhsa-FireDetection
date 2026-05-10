@@ -83,7 +83,7 @@ const float PARAM_B[NUM_MQ_SENSORS] = {-2.222, -2.786, -2.35, -2.244};
 #define R0_MIN_VALID 0.1         // Min valid R0 (kΩ)
 #define R0_MAX_VALID 100.0       // Max valid R0 (kΩ)
 #define WARMUP_TIME_MS                                                         \
-  600000 // 5 minutes (300,000 ms) warm-up for heater stabilization
+  300000 // 5 minutes (300,000 ms) warm-up for heater stabilization
 #define BURNIN_TIME_MS                                                         \
   86400000 // 24 hours (86,400,000 ms) for new sensor burn-in
 
@@ -133,6 +133,10 @@ unsigned long lastHeartbeatTime = 0;
 float R0_VALUES[NUM_MQ_SENSORS] = {10.0, 10.0, 10.0, 10.0};
 bool isCalibrated = false;
 bool pendingAutoCalibration = false;
+
+// Standalone cumulative operating minutes & burn-in flag
+unsigned long cumulativeMins = 0;
+bool burninDone = false;
 
 // MQ sensor ADC pins in order: MQ2, MQ4, MQ6, MQ9
 const int MQ_PINS[NUM_MQ_SENSORS] = {MQ2_PIN, MQ4_PIN, MQ6_PIN, MQ9_PIN};
@@ -496,18 +500,28 @@ void checkRemoteCalibrationCommand() {
         ackHttp.end();
 
         // Run calibration
-        calibrateSensors();
+        bool success = calibrateSensors();
 
-        // Report results back
-        sendCalibrationToServer();
+        if (success) {
+          // Report results back
+          sendCalibrationToServer();
 
-        // Acknowledge command completion
-        ackHttp.begin(ackUrl);
-        ackHttp.addHeader("Content-Type", "application/json");
-        ackHttp.POST("{\"status\":\"completed\"}");
-        ackHttp.end();
+          // Acknowledge command completion
+          ackHttp.begin(ackUrl);
+          ackHttp.addHeader("Content-Type", "application/json");
+          ackHttp.POST("{\"status\":\"completed\"}");
+          ackHttp.end();
 
-        Serial.println("[REMOTE] Recalibration complete, ACK sent.");
+          Serial.println("[REMOTE] Recalibration complete, ACK completed sent.");
+        } else {
+          // Acknowledge command failure
+          ackHttp.begin(ackUrl);
+          ackHttp.addHeader("Content-Type", "application/json");
+          ackHttp.POST("{\"status\":\"failed\"}");
+          ackHttp.end();
+
+          Serial.println("[REMOTE] Recalibration failed, ACK failed sent.");
+        }
       }
     }
   }
@@ -528,6 +542,9 @@ void sendHeartbeat() {
   JsonDocument doc;
   doc["firmware_version"] = FIRMWARE_VERSION;
   doc["uptime_seconds"] = millis() / 1000;
+  if (millis() < WARMUP_TIME_MS) {
+    doc["status"] = "warming_up";
+  }
 
   String payload;
   serializeJson(doc, payload);
@@ -609,6 +626,17 @@ void setup() {
 
   // ─── LAYER 1: Try loading calibration from NVS ───
   Serial.println("[BOOT] Step 1: Loading calibration from NVS...");
+
+  // Read cumulative operating minutes and burnin done flag
+  prefs.begin("ifrit_time", true); // read-only
+  cumulativeMins = prefs.getULong("cum_mins", 0);
+  burninDone = prefs.getBool("burnin_done", false);
+  prefs.end();
+  Serial.printf("[BOOT] Cumulative Operating Time loaded: %lu minutes / 1440\n", cumulativeMins);
+  if (burninDone) {
+    Serial.println("[BOOT] Cumulative 24h burn-in period has been COMPLETED previously.");
+  }
+
   if (loadCalibrationFromNVS()) {
     Serial.println("[BOOT] Using saved calibration data.");
   } else {
@@ -657,6 +685,31 @@ void loop() {
   }
 
   unsigned long currentMillis = millis();
+
+  // ─── MINUTE PERSISTENT TIMER & STANDALONE BURN-IN TRIGGER ───
+  static unsigned long lastMinuteTime = 0;
+  if (currentMillis - lastMinuteTime >= 60000) {
+    lastMinuteTime = currentMillis;
+    cumulativeMins++;
+
+    prefs.begin("ifrit_time", false); // read-write
+    prefs.putULong("cum_mins", cumulativeMins);
+    prefs.end();
+    Serial.printf("[TIME] Cumulative Operating Time: %lu minutes / 1440\n", cumulativeMins);
+
+    // Autonomous standalone 24h burn-in trigger
+    if (cumulativeMins >= 1440 && !burninDone) {
+      Serial.println("\n[BURN-IN COMPLETE] Running autonomous burn-in calibration...");
+      if (calibrateSensors()) {
+        sendCalibrationToServer();
+
+        prefs.begin("ifrit_time", false);
+        prefs.putBool("burnin_done", true);
+        prefs.end();
+        burninDone = true;
+      }
+    }
+  }
 
   // ─── WARM-UP & SCHEDULED AUTO-CALIBRATION ───
   if (pendingAutoCalibration && currentMillis >= WARMUP_TIME_MS) {
