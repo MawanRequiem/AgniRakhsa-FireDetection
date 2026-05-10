@@ -1,4 +1,4 @@
-import { Cpu, SignalHigh, WifiOff } from 'lucide-react';
+import { Cpu, SignalHigh, WifiOff, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 import { useRoomsStore } from '@/stores/useRoomsStore';
@@ -40,7 +40,10 @@ export default function DevicesTable({ devices, isLoading }) {
         </thead>
         <tbody className="divide-y font-mono text-xs" style={{ borderColor: 'var(--ifrit-border)' }}>
           {devices.map((device, idx) => {
-            const isOnline = device.status === 'online';
+            const isOnline = device.status === 'online' || device.status === 'calibrating' || device.status === 'warming_up' || device.status === 'burn_in';
+            const isCalibrating = device.status === 'calibrating';
+            const isWarmingUp = device.status === 'warming_up';
+            const isBurnIn = device.status === 'burn_in';
             const hbDate = new Date(device.last_seen);
             
             const room = rooms.find(r => r.id === device.room_id);
@@ -76,7 +79,25 @@ export default function DevicesTable({ devices, isLoading }) {
                   {device.mac_address || '—'}
                 </td>
                 <td className="px-4 py-3">
-                  {isOnline ? (
+                  {isCalibrating ? (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                      style={{ backgroundColor: 'rgba(59, 130, 246, 0.08)', color: 'var(--ifrit-info)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Calibrating
+                    </span>
+                  ) : isWarmingUp ? (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold animate-pulse"
+                      style={{ backgroundColor: 'rgba(249, 115, 22, 0.08)', color: '#f97316', border: '1px solid rgba(249, 115, 22, 0.2)' }}>
+                      <Cpu className="w-3.5 h-3.5 text-orange-500" />
+                      Warming Up
+                    </span>
+                  ) : isBurnIn ? (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                      style={{ backgroundColor: 'rgba(234, 179, 8, 0.08)', color: '#eab308', border: '1px solid rgba(234, 179, 8, 0.2)' }}>
+                      <Cpu className="w-3.5 h-3.5 text-yellow-500" />
+                      Burn-In (24h)
+                    </span>
+                  ) : isOnline ? (
                     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold"
                       style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)', color: 'var(--ifrit-safe)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
                       <SignalHigh className="w-3 h-3" />

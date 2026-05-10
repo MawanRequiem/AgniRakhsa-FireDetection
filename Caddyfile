@@ -1,0 +1,16 @@
+:80 {
+	# Backend API — proxy all /api/* requests to the FastAPI server
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# WhatsApp Gateway (internal webhook callbacks)
+	handle /gateway/* {
+		reverse_proxy whatsapp-gateway:3001
+	}
+
+	# Frontend — serve the React dashboard (catch-all, must be last)
+	handle {
+		reverse_proxy web:80
+	}
+}

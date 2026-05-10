@@ -2,14 +2,23 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from app.api.routers import auth, notifications, detection, sensors, rooms, devices, dashboard, ws, alerts, cameras, camera_stream, nlp_routes, contacts
+from app.api.routers import auth, notifications, detection, sensors, rooms, devices, dashboard, ws, alerts, cameras, camera_stream, nlp_routes, contacts, calibration
 from app.core.config import settings
 from app.ai import registry
 from app.services.device_watchdog import run_watchdog
 
+from app.core.redis import redis_manager
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle events for FastAPI application."""
+    # Connect to Redis Cache Server
+    try:
+        redis_manager.connect()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Redis initialization failed: {e}")
+
     # Load AI model into memory on startup
     try:
         registry.load_detector(
@@ -50,13 +59,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS — izinkan frontend dev server dan production IP
+# CORS — izinkan frontend dev server dan production domain
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:3000",
-        "http://20.198.89.199", # Azure VM IP
+        "https://ifrit.space",
+        "https://www.ifrit.space",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -86,12 +96,12 @@ app.include_router(devices.router, prefix=settings.API_V1_STR)
 app.include_router(dashboard.router, prefix=settings.API_V1_STR)
 app.include_router(alerts.router, prefix=settings.API_V1_STR)
 app.include_router(cameras.router, prefix=settings.API_V1_STR)
-app.include_router(cameras.router, prefix=settings.API_V1_STR)
 app.include_router(camera_stream.router, prefix=settings.API_V1_STR)
 app.include_router(ws.router, prefix=f"{settings.API_V1_STR}/dashboard", tags=["WebSockets"])
 
 # 2. DAFTARKAN router NLP di sini
 app.include_router(nlp_routes.router, prefix=settings.API_V1_STR)
+app.include_router(calibration.router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def health_check():

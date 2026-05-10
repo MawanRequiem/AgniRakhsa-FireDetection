@@ -15,38 +15,36 @@ def login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ):
     """
-    Login endpoint. Menggunakan Supabase Auth untuk verifikasi (menghapus bcrypt manual),
+    Login endpoint. Mengecek kredensial ke tabel `users` (custom auth),
     menetapkan cookie HttpOnly untuk JWT, dan mengembalikan token CSRF.
     """
-    try:
-        # 1. Pengecekan email & password langsung melalui layanan Autentikasi Supabase
-        # Ini menghapus kebutuhan untuk security.verify_password dan pengecekan bcrypt manual
-        auth_res = supabase.auth.sign_in_with_password({
-            "email": form_data.username, 
-            "password": form_data.password
-        })
-        
-        user = auth_res.user
-        
-    except Exception:
-        # Jika email atau password salah, Supabase akan melempar exception
+    # 1. Fetch user dari tabel users
+    user_res = supabase.table("users").select("*").eq("email", form_data.username).execute()
+    users = user_res.data
+    
+    if not users or not security.verify_password(form_data.password, users[0]["password_hash"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
+        
+    user = users[0]
+    if not user.get("is_active", True):
+        raise HTTPException(status_code=400, detail="Inactive user")
 
-    # 2. Generate token CSRF random (tetap menggunakan sistem keamanan Anda yang sudah ada)
+    # 2. Generate token CSRF random
     csrf_token = secrets.token_urlsafe(32)
 
-    # 3. Generate JWT access token menggunakan ID user dari Supabase
-    access_token = security.create_access_token(subject=user.id, csrf_token=csrf_token)
+    # 3. Generate JWT access token menggunakan ID user
+    access_token = security.create_access_token(subject=user["id"], csrf_token=csrf_token)
     
     # Set the JWT as an HttpOnly, Secure cookie
+    is_secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
     response.set_cookie(
         key="access_token",
         value=f"Bearer {access_token}",
         httponly=True,
-        secure=True, # Should be False for localhost HTTP development, but True is best practice
+        secure=is_secure,
         samesite="lax",
         max_age=8 * 24 * 60 * 60 # Berlaku 8 hari
     )
@@ -55,9 +53,9 @@ def login(
         "message": "Successfully logged in",
         "csrf_token": csrf_token,
         "user": {
-            "id": user.id,
-            "email": user.email,
-            "role": "admin" # Anda bisa menyesuaikan ini sesuai logika metadata user di Supabase
+            "id": user["id"],
+            "email": user["email"],
+            "role": user.get("role", "admin")
         }
     }
 
