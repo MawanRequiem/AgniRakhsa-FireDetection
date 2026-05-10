@@ -15,6 +15,15 @@ Usage:
     # Webcam (default camera 0)
     python run_inference.py --source webcam
 
+    # Use a specific camera index (e.g. DroidCam at index 1)
+    python run_inference.py --source webcam --cam 1
+
+    # Use DroidCam via IP address
+    python run_inference.py --source webcam --cam http://192.168.1.100:4747/video
+
+    # List available cameras on your system
+    python run_inference.py --list-cams
+
     # Video file
     python run_inference.py --source path/to/video.mp4
 
@@ -111,6 +120,32 @@ def parse_args():
         type=int,
         default=0,
         help="Target FPS limit for webcam/video (0 = unlimited, e.g. --fps 10)",
+    )
+    parser.add_argument(
+        "--cam",
+        type=str,
+        default="0",
+        help=(
+            "Camera source for webcam mode. Can be:\n"
+            "  - Integer index: 0 (built-in), 1 (DroidCam), etc.\n"
+            "  - DroidCam IP URL: http://192.168.1.100:4747/video\n"
+            "  (default: 0)"
+        ),
+    )
+    parser.add_argument(
+        "--list-cams",
+        action="store_true",
+        help="List available camera devices and exit",
+    )
+    parser.add_argument(
+        "--resolution",
+        type=str,
+        default=None,
+        help=(
+            "Webcam capture resolution as WIDTHxHEIGHT (e.g. 1280x720, 1920x1080).\n"
+            "Common options: 640x480, 1280x720, 1920x1080.\n"
+            "If not set, uses the camera's default resolution."
+        ),
     )
     return parser.parse_args()
 
@@ -288,6 +323,45 @@ def infer_folder(model, folder_path: Path, args):
     print(f"{'═' * 60}\n")
 
 
+def list_cameras():
+    """Enumerate available camera devices."""
+    import cv2
+
+    print("\n🔍 Scanning for available cameras...\n")
+    found = 0
+    for i in range(10):
+        cap = cv2.VideoCapture(i, cv2.CAP_DSHOW)
+        if cap.isOpened():
+            w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            print(f"  ✅ Camera {i}: {w}x{h} @ {fps:.0f} FPS")
+            found += 1
+            cap.release()
+        else:
+            cap.release()
+
+    if found == 0:
+        print("  ❌ No cameras found.")
+    else:
+        print(f"\n  📷 Found {found} camera(s).")
+        print(f"  💡 Use --cam <index> to select one (e.g. --cam 1 for DroidCam)")
+    print()
+
+
+def _parse_cam_source(cam_arg: str):
+    """Parse the --cam argument into a VideoCapture-compatible source."""
+    # If it looks like a URL (DroidCam IP, RTSP, etc.), use as-is
+    if cam_arg.startswith("http://") or cam_arg.startswith("https://") or cam_arg.startswith("rtsp://"):
+        return cam_arg
+    # Otherwise treat as integer camera index
+    try:
+        return int(cam_arg)
+    except ValueError:
+        print(f"⚠️  Invalid --cam value: '{cam_arg}'. Using default camera 0.")
+        return 0
+
+
 def infer_webcam(model, args):
     """Run live inference using webcam feed."""
     import cv2
@@ -295,13 +369,44 @@ def infer_webcam(model, args):
     target_fps = args.fps
     frame_interval = 1.0 / target_fps if target_fps > 0 else 0
 
+    cam_source = _parse_cam_source(args.cam)
+    source_label = f"IP stream ({cam_source})" if isinstance(cam_source, str) else f"camera {cam_source}"
     fps_info = f" (limited to {target_fps} FPS)" if target_fps > 0 else " (unlimited FPS)"
-    print(f"\n📹 Starting webcam feed{fps_info} — press 'q' to quit...\n")
-    cap = cv2.VideoCapture(0)
+    print(f"\n📹 Starting {source_label}{fps_info} — press 'q' to quit...\n")
+
+    # Try CAP_DSHOW backend on Windows for better device control
+    if isinstance(cam_source, int) and sys.platform == "win32":
+        cap = cv2.VideoCapture(cam_source, cv2.CAP_DSHOW)
+    else:
+        cap = cv2.VideoCapture(cam_source)
 
     if not cap.isOpened():
         print("❌ Cannot open webcam")
         sys.exit(1)
+
+    # Parse target resolution
+    target_w, target_h = None, None
+    force_resize = False
+    if args.resolution:
+        try:
+            tw, th = args.resolution.lower().split("x")
+            target_w, target_h = int(tw), int(th)
+            # Try setting via OpenCV first
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, target_w)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, target_h)
+        except ValueError:
+            print(f"⚠️  Invalid --resolution format: '{args.resolution}'. Use WIDTHxHEIGHT (e.g. 1280x720)")
+
+    actual_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    actual_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    # Check if camera honored the resolution request
+    if target_w and target_h and (actual_w != target_w or actual_h != target_h):
+        force_resize = True
+        print(f"   Camera native : {actual_w}x{actual_h}")
+        print(f"   Resizing to   : {target_w}x{target_h} (forced)")
+    else:
+        print(f"   Resolution: {actual_w}x{actual_h}")
 
     frame_count = 0
     total_time = 0
@@ -313,6 +418,10 @@ def infer_webcam(model, args):
             if not ret:
                 print("⚠️  Failed to grab frame")
                 break
+
+            # Force resize if camera didn't honor resolution request
+            if force_resize:
+                frame = cv2.resize(frame, (target_w, target_h))
 
             # FPS limiter — skip frame if too early
             now = time.perf_counter()
@@ -467,6 +576,11 @@ def main():
     args.no_save = not save  # normalize
 
     model = load_model(args.model, args.conf)
+
+    # ── List cameras and exit ────────────────────────────
+    if args.list_cams:
+        list_cameras()
+        return
 
     source = args.source.strip()
 
