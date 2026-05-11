@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 import secrets
 from app.core import security
+from app.core.config import settings
 from app.core.db import supabase
 import app.api.deps
 
@@ -89,7 +90,7 @@ def read_users_me(
     if token:
         try:
             # Mengambil SECRET_KEY dari konfigurasi sistem Anda
-            payload = jwt.decode(token, security.config.settings.SECRET_KEY, algorithms=["HS256"])
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
             csrf_token = payload.get("csrf_token")
             if csrf_token:
                response.headers["X-CSRF-Token"] = csrf_token
