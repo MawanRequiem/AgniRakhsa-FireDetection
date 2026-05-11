@@ -1,31 +1,34 @@
 {
-    # Matikan auto HTTPS (karena dalang.io yang handle)
     auto_https off
 }
 
 :80 {
-    # Trust proxy headers dari dalang.io
-    trusted_proxies private_ranges
-
-    # Forward real IP ke upstream
-    header_up X-Real-IP {remote_host}
-    header_up X-Forwarded-For {remote_host}
-    header_up X-Forwarded-Proto {scheme}
-
     log {
         output stdout
         format json
     }
 
     handle /api/* {
-        reverse_proxy backend:8000
+        reverse_proxy backend:8000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto https
+        }
     }
 
     handle /gateway/* {
-        reverse_proxy whatsapp-gateway:3001
+        reverse_proxy whatsapp-gateway:3001 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto https
+        }
     }
 
     handle {
-        reverse_proxy web:80
+        reverse_proxy web:80 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto https
+        }
     }
 }
