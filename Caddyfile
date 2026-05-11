@@ -1,21 +1,31 @@
+{
+    # Matikan auto HTTPS (karena dalang.io yang handle)
+    auto_https off
+}
+
 :80 {
-	log {
-		output stdout
-		format json
-	}
+    # Trust proxy headers dari dalang.io
+    trusted_proxies private_ranges
 
-	# Backend API — proxy all /api/* requests to the FastAPI server
-	handle /api/* {
-		reverse_proxy backend:8000
-	}
+    # Forward real IP ke upstream
+    header_up X-Real-IP {remote_host}
+    header_up X-Forwarded-For {remote_host}
+    header_up X-Forwarded-Proto {scheme}
 
-	# WhatsApp Gateway (internal webhook callbacks)
-	handle /gateway/* {
-		reverse_proxy whatsapp-gateway:3001
-	}
+    log {
+        output stdout
+        format json
+    }
 
-	# Frontend — serve the React dashboard (catch-all, must be last)
-	handle {
-		reverse_proxy web:80
-	}
+    handle /api/* {
+        reverse_proxy backend:8000
+    }
+
+    handle /gateway/* {
+        reverse_proxy whatsapp-gateway:3001
+    }
+
+    handle {
+        reverse_proxy web:80
+    }
 }
