@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Flame, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { customFetch } from '@/lib/api';
 import { toast } from 'sonner';
+import EmberCanvas from '@landing/components/ui/EmberCanvas';
+import { useReducedMotion } from '@landing/hooks/useReducedMotion';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -12,6 +14,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
+  const reducedMotion = useReducedMotion();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -30,16 +33,17 @@ export default function Login() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.detail || 'Authentication failed.');
+        throw new Error(data.detail || 'Invalid credentials. Try again.');
       }
 
       setAuth(data.user, data.csrf_token);
-      
-      // UPDATE: Redirect langsung ke dashboard setelah sukses login
+      toast.success('Signed in', {
+        description: `Welcome back, ${data.user.email.split('@')[0]}.`
+      });
+
       navigate('/dashboard');
-      
     } catch (error) {
-      toast.error('Login failed', {
+      toast.error('Sign in failed', {
         description: error.message,
       });
     } finally {
@@ -47,112 +51,151 @@ export default function Login() {
     }
   };
 
+  // Motion config respecting reduced-motion
+  const dur = reducedMotion ? 0 : 0.7;
+  const ease = [0.16, 1, 0.3, 1]; // ease-out-expo from design tokens
+  const stagger = reducedMotion ? 0 : 0.12;
+
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--ifrit-bg-secondary)' }}>
-      
-      {/* Subtle grid background */}
-      <div 
-        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+    <section
+      className="relative section-dark min-h-screen flex items-center justify-center overflow-hidden"
+    >
+      {/* Shared EmberCanvas from landing — visual continuity */}
+      <EmberCanvas />
+
+      {/* Radial glow — same approach as Hero */}
+      <div
+        className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: `linear-gradient(var(--ifrit-border) 1px, transparent 1px), linear-gradient(90deg, var(--ifrit-border) 1px, transparent 1px)`,
-          backgroundSize: '48px 48px'
+          background: `
+            radial-gradient(ellipse 70% 60% at 50% 60%, oklch(0.28 0.14 25 / 0.35), transparent 70%),
+            radial-gradient(ellipse 50% 40% at 80% 80%, oklch(0.30 0.10 35 / 0.08), transparent 60%)
+          `,
         }}
+        aria-hidden="true"
       />
 
-      {/* Main Container */}
-      <div className="relative z-10 w-full max-w-sm px-4">
-        
-        {/* Logo Section */}
-        <div className="flex flex-col items-center mb-8">
-          <div 
-            className="w-14 h-14 rounded-xl flex items-center justify-center mb-4"
-            style={{ backgroundColor: 'var(--ifrit-brand)' }}
-          >
-            <Flame className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--ifrit-text-primary)' }}>
-            IFRIT
-          </h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>AI-Powered Fire Detection</p>
-        </div>
+      {/* Top vignette */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'linear-gradient(to bottom, oklch(0.08 0.01 25 / 0.7) 0%, transparent 50%)',
+        }}
+        aria-hidden="true"
+      />
 
-        {/* Login Card */}
-        <div 
-          className="p-8 rounded-xl border"
-          style={{ 
-            backgroundColor: 'var(--ifrit-bg-primary)', 
-            borderColor: 'var(--ifrit-border)',
-          }}
+      {/* Content */}
+      <motion.div
+        className="relative z-10 w-full px-6 py-20"
+        style={{ maxWidth: '26rem' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: dur, ease }}
+      >
+        {/* Brand mark */}
+        <motion.div
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: reducedMotion ? 0 : 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: dur, ease }}
         >
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Sign in</h2>
-            <p className="text-sm mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>Access your monitoring dashboard</p>
-          </div>
+          <Link
+            to="/"
+            className="font-display text-4xl md:text-5xl font-black tracking-tight text-text-on-dark inline-block"
+            style={{ letterSpacing: '-0.04em' }}
+          >
+            IF<span className="text-ifrit-red">R</span>IT
+          </Link>
+          <p
+            className="font-body text-text-on-dark-muted mt-3"
+            style={{ fontSize: 'var(--text-sm)' }}
+          >
+            Sign in to the command center
+          </p>
+        </motion.div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            {/* Email Input */}
-            <div className="space-y-1.5">
-              <label htmlFor="email" className="text-xs font-medium" style={{ color: 'var(--ifrit-text-secondary)' }}>Email</label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="w-4 h-4" style={{ color: 'var(--ifrit-text-muted)' }} />
-                </div>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg py-2.5 pl-10 pr-4 text-sm outline-none transition-colors border"
-                  style={{ 
-                    backgroundColor: 'var(--ifrit-bg-secondary)', 
-                    borderColor: 'var(--ifrit-border)',
-                    color: 'var(--ifrit-text-primary)',
-                  }}
-                  placeholder="admin@ifrit.io"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="password" className="text-xs font-medium" style={{ color: 'var(--ifrit-text-secondary)' }}>Password</label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="w-4 h-4" style={{ color: 'var(--ifrit-text-muted)' }} />
-                </div>
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-lg py-2.5 pl-10 pr-4 text-sm outline-none transition-colors border"
-                  style={{ 
-                    backgroundColor: 'var(--ifrit-bg-secondary)', 
-                    borderColor: 'var(--ifrit-border)',
-                    color: 'var(--ifrit-text-primary)',
-                  }}
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
-
-            {/* Remember & Forgot */}
-            <div className="flex items-center justify-between text-xs px-0.5">
-              <label className="flex items-center gap-2 cursor-pointer" style={{ color: 'var(--ifrit-text-muted)' }}>
-                <input type="checkbox" className="rounded border" style={{ accentColor: 'var(--ifrit-brand)' }} />
-                Remember me
+        {/* Form */}
+        <motion.form
+          onSubmit={handleLogin}
+          initial={{ opacity: 0, y: reducedMotion ? 0 : 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: dur, ease, delay: stagger }}
+        >
+          <fieldset disabled={loading} className="space-y-6">
+            {/* Email */}
+            <div>
+              <label
+                htmlFor="login-email"
+                className="block font-body text-text-on-dark-muted mb-2"
+                style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}
+              >
+                Email
               </label>
-              <button type="button" className="font-medium" style={{ color: 'var(--ifrit-brand)' }}>Forgot password?</button>
+              <input
+                id="login-email"
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+                className="w-full font-body rounded-[var(--radius-md)] px-4 py-3 text-text-on-dark outline-none transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out-quart)]"
+                style={{
+                  fontSize: 'var(--text-base)',
+                  backgroundColor: 'oklch(0.15 0.012 25)',
+                  border: '1px solid oklch(0.24 0.01 25)',
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = 'oklch(0.45 0.18 25)';
+                  e.target.style.backgroundColor = 'oklch(0.17 0.015 25)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'oklch(0.24 0.01 25)';
+                  e.target.style.backgroundColor = 'oklch(0.15 0.012 25)';
+                }}
+              />
             </div>
 
-            <Button 
+            {/* Password */}
+            <div>
+              <label
+                htmlFor="login-password"
+                className="block font-body text-text-on-dark-muted mb-2"
+                style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}
+              >
+                Password
+              </label>
+              <input
+                id="login-password"
+                type="password"
+                required
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full font-body rounded-[var(--radius-md)] px-4 py-3 text-text-on-dark outline-none transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out-quart)]"
+                style={{
+                  fontSize: 'var(--text-base)',
+                  backgroundColor: 'oklch(0.15 0.012 25)',
+                  border: '1px solid oklch(0.24 0.01 25)',
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = 'oklch(0.45 0.18 25)';
+                  e.target.style.backgroundColor = 'oklch(0.17 0.015 25)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'oklch(0.24 0.01 25)';
+                  e.target.style.backgroundColor = 'oklch(0.15 0.012 25)';
+                }}
+              />
+            </div>
+
+            {/* Submit */}
+            <button
               type="submit"
               disabled={loading}
-              className="w-full h-11 text-white font-semibold rounded-lg border-none transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 cursor-pointer"
-              style={{ backgroundColor: 'var(--ifrit-brand)' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--ifrit-brand-hover)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--ifrit-brand)'}
+              className="w-full font-display font-semibold tracking-tight rounded-[var(--radius-md)] cursor-pointer select-none bg-ifrit-red text-white hover:bg-ifrit-red-light active:bg-ifrit-red-dark disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-[var(--duration-fast)] ease-[var(--ease-out-quart)] focus-visible:ring-2 focus-visible:ring-ifrit-red focus-visible:ring-offset-2 flex items-center justify-center gap-2"
+              style={{ padding: '0.875rem 2rem', fontSize: 'var(--text-base)' }}
             >
               {loading ? (
                 <>
@@ -160,24 +203,23 @@ export default function Login() {
                   Signing in...
                 </>
               ) : (
-                'Sign In'
+                'Sign in'
               )}
-            </Button>
-          </form>
+            </button>
+          </fieldset>
+        </motion.form>
 
-          {/* Footer Card */}
-          <div className="mt-6 pt-5 border-t text-center" style={{ borderColor: 'var(--ifrit-border)' }}>
-            <p className="text-xs" style={{ color: 'var(--ifrit-text-muted)' }}>
-              Need access? <button className="font-medium" style={{ color: 'var(--ifrit-brand)' }}>Contact your administrator</button>
-            </p>
-          </div>
-        </div>
-
-        {/* System Footer */}
-        <p className="mt-6 text-center text-[10px] tracking-wide" style={{ color: 'var(--ifrit-text-muted)' }}>
-          &copy; 2026 IFRIT Fire Detection Systems
-        </p>
-      </div>
-    </div>
+        {/* Footer note */}
+        <motion.p
+          className="text-center mt-10 font-body text-text-on-dark-muted"
+          style={{ fontSize: 'var(--text-xs)' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.4 }}
+          transition={{ duration: dur, delay: stagger * 3 }}
+        >
+          Protected by IFRIT Core. Authorized personnel only.
+        </motion.p>
+      </motion.div>
+    </section>
   );
 }

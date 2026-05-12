@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Flame, Send, BarChart3, Activity,
-  Cpu, ShieldCheck, Zap, BookOpen
+  Cpu, ShieldCheck, Zap, BookOpen,
+  Heart, Repeat2, Eye, Filter, ChevronDown, Globe, Calendar
 } from 'lucide-react';
 import {
   PieChart, Pie, Cell, ResponsiveContainer,
@@ -28,11 +29,21 @@ export default function SentimenAnalisisX() {
   const [activeMode, setActiveMode] = useState('manual'); // 'manual' or 'x'
   const [searchQuery, setSearchQuery] = useState('kebakaran');
   const [xResults, setXResults] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterProduct, setFilterProduct] = useState('Latest');
+  const [filterLang, setFilterLang] = useState('');
+  const [filterSince, setFilterSince] = useState('');
+  const [filterUntil, setFilterUntil] = useState('');
+  const [filterMinFaves, setFilterMinFaves] = useState('');
+  const [filterCount, setFilterCount] = useState('20');
+  const [historyResults, setHistoryResults] = useState([]);
+  const [fetchingHistory, setFetchingHistory] = useState(false);
 
-  const filteredXResults = useMemo(() => {
-    if (activeFilter === 'all') return xResults;
-    return xResults.filter(item => item.finalKey === activeFilter);
-  }, [xResults, activeFilter]);
+  const displayResults = useMemo(() => {
+    const source = xResults.length > 0 ? xResults : historyResults;
+    if (activeFilter === 'all') return source;
+    return source.filter(item => item.finalKey === activeFilter);
+  }, [xResults, historyResults, activeFilter]);
 
   const chartData = useMemo(() => [
     { name: 'Negative', value: stats.negative || 1, color: THEME.negative.color },
@@ -91,7 +102,16 @@ export default function SentimenAnalisisX() {
     setXResults([]);
 
     try {
-      const response = await customFetch(`/api/v1/nlp/analyze-x?query=${encodeURIComponent(searchQuery)}&count=10`);
+      const params = new URLSearchParams();
+      params.set('query', searchQuery);
+      params.set('count', filterCount);
+      params.set('product', filterProduct);
+      if (filterLang) params.set('lang', filterLang);
+      if (filterSince) params.set('since', filterSince);
+      if (filterUntil) params.set('until', filterUntil);
+      if (filterMinFaves) params.set('min_faves', filterMinFaves);
+
+      const response = await customFetch(`/api/v1/nlp/analyze-x?${params.toString()}`);
 
       if (!response.ok) {
         const err = await response.json();
@@ -108,29 +128,70 @@ export default function SentimenAnalisisX() {
           else if (raw.includes('neu')) finalKey = 'netral';
           else if (raw.includes('con')) finalKey = 'konflik';
 
-          // Update stats
           setStats(prev => ({ ...prev, [finalKey]: prev[finalKey] + 1 }));
 
-          return {
-            ...item,
-            theme: THEME[finalKey],
-            finalKey
-          };
+          return { ...item, theme: THEME[finalKey], finalKey };
         });
         setXResults(mappedResults);
-      } else {
-        console.warn(res.message || "Tidak ada data ditemukan.");
       }
     } catch (error) {
       console.error("X Search Error:", error);
     } finally {
       setLoading(false);
+      // Refresh history after analysis to show the new record
+      fetchHistory();
+    }
+  };
+
+  const fetchHistory = async () => {
+    setFetchingHistory(true);
+    try {
+      const response = await customFetch('/api/v1/nlp/history?limit=100');
+      if (!response.ok) {
+        // Tabel belum dibuat atau server error — skip saja
+        console.warn("History endpoint tidak tersedia, skip.");
+        return;
+      }
+      const res = await response.json();
+      if (!res.data || res.data.length === 0) return;
+
+      // Hitung stats dari data historis
+      const historyStats = { negative: 0, positive: 0, netral: 0, konflik: 0 };
+      const mapped = res.data.map(item => {
+        const label = item.sentiment_label || 'konflik';
+        // Map 'conflict' dari DB ke 'konflik' untuk UI
+        const uiKey = label === 'conflict' ? 'konflik' : label;
+        if (uiKey in historyStats) historyStats[uiKey]++;
+
+        return {
+          tweet_id: item.id,
+          author: item.tweet_author || 'User',
+          text: item.original_text,
+          likes: item.tweet_likes || 0,
+          retweets: item.tweet_retweets || 0,
+          views: item.tweet_views || 0,
+          finalKey: uiKey,
+          theme: THEME[uiKey] || THEME.konflik,
+          source: item.source,
+          analysis: {
+            label: (uiKey).toUpperCase(),
+            confidence: (item.confidence || 0) * 100
+          }
+        };
+      });
+      setHistoryResults(mapped);
+      setStats(historyStats);
+    } catch (error) {
+      // Silently fail jika history belum tersedia
+      console.warn("Fetch History unavailable:", error.message);
+    } finally {
+      setFetchingHistory(false);
     }
   };
 
   // Auto-fetch initial data on mount
   useEffect(() => {
-    handleSearchX();
+    fetchHistory();
   }, []);
 
   return (
@@ -194,9 +255,16 @@ export default function SentimenAnalisisX() {
                 </form>
               ) : (
                 <form onSubmit={handleSearchX} className="bg-dark-surface border border-dark-border p-8 rounded-2xl shadow-2xl space-y-6">
-                  <div className="flex items-center gap-2 text-text-on-dark-muted">
-                    <Activity size={16} className="text-ifrit-red" />
-                    <span className="text-xs font-bold uppercase tracking-widest">Keyword Search (Twitter/X)</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-text-on-dark-muted">
+                      <Activity size={16} className="text-ifrit-red" />
+                      <span className="text-xs font-bold uppercase tracking-widest">Keyword Search (Twitter/X)</span>
+                    </div>
+                    <button type="button" onClick={() => setShowFilters(!showFilters)} className="flex items-center gap-1.5 text-xs font-bold text-text-on-dark-muted hover:text-ifrit-red transition-colors cursor-pointer uppercase tracking-wider">
+                      <Filter size={14} />
+                      Filter
+                      <ChevronDown size={14} className={`transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+                    </button>
                   </div>
                   <div className="relative">
                     <input
@@ -206,10 +274,56 @@ export default function SentimenAnalisisX() {
                       placeholder="Masukkan kata kunci... (kebakaran, asap, api)"
                       className="w-full bg-dark-bg border border-dark-border rounded-xl py-5 px-6 text-xl focus:ring-2 focus:ring-ifrit-red outline-none transition-all text-white"
                     />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-white/20">
-                      <BarChart3 size={20} />
-                    </div>
                   </div>
+
+                  {showFilters && (
+                    <div className="grid grid-cols-2 gap-4 p-5 bg-dark-bg rounded-xl border border-dark-border">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-text-on-dark-muted uppercase tracking-widest flex items-center gap-1"><Globe size={10} /> Bahasa</label>
+                        <select value={filterLang} onChange={(e) => setFilterLang(e.target.value)} className="w-full bg-dark-surface border border-dark-border rounded-lg py-2.5 px-3 text-sm text-white outline-none focus:ring-1 focus:ring-ifrit-red">
+                          <option value="">Semua</option>
+                          <option value="id">Indonesia</option>
+                          <option value="en">English</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-text-on-dark-muted uppercase tracking-widest">Sorting</label>
+                        <select value={filterProduct} onChange={(e) => setFilterProduct(e.target.value)} className="w-full bg-dark-surface border border-dark-border rounded-lg py-2.5 px-3 text-sm text-white outline-none focus:ring-1 focus:ring-ifrit-red">
+                          <option value="Latest">Terbaru</option>
+                          <option value="Top">Populer</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-text-on-dark-muted uppercase tracking-widest flex items-center gap-1"><Calendar size={10} /> Dari Tanggal</label>
+                        <input type="date" value={filterSince} onChange={(e) => setFilterSince(e.target.value)} className="w-full bg-dark-surface border border-dark-border rounded-lg py-2.5 px-3 text-sm text-white outline-none focus:ring-1 focus:ring-ifrit-red" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-text-on-dark-muted uppercase tracking-widest flex items-center gap-1"><Calendar size={10} /> Sampai Tanggal</label>
+                        <input type="date" value={filterUntil} onChange={(e) => setFilterUntil(e.target.value)} className="w-full bg-dark-surface border border-dark-border rounded-lg py-2.5 px-3 text-sm text-white outline-none focus:ring-1 focus:ring-ifrit-red" />
+                      </div>
+                      <div className="col-span-2 space-y-2">
+                        <label className="text-[10px] font-bold text-text-on-dark-muted uppercase tracking-widest flex items-center gap-1"><Heart size={10} /> Min. Likes</label>
+                        <input type="number" min="0" value={filterMinFaves} onChange={(e) => setFilterMinFaves(e.target.value)} placeholder="0" className="w-full bg-dark-surface border border-dark-border rounded-lg py-2.5 px-3 text-sm text-white outline-none focus:ring-1 focus:ring-ifrit-red" />
+                      </div>
+                      <div className="col-span-2 space-y-2">
+                        <label className="text-[10px] font-bold text-text-on-dark-muted uppercase tracking-widest">Jumlah Tweet (Custom)</label>
+                        <div className="relative">
+                          <input 
+                            type="number" 
+                            min="1" 
+                            max="200" 
+                            value={filterCount} 
+                            onChange={(e) => setFilterCount(e.target.value)} 
+                            className="w-full bg-dark-surface border border-dark-border rounded-lg py-2.5 px-3 text-sm text-white outline-none focus:ring-1 focus:ring-ifrit-red"
+                            placeholder="Contoh: 35"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/20 font-bold uppercase">Tweets</span>
+                        </div>
+                        <p className="text-[9px] text-text-on-dark-muted italic leading-tight">Makin banyak tweet, makin lama proses analisis AI Bi-LSTM (Max: 200).</p>
+                      </div>
+                    </div>
+                  )}
+
                   <button
                     disabled={loading || !searchQuery.trim()}
                     className="w-full py-5 bg-ifrit-red hover:bg-ifrit-red-light disabled:opacity-50 rounded-xl font-display font-bold text-white shadow-xl transition-all flex items-center justify-center gap-3 cursor-pointer"
@@ -288,6 +402,13 @@ export default function SentimenAnalisisX() {
                       <p className="text-sm text-white/80 italic leading-relaxed relative z-10">
                         "{tweet.text}"
                       </p>
+
+                      {/* Engagement metrics */}
+                      <div className="flex items-center gap-4 text-white/20 text-[10px] font-bold relative z-10 mt-1">
+                        {tweet.likes > 0 && <span className="flex items-center gap-1"><Heart size={10} /> {tweet.likes}</span>}
+                        {tweet.retweets > 0 && <span className="flex items-center gap-1"><Repeat2 size={10} /> {tweet.retweets}</span>}
+                        {tweet.views > 0 && <span className="flex items-center gap-1"><Eye size={10} /> {tweet.views.toLocaleString()}</span>}
+                      </div>
 
                       {/* Confidence bar subtle */}
                       <div className="absolute bottom-0 left-0 h-1 bg-white/5 w-full">
@@ -378,8 +499,8 @@ export default function SentimenAnalisisX() {
           <div className="max-h-[800px] overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-ifrit-red/30 scrollbar-track-transparent">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               <AnimatePresence>
-                {filteredXResults.length > 0 ? (
-                  filteredXResults.map((item, index) => (
+                {displayResults.length > 0 ? (
+                  displayResults.map((item, index) => (
                     <motion.div
                       key={item.tweet_id || index}
                       layout
@@ -390,26 +511,41 @@ export default function SentimenAnalisisX() {
                     >
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full`} style={{ backgroundColor: item.theme.color }} />
-                          <span className="text-[9px] font-bold text-white/30 uppercase tracking-tighter">@{item.author}</span>
+                          <div className={`w-2 h-2 rounded-full shadow-[0_0_8px]`} style={{ backgroundColor: item.theme.color, shadowColor: item.theme.color }} />
+                          <div>
+                            <p className="text-[9px] font-bold text-white/30 uppercase tracking-tighter">@{item.author}</p>
+                            <span className="text-[8px] px-1.5 py-0.5 rounded-sm bg-white/5 text-white/20 font-bold uppercase tracking-widest border border-white/5">
+                              {item.source === 'manual' ? 'Manual Report' : 'X/Twitter'}
+                            </span>
+                          </div>
                         </div>
                         <span className="text-[10px] font-bold tracking-widest opacity-30 group-hover:opacity-100 transition-opacity" style={{ color: item.theme.color }}>
                           {item.theme.label}
                         </span>
                       </div>
-                      <p className="text-text-on-dark-muted text-sm italic leading-relaxed group-hover:text-white transition-colors mb-4">
+                      <p className="text-text-on-dark-muted text-sm italic leading-relaxed group-hover:text-white transition-colors mb-4 line-clamp-3">
                         "{item.text}"
                       </p>
-                      <div className="flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity pt-4 border-t border-white/5">
+
+                      {/* Engagement stats for X results */}
+                      {(item.likes > 0 || item.retweets > 0 || item.views > 0) && (
+                        <div className="flex items-center gap-3 text-white/20 text-[9px] font-bold mb-4">
+                          {item.likes > 0 && <span className="flex items-center gap-1"><Heart size={10} /> {item.likes}</span>}
+                          {item.retweets > 0 && <span className="flex items-center gap-1"><Repeat2 size={10} /> {item.retweets}</span>}
+                          {item.views > 0 && <span className="flex items-center gap-1"><Eye size={10} /> {item.views.toLocaleString()}</span>}
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center opacity-40 group-hover:opacity-100 transition-opacity pt-4 border-t border-white/5">
                         <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Confidence</span>
-                        <span className="text-xs font-bold" style={{ color: item.theme.color }}>{item.analysis.confidence.toFixed(2)}%</span>
+                        <span className="text-xs font-mono font-bold" style={{ color: item.theme.color }}>{item.analysis.confidence.toFixed(2)}%</span>
                       </div>
                     </motion.div>
                   ))
                 ) : (
                   <div className="col-span-full py-20 text-center border-2 border-dashed border-white/5 rounded-2xl">
                     <p className="text-text-on-dark-muted italic">
-                      {loading ? "Menghubungkan ke satelit X..." : "Belum ada data pencarian terdeteksi."}
+                      {loading || fetchingHistory ? "Menghubungkan ke pusat data..." : "Belum ada riwayat analisis yang tersimpan."}
                     </p>
                   </div>
                 )}

@@ -69,6 +69,13 @@ export default function Header() {
           ))}
 
           <LanguageToggle className="text-text-on-dark-muted" />
+          
+          <Link
+            to="/login"
+            className="font-body text-sm font-medium px-4 py-2 rounded-lg border border-white/10 hover:bg-white/5 transition-all text-text-on-dark-muted hover:text-white"
+          >
+            {t('nav.login')}
+          </Link>
 
           <Button
             as={Link}
@@ -114,9 +121,17 @@ export default function Header() {
               {link.label}
             </Link>
           ))}
-          <div className="flex items-center gap-4 pt-2 border-t border-dark-border/30">
-            <LanguageToggle className="text-text-on-dark-muted" />
-            <Button as={Link} to="/contact" size="sm" className="flex-1 justify-center">
+          <div className="flex flex-col gap-4 pt-2 border-t border-dark-border/30">
+            <div className="flex items-center justify-between">
+              <LanguageToggle className="text-text-on-dark-muted" />
+              <Link
+                to="/login"
+                className="font-body text-sm font-medium text-text-on-dark-muted hover:text-ifrit-red transition-colors"
+              >
+                {t('nav.login')}
+              </Link>
+            </div>
+            <Button as={Link} to="/contact" size="sm" className="w-full justify-center">
               {t('nav.requestDemo')}
             </Button>
           </div>

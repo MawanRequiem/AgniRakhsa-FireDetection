@@ -1,5 +1,8 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useUIStore } from '@/store/store';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { customFetch } from '@/lib/api';
+import { toast } from 'sonner';
 import {
   LayoutDashboard,
   DoorOpen,
@@ -10,6 +13,7 @@ import {
   ChevronRight,
   Flame,
   Wifi,
+  LogOut,
 } from 'lucide-react';
 
 // PERBAIKAN: Menambahkan awalan /dashboard pada semua item navigasi
@@ -26,6 +30,22 @@ const navItems = [
 export default function Sidebar() {
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggle = useUIStore((s) => s.toggleSidebar);
+  const clearAuth = useAuthStore((s) => s.clearAuth);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await customFetch('/api/v1/auth/logout', { method: 'POST' });
+      clearAuth();
+      toast.success('Logged out successfully');
+      navigate('/');
+    } catch (error) {
+      toast.error('Logout failed');
+      // Even if API fails, clear local state for safety
+      clearAuth();
+      navigate('/');
+    }
+  };
 
   return (
     <aside
@@ -83,7 +103,16 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom Section */}
-      <div className="px-3 py-3 border-t space-y-3" style={{ borderColor: 'var(--ifrit-border)' }}>
+      <div className="px-3 py-3 border-t space-y-2" style={{ borderColor: 'var(--ifrit-border)' }}>
+        {/* Logout Button */}
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm font-medium text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer group"
+        >
+          <LogOut className="w-5 h-5 flex-shrink-0 group-hover:scale-110 transition-transform" />
+          {!collapsed && <span>Sign Out</span>}
+        </button>
+
         <button
           onClick={toggle}
           className="flex items-center justify-center w-full py-2 rounded-md transition-colors cursor-pointer hover:bg-white/5"
@@ -95,4 +124,4 @@ export default function Sidebar() {
       </div>
     </aside>
   );
-}
+}
