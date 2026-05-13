@@ -89,12 +89,37 @@ async def camera_stream_endpoint(websocket: WebSocket, camera_id: str):
                         {"has_detection": False, "last_frame_at": "now()"}
                     ).eq("id", camera_id).execute()
 
-                # Run Fusion
-                fusion_res = await fusion_service.run_fusion(
-                    image_score=det_result.get("max_confidence", 0.0),
-                    room_id=room_uuid,
-                    detection_event_id=det_result.get("id")
-                )
+                # Publish to Redis Stream for Late Fusion
+                from app.core.redis import redis_manager
+                import time
+                r_client = redis_manager.get_client()
+                
+                fusion_score_cache = 0
+                risk_level_cache = "pending"
+                
+                if r_client and room_uuid:
+                    r_client.xadd("fusion:events", {
+                        "type": "image",
+                        "room_id": str(room_uuid),
+                        "score": str(det_result.get("max_confidence", 0.0)),
+                        "timestamp": str(time.time()),
+                        "detection_event_id": str(det_result.get("id"))
+                    })
+                    # Try to fetch last known fusion score for the dashboard
+                    try:
+                        # Assuming fusion worker or service updates the room status/score
+                        pass 
+                    except:
+                        pass
+                else:
+                    # Fallback
+                    fusion_res = await fusion_service.run_fusion(
+                        image_score=det_result.get("max_confidence", 0.0),
+                        room_id=room_uuid,
+                        detection_event_id=det_result.get("id")
+                    )
+                    fusion_score_cache = fusion_res.get("fusion_score", 0)
+                    risk_level_cache = fusion_res.get("risk_level", "safe")
                 
                 # Broadcast back to dashboard
                 broadcast_payload = {
@@ -107,8 +132,8 @@ async def camera_stream_endpoint(websocket: WebSocket, camera_id: str):
                          "max_confidence": det_result.get("max_confidence", 0),
                          "image_width": det_result.get("image_width", 640),
                          "image_height": det_result.get("image_height", 480),
-                         "fusion_score": fusion_res.get("fusion_score", 0),
-                         "risk_level": fusion_res.get("risk_level", "safe")
+                         "fusion_score": fusion_score_cache,
+                         "risk_level": risk_level_cache
                      }
                 }
                 await manager.broadcast(broadcast_payload)

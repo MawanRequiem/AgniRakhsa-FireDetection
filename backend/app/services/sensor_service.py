@@ -148,8 +148,18 @@ async def ingest_readings(device_id: UUID, readings: list[dict]) -> int:
             }
             snapshot = {k: v for k, v in snapshot.items() if k}
             sensor_detector.ingest(str(room_id), snapshot)
+            
+            # Publish sensor event to Fusion Stream
+            import json, time
+            if r_client:
+                r_client.xadd("fusion:events", {
+                    "type": "sensor",
+                    "room_id": str(room_id),
+                    "snapshot": json.dumps(snapshot),
+                    "timestamp": str(time.time())
+                })
     except Exception as e:
-        logger.warning(f"Failed to feed sensor anomaly buffer: {e}")
+        logger.warning(f"Failed to feed sensor anomaly buffer or publish to fusion: {e}")
 
     return len(readings)
 

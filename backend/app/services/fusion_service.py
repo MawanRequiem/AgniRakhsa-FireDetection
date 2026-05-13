@@ -60,7 +60,17 @@ def _compute_sensor_score_from_thresholds(snapshot: dict) -> float:
     risk_scores = []
     
     for sensor_type, data in snapshot.items():
-        value = data.get("value")
+
+        if isinstance(data, dict):
+            value = data.get("value")
+        elif isinstance(data, (int, float)):
+            value = float(data)
+        else:
+            logger.warning(
+                f"Invalid sensor snapshot format for {sensor_type}: {data}"
+            )
+            continue
+
         if value is None:
             continue
         
