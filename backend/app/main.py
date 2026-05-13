@@ -6,6 +6,7 @@ from app.api.routers import auth, notifications, detection, sensors, rooms, devi
 from app.core.config import settings
 from app.ai import registry
 from app.services.device_watchdog import run_watchdog
+from app.services.fusion_worker import run_fusion_worker
 
 from app.core.redis import redis_manager
 
@@ -41,13 +42,16 @@ async def lifespan(app: FastAPI):
     # Start the device watchdog as a background task
     import asyncio
     watchdog_task = asyncio.create_task(run_watchdog())
+    fusion_worker_task = asyncio.create_task(run_fusion_worker())
     
     yield
     
-    # Teardown: cancel the watchdog
+    # Teardown: cancel tasks
     watchdog_task.cancel()
+    fusion_worker_task.cancel()
     try:
         await watchdog_task
+        await fusion_worker_task
     except asyncio.CancelledError:
         pass
 

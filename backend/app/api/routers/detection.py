@@ -46,20 +46,30 @@ async def detect_image(
         room_id=room_id,
     )
     
-    # 2. Trigger late fusion
-    fusion_result = await fusion_service.run_fusion(
-        image_score=det_result["max_confidence"],
-        room_id=room_id,
-        detection_event_id=det_result.get("id"),
-    )
+    # 2. Trigger late fusion via Redis Stream
+    import time
+    from app.core.redis import redis_manager
+    r_client = redis_manager.get_client()
+    
+    if r_client and room_id:
+        r_client.xadd("fusion:events", {
+            "type": "image",
+            "room_id": str(room_id),
+            "score": str(det_result["max_confidence"]),
+            "timestamp": str(time.time()),
+            "detection_event_id": str(det_result.get("id"))
+        })
+    else:
+        # Fallback if Redis is offline
+        await fusion_service.run_fusion(
+            image_score=det_result["max_confidence"],
+            room_id=room_id,
+            detection_event_id=det_result.get("id"),
+        )
     
     # 3. Build response
-    det_result["risk_assessment"] = RiskAssessment(
-        fusion_score=fusion_result["fusion_score"],
-        risk_level=fusion_result["risk_level"],
-        image_score=fusion_result["image_score"],
-        sensor_score=fusion_result["sensor_score"],
-    )
+    # Since fusion is now async via streams, we cannot return the exact risk_assessment synchronously
+    det_result["risk_assessment"] = None
     
     return det_result
 
