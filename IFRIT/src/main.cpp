@@ -22,15 +22,15 @@
 #define FIRMWARE_VERSION "3.0.0-ADAPTIVE-CAL"
 
 // --- WiFi Configuration ---
-const char *WIFI_SSID = "Redmi-13C";
-const char *WIFI_PASSWORD = "networking";
+const char *WIFI_SSID = "MaOne_Cisco";
+const char *WIFI_PASSWORD = "networkasik";
 
 // --- Backend API Configuration ---
-const char *API_BASE_URL = "http://ifrit.space/api/v1";
+const char *API_BASE_URL = "https://ifrit.space/api/v1";
 
 // --- Device Configuration ---
-const char *DEVICE_NAME = "Ifrit Test";
-const char *ROOM_NAME = "Wokwi Test Vps";
+const char *DEVICE_NAME = "Demo Hari Selasa";
+const char *ROOM_NAME = "Ruang Raka Herdika";
 
 // --- Telemetry Configuration ---
 const unsigned long TELEMETRY_INTERVAL_MS = 2000;  // Send readings every 2s
@@ -78,8 +78,8 @@ const float PARAM_A[NUM_MQ_SENSORS] = {574.25, 1012.7, 1009.2, 599.65};
 const float PARAM_B[NUM_MQ_SENSORS] = {-2.222, -2.786, -2.35, -2.244};
 
 // --- Calibration Tuning ---
-#define CALIBRATION_SAMPLES 50   // Number of ADC samples to average
-#define CALIBRATION_DELAY_MS 200 // Delay between samples (total = 50*200 = 10s)
+#define CALIBRATION_SAMPLES 900   // Number of ADC samples to average (900 samples * 1000ms = 15 minutes)
+#define CALIBRATION_DELAY_MS 1000 // Delay between samples (1 second)
 #define R0_MIN_VALID 0.1         // Min valid R0 (kΩ)
 #define R0_MAX_VALID 100.0       // Max valid R0 (kΩ)
 #define WARMUP_TIME_MS                                                         \
@@ -111,6 +111,7 @@ const float PARAM_B[NUM_MQ_SENSORS] = {-2.222, -2.786, -2.35, -2.244};
 #include <HTTPClient.h>
 #include <Preferences.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 
 // Wokwi uses DHT22 to simulate SHTC3
 #include "Adafruit_SHTC3.h"
@@ -373,13 +374,28 @@ void connectWiFi() {
   Serial.println(WiFi.macAddress());
 }
 
+#include <WiFiClient.h>
+
+void beginHttp(HTTPClient &http, WiFiClientSecure &secureClient, WiFiClient &plainClient, const String &url) {
+  if (url.startsWith("https://")) {
+    secureClient.setInsecure();
+    http.begin(secureClient, url);
+  } else {
+    http.begin(plainClient, url);
+  }
+  http.setTimeout(15000); // 15 seconds timeout
+  http.addHeader("User-Agent", "ESP32-AgniRakhsa-MCU"); // Avoid being flagged or stalled by Cloudflare WAF/Shield
+}
+
 /** Provision device with backend — get device_id and sensor UUIDs. */
 bool provisionDevice() {
   Serial.println("[PROVISION] Registering with backend...");
 
+  WiFiClientSecure secureClient;
+  WiFiClient plainClient;
   HTTPClient http;
   String url = String(API_BASE_URL) + "/devices/provision";
-  http.begin(url);
+  beginHttp(http, secureClient, plainClient, url);
   http.addHeader("Content-Type", "application/json");
 
   JsonDocument doc;
@@ -438,9 +454,11 @@ void sendCalibrationToServer() {
   if (deviceId == "")
     return;
 
+  WiFiClientSecure secureClient;
+  WiFiClient plainClient;
   HTTPClient http;
   String url = String(API_BASE_URL) + "/calibration/" + deviceId;
-  http.begin(url);
+  beginHttp(http, secureClient, plainClient, url);
   http.addHeader("Content-Type", "application/json");
 
   JsonDocument doc;
@@ -472,9 +490,11 @@ void checkRemoteCalibrationCommand() {
   if (deviceId == "")
     return;
 
+  WiFiClientSecure secureClient;
+  WiFiClient plainClient;
   HTTPClient http;
   String url = String(API_BASE_URL) + "/calibration/" + deviceId + "/commands";
-  http.begin(url);
+  beginHttp(http, secureClient, plainClient, url);
 
   int httpCode = http.GET();
 
@@ -490,11 +510,14 @@ void checkRemoteCalibrationCommand() {
       if (command == "RECALIBRATE") {
         Serial.println("\n[REMOTE] Server requested RECALIBRATE!");
 
-        // Acknowledge command in progress
+        WiFiClientSecure secureAckClient;
+        WiFiClient plainAckClient;
         HTTPClient ackHttp;
         String ackUrl = String(API_BASE_URL) + "/calibration/" + deviceId +
                         "/commands/" + commandId + "/ack";
-        ackHttp.begin(ackUrl);
+
+        // Acknowledge command in progress
+        beginHttp(ackHttp, secureAckClient, plainAckClient, ackUrl);
         ackHttp.addHeader("Content-Type", "application/json");
         ackHttp.POST("{\"status\":\"in_progress\"}");
         ackHttp.end();
@@ -507,21 +530,60 @@ void checkRemoteCalibrationCommand() {
           sendCalibrationToServer();
 
           // Acknowledge command completion
-          ackHttp.begin(ackUrl);
+          beginHttp(ackHttp, secureAckClient, plainAckClient, ackUrl);
           ackHttp.addHeader("Content-Type", "application/json");
           ackHttp.POST("{\"status\":\"completed\"}");
           ackHttp.end();
 
-          Serial.println("[REMOTE] Recalibration complete, ACK completed sent.");
+          Serial.println(
+              "[REMOTE] Recalibration complete, ACK completed sent.");
         } else {
           // Acknowledge command failure
-          ackHttp.begin(ackUrl);
+          beginHttp(ackHttp, secureAckClient, plainAckClient, ackUrl);
           ackHttp.addHeader("Content-Type", "application/json");
           ackHttp.POST("{\"status\":\"failed\"}");
           ackHttp.end();
 
           Serial.println("[REMOTE] Recalibration failed, ACK failed sent.");
         }
+      } else if (command == "REBURNIN") {
+        Serial.println("\n[REMOTE] Server requested REBURNIN!");
+
+        WiFiClientSecure secureAckClient;
+        WiFiClient plainAckClient;
+        HTTPClient ackHttp;
+        String ackUrl = String(API_BASE_URL) + "/calibration/" + deviceId +
+                        "/commands/" + commandId + "/ack";
+
+        // Acknowledge command in progress
+        beginHttp(ackHttp, secureAckClient, plainAckClient, ackUrl);
+        ackHttp.addHeader("Content-Type", "application/json");
+        ackHttp.POST("{\"status\":\"in_progress\"}");
+        ackHttp.end();
+
+        // Perform re-burnin NVS and memory reset
+        prefs.begin("ifrit_time", false); // read-write
+        prefs.putBool("burnin_done", false);
+        prefs.putULong("cum_mins", 0);
+        prefs.end();
+
+        prefs.begin("agni_cal", false); // read-write
+        prefs.clear();
+        prefs.end();
+
+        isCalibrated = false;
+        cumulativeMins = 0;
+        burninDone = false;
+
+        // Acknowledge command completion
+        beginHttp(ackHttp, secureAckClient, plainAckClient, ackUrl);
+        ackHttp.addHeader("Content-Type", "application/json");
+        ackHttp.POST("{\"status\":\"completed\"}");
+        ackHttp.end();
+
+        Serial.println("[REMOTE] Re-burnin initiated. Restarting device...");
+        delay(1500);
+        ESP.restart();
       }
     }
   }
@@ -534,16 +596,22 @@ void sendHeartbeat() {
   if (deviceId == "")
     return;
 
+  WiFiClientSecure secureClient;
+  WiFiClient plainClient;
   HTTPClient http;
   String url = String(API_BASE_URL) + "/devices/" + deviceId + "/heartbeat";
-  http.begin(url);
+  beginHttp(http, secureClient, plainClient, url);
   http.addHeader("Content-Type", "application/json");
 
   JsonDocument doc;
   doc["firmware_version"] = FIRMWARE_VERSION;
   doc["uptime_seconds"] = millis() / 1000;
-  if (millis() < WARMUP_TIME_MS) {
-    doc["status"] = "warming_up";
+  if (!burninDone || pendingAutoCalibration) {
+    if (millis() < WARMUP_TIME_MS) {
+      doc["status"] = "warming_up";
+    } else if (!burninDone) {
+      doc["status"] = "burn_in";
+    }
   }
 
   String payload;
@@ -565,9 +633,11 @@ bool downloadCalibrationFromServer() {
   if (deviceId == "")
     return false;
 
+  WiFiClientSecure secureClient;
+  WiFiClient plainClient;
   HTTPClient http;
   String url = String(API_BASE_URL) + "/calibration/" + deviceId + "/latest";
-  http.begin(url);
+  beginHttp(http, secureClient, plainClient, url);
   int httpCode = http.GET();
 
   bool success = false;
@@ -632,20 +702,28 @@ void setup() {
   cumulativeMins = prefs.getULong("cum_mins", 0);
   burninDone = prefs.getBool("burnin_done", false);
   prefs.end();
-  Serial.printf("[BOOT] Cumulative Operating Time loaded: %lu minutes / 1440\n", cumulativeMins);
-  if (burninDone) {
-    Serial.println("[BOOT] Cumulative 24h burn-in period has been COMPLETED previously.");
-  }
+  Serial.printf("[BOOT] Cumulative Operating Time loaded: %lu minutes / 1440\n",
+                cumulativeMins);
 
-  if (loadCalibrationFromNVS()) {
-    Serial.println("[BOOT] Using saved calibration data.");
+  if (burninDone) {
+    Serial.println(
+        "[BOOT] Cumulative 24h burn-in period has been COMPLETED previously.");
+    if (loadCalibrationFromNVS()) {
+      Serial.println("[BOOT] Using saved calibration data.");
+      pendingAutoCalibration = false;
+    } else {
+      // Burn-in is completed but no R0 found in NVS -> schedule a 5-min warm-up calibration
+      Serial.println("[BOOT] No saved calibration. Device will use default R0.");
+      Serial.printf("[BOOT] Auto-calibration scheduled after %d ms warm-up.\n",
+                    WARMUP_TIME_MS);
+      Serial.println("[BOOT] (Ensure sensors are in CLEAN AIR and warmed up!)");
+      pendingAutoCalibration = true;
+    }
   } else {
-    // First boot or NVS cleared — schedule auto-calibration
-    Serial.println("[BOOT] No saved calibration. Device will use default R0.");
-    Serial.printf("[BOOT] Auto-calibration scheduled after %d ms warm-up.\n",
-                  WARMUP_TIME_MS);
-    Serial.println("[BOOT] (Ensure sensors are in CLEAN AIR and warmed up!)");
-    pendingAutoCalibration = true;
+    Serial.println("[BOOT] Brand new sensor detected. Device is in 24-Hour BURN-IN phase.");
+    Serial.println("[BOOT] Normal 5-minute warm-up calibration is bypassed during burn-in.");
+    Serial.println("[BOOT] Final calibration will be triggered automatically after 24 hours (1440 mins).");
+    pendingAutoCalibration = false;
   }
 
   // ─── Connect to network ───
@@ -653,24 +731,28 @@ void setup() {
   connectWiFi();
 
   // ─── Provision with backend ───
-  Serial.println("
-[BOOT] Step 3: Provisioning device...");
+  Serial.println("\n[BOOT] Step 3: Provisioning device...");
   while (!provisionDevice()) {
     Serial.println("  Retrying in 5 seconds...");
     delay(5000);
   }
 
   // ─── NEW: LAYER 2.5: Download Calibration ───
-  Serial.println("
-[BOOT] Step 4: Checking server for existing calibration...");
+  Serial.println("\n[BOOT] Step 4: Checking server for existing calibration...");
   if (downloadCalibrationFromServer()) {
     Serial.println(
-        "[BOOT] Plug & Play successful! Warm-up calibration bypassed.");
+        "[BOOT] Plug & Play successful! Calibration loaded from server.");
     pendingAutoCalibration = false; // We have valid data!
+    
+    // Mark burn-in as done since we have valid remote calibration
+    if (!burninDone) {
+      prefs.begin("ifrit_time", false);
+      prefs.putBool("burnin_done", true);
+      prefs.end();
+      burninDone = true;
+    }
   } else {
-    Serial.println("
-[BOOT] Step 5: Uploading (initial/default) calibration to server...");
-    sendCalibrationToServer();
+    Serial.println("\n[BOOT] Step 5: No calibration found on server. Calibration record remains clean.");
   }
 
   Serial.println("\n=============================================");
@@ -695,11 +777,13 @@ void loop() {
     prefs.begin("ifrit_time", false); // read-write
     prefs.putULong("cum_mins", cumulativeMins);
     prefs.end();
-    Serial.printf("[TIME] Cumulative Operating Time: %lu minutes / 1440\n", cumulativeMins);
+    Serial.printf("[TIME] Cumulative Operating Time: %lu minutes / 1440\n",
+                  cumulativeMins);
 
     // Autonomous standalone 24h burn-in trigger
     if (cumulativeMins >= 1440 && !burninDone) {
-      Serial.println("\n[BURN-IN COMPLETE] Running autonomous burn-in calibration...");
+      Serial.println(
+          "\n[BURN-IN COMPLETE] Running autonomous burn-in calibration...");
       if (calibrateSensors()) {
         sendCalibrationToServer();
 
@@ -727,10 +811,14 @@ void loop() {
 
     float values[NUM_SENSORS];
 
-    // Read MQ sensors and convert raw ADC → PPM using calibrated R0
+    // Read MQ sensors and convert raw ADC → Rs (during burn-in) or PPM (after calibration)
     for (int i = 0; i < NUM_MQ_SENSORS; i++) {
       int rawADC = analogRead(MQ_PINS[i]);
-      values[i] = calculatePPM(rawADC, i);
+      if (!burninDone) {
+        values[i] = calculateRs(rawADC); // Use raw resistance (kOhm) during burn-in
+      } else {
+        values[i] = calculatePPM(rawADC, i); // Use calibrated PPM after burn-in and calibration
+      }
     }
 
     // Baca data lingkungan dari sensor digital SHTC3
@@ -743,11 +831,30 @@ void loop() {
     values[6] = digitalRead(FLAME_PIN);
 
     // ─── Serial Debug Output ───
-    Serial.println("=== SENSOR READINGS ===");
-    Serial.printf("  MQ-2  (LPG)  : %.2f ppm\n", values[0]);
-    Serial.printf("  MQ-4  (CH4)  : %.2f ppm\n", values[1]);
-    Serial.printf("  MQ-6  (LPG)  : %.2f ppm\n", values[2]);
-    Serial.printf("  MQ-9  (CO)   : %.2f ppm\n", values[3]);
+    bool isWarmingUp = pendingAutoCalibration && (currentMillis < WARMUP_TIME_MS);
+    if (isWarmingUp) {
+      const char* mqNames[] = {"MQ-2  (LPG)", "MQ-4  (CH4)", "MQ-6  (LPG)", "MQ-9  (CO) "};
+      Serial.printf("=== SENSOR READINGS (⏳ WARMING UP: %.1f / 5.0 mins) ===\n", currentMillis / 60000.0);
+      Serial.println("  [STABILIZING] MQ heaters are currently stabilizing.");
+      for (int i = 0; i < NUM_MQ_SENSORS; i++) {
+        int rawADC = analogRead(MQ_PINS[i]);
+        float rs = calculateRs(rawADC);
+        Serial.printf("  %s: Raw ADC: %4d | Rs: %7.2f kOhm (Stabilizing...)\n", mqNames[i], rawADC, rs);
+      }
+    } else if (!burninDone) {
+      Serial.printf("=== SENSOR READINGS (🔥 24H BURN-IN: %lu / 1440 mins) ===\n", cumulativeMins);
+      const char* mqNames[] = {"MQ-2  (LPG)", "MQ-4  (CH4)", "MQ-6  (LPG)", "MQ-9  (CO) "};
+      for (int i = 0; i < NUM_MQ_SENSORS; i++) {
+        int rawADC = analogRead(MQ_PINS[i]);
+        Serial.printf("  %s: Raw ADC: %4d | Rs: %7.2f kOhm (Burning-in...)\n", mqNames[i], rawADC, values[i]);
+      }
+    } else {
+      Serial.println("=== SENSOR READINGS ===");
+      Serial.printf("  MQ-2  (LPG)  : %.2f ppm\n", values[0]);
+      Serial.printf("  MQ-4  (CH4)  : %.2f ppm\n", values[1]);
+      Serial.printf("  MQ-6  (LPG)  : %.2f ppm\n", values[2]);
+      Serial.printf("  MQ-9  (CO)   : %.2f ppm\n", values[3]);
+    }
     Serial.printf("  Temp  (SHTC3): %.1f C\n", values[4]);
     Serial.printf("  Hum   (SHTC3): %.1f %%\n", values[5]);
     Serial.printf("  Flame (IR)   : %.0f %s\n", values[6],
@@ -761,6 +868,13 @@ void loop() {
         // Flame sensor: fire when value is LOW (pull-up logic)
         if (values[i] < ALARM_THRESHOLDS[i])
           alarmTriggered = true;
+      } else if (i < NUM_MQ_SENSORS) {
+        // Skip gas alarms during warm-up countdown OR during burn-in phase to prevent false alarms
+        bool gasAlarmsActive = (burninDone && !pendingAutoCalibration) || 
+                               (burninDone && !isWarmingUp);
+        if (gasAlarmsActive && values[i] > ALARM_THRESHOLDS[i]) {
+          alarmTriggered = true;
+        }
       } else if (values[i] > ALARM_THRESHOLDS[i]) {
         alarmTriggered = true;
       }
@@ -769,37 +883,47 @@ void loop() {
       Serial.println("[DEBUG] BUZZER: ALARM SOUNDING!");
     }
 
-    // ─── Send Telemetry to Backend ───
-    HTTPClient http;
-    String url = String(API_BASE_URL) + "/sensors/readings/batch";
-    http.begin(url);
-    http.addHeader("Content-Type", "application/json");
+    // ─── Send Telemetry to Backend (Bypassed only during heater warm-up) ───
+    if (!isWarmingUp) {
+      WiFiClientSecure secureClient;
+      WiFiClient plainClient;
+      HTTPClient http;
+      String url = String(API_BASE_URL) + "/sensors/readings/batch";
+      beginHttp(http, secureClient, plainClient, url);
+      http.addHeader("Content-Type", "application/json");
 
-    JsonDocument doc;
-    doc["device_id"] = deviceId;
+      JsonDocument doc;
+      doc["device_id"] = deviceId;
 
-    JsonArray readings = doc["readings"].to<JsonArray>();
-    for (int i = 0; i < NUM_SENSORS; i++) {
-      if (sensorUuids[i] == "")
-        continue;
+      JsonArray readings = doc["readings"].to<JsonArray>();
+      for (int i = 0; i < NUM_SENSORS; i++) {
+        if (sensorUuids[i] == "")
+          continue;
 
-      JsonObject reading = readings.add<JsonObject>();
-      reading["sensor_id"] = sensorUuids[i];
-      reading["value"] = int(values[i] * 100) / 100.0; // 2 decimal places
-    }
+        // Skip sending uncalibrated MQ sensor readings during burn-in phase to prevent DB pollution
+        if (i < NUM_MQ_SENSORS && !burninDone)
+          continue;
 
-    String payload;
-    serializeJson(doc, payload);
+        JsonObject reading = readings.add<JsonObject>();
+        reading["sensor_id"] = sensorUuids[i];
+        reading["value"] = int(values[i] * 100) / 100.0; // 2 decimal places
+      }
 
-    int httpCode = http.POST(payload);
-    if (httpCode > 0 && httpCode < 400) {
-      Serial.println("[TELEMETRY] Sent OK (" + String(httpCode) +
-                     ") Alarm: " + (alarmTriggered ? "ON" : "OFF"));
+      String payload;
+      serializeJson(doc, payload);
+
+      int httpCode = http.POST(payload);
+      if (httpCode > 0 && httpCode < 400) {
+        Serial.println("[TELEMETRY] Sent OK (" + String(httpCode) +
+                       ") Alarm: " + (alarmTriggered ? "ON" : "OFF"));
+      } else {
+        Serial.println("[TELEMETRY] Failed: " + String(httpCode));
+      }
+
+      http.end();
     } else {
-      Serial.println("[TELEMETRY] Failed: " + String(httpCode));
+      Serial.println("[TELEMETRY] Bypassed: Waiting for heater stabilization...");
     }
-
-    http.end();
   }
 
   // ─── HEARTBEAT CYCLE (includes remote command check) ───

@@ -494,8 +494,9 @@ async def diagnose_sensor_health(
             results.append(diagnosis)
             continue
 
-        # 5. Stuck check: near-zero standard deviation
-        if np.std(values) < STUCK_STD_THRESHOLD:
+        # 5. Stuck check: near-zero standard deviation (bypassed for digital SHTC3 sensors)
+        is_digital_sht = "SHTC3" in stype.upper()
+        if not is_digital_sht and np.std(values) < STUCK_STD_THRESHOLD:
             diagnosis["status"] = "stuck"
             diagnosis["details"]["reason"] = (
                 f"Constant value {values[-1]:.1f} across {len(values)} readings "

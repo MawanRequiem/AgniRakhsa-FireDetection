@@ -114,6 +114,13 @@ async def send_calibration_command(device_id: UUID, req: CalibrationCommandReque
     if not res.data:
         raise HTTPException(500, "Failed to queue command")
 
+    # If the command is REBURNIN, reset device created_at and set status to burn_in immediately
+    if req.command == "REBURNIN":
+        supabase.table("devices").update({
+            "status": "burn_in",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", str(device_id)).execute()
+
     return {"message": f"Command '{req.command}' queued for device", "command_id": res.data[0]["id"]}
 
 
@@ -190,14 +197,28 @@ async def acknowledge_command(device_id: UUID, command_id: UUID, ack: Calibratio
 
     # Update device status to reflect calibration process
     if ack.status == "in_progress":
-        supabase.table("devices").update({"status": "calibrating"}).eq("id", str(device_id)).execute()
+        cmd_res = supabase.table("device_commands").select("command").eq("id", str(command_id)).execute()
+        cmd_name = cmd_res.data[0]["command"] if cmd_res.data else "RECALIBRATE"
+        if cmd_name == "REBURNIN":
+            supabase.table("devices").update({
+                "status": "burn_in",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", str(device_id)).execute()
+        else:
+            supabase.table("devices").update({"status": "calibrating"}).eq("id", str(device_id)).execute()
     elif ack.status in ["completed", "failed"]:
-        dev_res = supabase.table("devices").select("created_at").eq("id", str(device_id)).execute()
-        target_status = "online"
-        if dev_res.data:
-            created_at = datetime.fromisoformat(dev_res.data[0]["created_at"].replace("Z", "+00:00"))
-            if (datetime.now(timezone.utc) - created_at).total_seconds() < 86400:
-                target_status = "burn_in"
-        supabase.table("devices").update({"status": target_status}).eq("id", str(device_id)).execute()
+        cmd_res = supabase.table("device_commands").select("command").eq("id", str(command_id)).execute()
+        cmd_name = cmd_res.data[0]["command"] if cmd_res.data else "RECALIBRATE"
+        
+        if cmd_name == "REBURNIN":
+            supabase.table("devices").update({"status": "burn_in"}).eq("id", str(device_id)).execute()
+        else:
+            dev_res = supabase.table("devices").select("created_at").eq("id", str(device_id)).execute()
+            target_status = "online"
+            if dev_res.data:
+                created_at = datetime.fromisoformat(dev_res.data[0]["created_at"].replace("Z", "+00:00"))
+                if (datetime.now(timezone.utc) - created_at).total_seconds() < 86400:
+                    target_status = "burn_in"
+            supabase.table("devices").update({"status": target_status}).eq("id", str(device_id)).execute()
 
     return {"message": "Command acknowledged", "status": ack.status}
