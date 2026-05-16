@@ -86,12 +86,11 @@ def read_users_me(
     """
     Mendapatkan profil user saat ini berdasarkan cookie dan mengekspos token CSRF.
     """
-    token = request.cookies.get("access_token")
     if token:
         try:
-            # Mengambil SECRET_KEY dari konfigurasi sistem Anda
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-            csrf_token = payload.get("csrf_token")
+            token_clean = token.replace("Bearer ", "")
+            payload = jwt.decode(token_clean, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            csrf_token = payload.get("csrf")
             if csrf_token:
                response.headers["X-CSRF-Token"] = csrf_token
                response.headers["Access-Control-Expose-Headers"] = "X-CSRF-Token"
