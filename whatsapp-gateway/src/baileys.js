@@ -49,9 +49,15 @@ function clearAuthDirectory(dirPath) {
 }
 
 /**
+ * Known-good version to use as a last resort if WA returns stale versions.
+ * As of May 2026, this version is confirmed working.
+ */
+const SAFETY_VERSION = [2, 3000, 1035194821]
+
+/**
  * Fetch WA Web version with caching.
- * CRITICAL: Only accept versions where isLatest === true.
- * Stale versions (isLatest: false) cause 405 rejections from WA servers.
+ * CRITICAL: Stale versions (isLatest: false) cause 405 rejections.
+ * If API returns stale and we have no cache, use SAFETY_VERSION.
  */
 async function getWAVersion() {
     try {
@@ -63,23 +69,22 @@ async function getWAVersion() {
             return cachedWAVersion
         }
         
-        // Version is stale — WA servers will reject it with 405
-        console.warn(`⚠️  Stale WA version returned: v${info.version.join('.')} (isLatest: false)`)
+        console.warn(`⚠️  Stale WA version from API: v${info.version.join('.')} (isLatest: false)`)
         
         if (cachedWAVersion) {
             console.log(`   → Using cached good version: v${cachedWAVersion.join('.')}`)
             return cachedWAVersion
         }
         
-        console.error(`   → No cached good version. Will retry...`)
-        return null
+        console.log(`   → Using SAFETY_VERSION fallback: v${SAFETY_VERSION.join('.')}`)
+        return SAFETY_VERSION
     } catch (err) {
         if (cachedWAVersion) {
             console.warn(`⚠️  Version fetch error, reusing cached v${cachedWAVersion.join('.')}`)
             return cachedWAVersion
         }
-        console.error(`❌ Version fetch failed: ${err.message}. Retrying in 15s...`)
-        return null
+        console.warn(`❌ Version fetch failed: ${err.message}. Using SAFETY_VERSION fallback.`)
+        return SAFETY_VERSION
     }
 }
 
