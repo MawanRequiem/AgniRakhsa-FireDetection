@@ -90,6 +90,28 @@ export default function DeviceCalibrationDialog({ open, onOpenChange, device }) 
     }
   };
 
+  const handleReburnIn = async () => {
+    setCommandStatus('pending');
+    setError(null);
+    try {
+      const res = await customFetch(`/api/v1/calibration/${device.id}/command`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: 'REBURNIN' })
+      });
+      if (res.ok) {
+        pollStatus(); // Immediately trigger a poll
+      } else {
+        const err = await res.json();
+        setError(err.detail || 'Failed to trigger re-burnin');
+        setCommandStatus('idle');
+      }
+    } catch (err) {
+      setError(err.message || 'Error connecting to server');
+      setCommandStatus('idle');
+    }
+  };
+
   const formatNumber = (val) => val != null ? Number(val).toFixed(2) : '—';
 
   return (
@@ -103,6 +125,18 @@ export default function DeviceCalibrationDialog({ open, onOpenChange, device }) 
         </DialogHeader>
 
         <div className="py-4">
+          {device?.status === 'calibrating' && (
+            <div className="mb-4 flex flex-col gap-1.5 p-3.5 rounded-lg border bg-blue-500/10 text-blue-400 border-blue-500/20 text-xs animate-pulse">
+              <div className="flex items-center gap-2 font-semibold">
+                <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
+                <span>System Recalibration In Progress</span>
+              </div>
+              <p className="opacity-80 leading-relaxed">
+                The device is currently recalculating its MQ sensor baseline R0 values. Please keep the device in clean air. This will take about 15 minutes.
+              </p>
+            </div>
+          )}
+
           {device?.status === 'warming_up' && (
             <div className="mb-4 flex flex-col gap-1.5 p-3.5 rounded-lg border bg-orange-500/10 text-orange-400 border-orange-500/20 text-xs animate-pulse">
               <div className="flex items-center gap-2 font-semibold">
@@ -178,22 +212,32 @@ export default function DeviceCalibrationDialog({ open, onOpenChange, device }) 
 
         <div className="flex flex-col gap-2 pt-2 border-t" style={{ borderColor: 'var(--ifrit-border)' }}>
           <p className="text-xs mb-2" style={{ color: 'var(--ifrit-text-muted)' }}>
-            Ensure the device is in clean air before recalibrating. The process takes ~10 seconds.
+            Ensure the device is in clean air before recalibrating. The process takes ~15 minutes.
           </p>
-          <Button 
-            onClick={handleRecalibrate} 
-            disabled={commandStatus !== 'idle' || (device?.status !== 'online' && device?.status !== 'burn_in')}
-            className="w-full flex items-center justify-center gap-2 cursor-pointer text-white" 
-            style={{ backgroundColor: 'var(--ifrit-brand)' }}
-          >
-            {commandStatus === 'pending' ? (
-              <><RefreshCw className="w-4 h-4 animate-spin" /> Waiting for device...</>
-            ) : commandStatus === 'in_progress' ? (
-              <><RefreshCw className="w-4 h-4 animate-spin text-orange-400" /> Device Calibrating...</>
-            ) : (
-              <><RefreshCw className="w-4 h-4" /> Trigger Remote Calibration</>
-            )}
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button 
+              onClick={handleRecalibrate} 
+              disabled={commandStatus !== 'idle' || (device?.status !== 'online' && device?.status !== 'burn_in')}
+              className="flex items-center justify-center gap-1.5 cursor-pointer text-white text-xs py-2" 
+              style={{ backgroundColor: 'var(--ifrit-brand)' }}
+            >
+              {commandStatus === 'pending' ? (
+                <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Wait...</>
+              ) : commandStatus === 'in_progress' ? (
+                <><RefreshCw className="w-3.5 h-3.5 animate-spin text-orange-400" /> Calibrating...</>
+              ) : (
+                <><RefreshCw className="w-3.5 h-3.5" /> Recalibrate</>
+              )}
+            </Button>
+            
+            <Button 
+              onClick={handleReburnIn} 
+              disabled={commandStatus !== 'idle' || (device?.status !== 'online' && device?.status !== 'burn_in')}
+              className="flex items-center justify-center gap-1.5 cursor-pointer text-white text-xs py-2 bg-yellow-600 hover:bg-yellow-700"
+            >
+              <Cpu className="w-3.5 h-3.5" /> Re-Burn In
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
