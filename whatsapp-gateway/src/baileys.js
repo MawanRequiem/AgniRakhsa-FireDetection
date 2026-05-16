@@ -49,22 +49,37 @@ function clearAuthDirectory(dirPath) {
 }
 
 /**
- * Fetch WA Web version with caching. Only hits the network when cache is empty.
- * On failure, returns the cached version or null.
+ * Fetch WA Web version with caching.
+ * CRITICAL: Only accept versions where isLatest === true.
+ * Stale versions (isLatest: false) cause 405 rejections from WA servers.
  */
 async function getWAVersion() {
     try {
         const info = await fetchLatestBaileysVersion()
-        cachedWAVersion = info.version
-        console.log(`🤖 WA version fetched: v${info.version.join('.')} (latest: ${info.isLatest})`)
-        return cachedWAVersion
-    } catch (err) {
-        if (cachedWAVersion) {
-            console.warn(`⚠️  Version fetch failed, reusing cached v${cachedWAVersion.join('.')}`)
+        
+        if (info.isLatest) {
+            cachedWAVersion = info.version
+            console.log(`🤖 WA version OK: v${info.version.join('.')} ✅`)
             return cachedWAVersion
         }
-        console.error(`❌ Version fetch failed and no cache available. Retrying in 10s...`)
-        return null // Caller should delay and retry
+        
+        // Version is stale — WA servers will reject it with 405
+        console.warn(`⚠️  Stale WA version returned: v${info.version.join('.')} (isLatest: false)`)
+        
+        if (cachedWAVersion) {
+            console.log(`   → Using cached good version: v${cachedWAVersion.join('.')}`)
+            return cachedWAVersion
+        }
+        
+        console.error(`   → No cached good version. Will retry...`)
+        return null
+    } catch (err) {
+        if (cachedWAVersion) {
+            console.warn(`⚠️  Version fetch error, reusing cached v${cachedWAVersion.join('.')}`)
+            return cachedWAVersion
+        }
+        console.error(`❌ Version fetch failed: ${err.message}. Retrying in 15s...`)
+        return null
     }
 }
 
@@ -96,8 +111,9 @@ export async function connectToWhatsApp() {
     // Get WA version (cached or fresh). If totally unavailable, wait and retry.
     const version = await getWAVersion()
     if (!version) {
+        console.log('⏳ No valid WA version yet. Waiting 30s before retry...')
         waConnectionStatus = latestQrImage ? 'qr' : 'disconnected'
-        scheduleReconnect(10000, authDir)
+        scheduleReconnect(30000, authDir)
         return
     }
 
@@ -181,26 +197,22 @@ export async function connectToWhatsApp() {
             }
 
             // ── CASE 4: Connection failure (405) ───────────────
-            // The WA server rejected us. Usually version or network issue.
+            // WA server rejected us — almost always a version issue.
             if (isConnectionFailure) {
                 connectionFailures++
-                console.log(`❌ Connection rejected by WA server (attempt ${connectionFailures})`)
+                console.log(`❌ Connection rejected (attempt ${connectionFailures}). Invalidating version cache.`)
+                cachedWAVersion = null // ALWAYS invalidate — version is definitely bad
                 
-                // After several failures, force re-fetch version
-                if (connectionFailures >= 3) {
-                    console.log('🔄 Clearing version cache to force fresh fetch...')
-                    cachedWAVersion = null // Force re-fetch on next connect
-                }
-
                 // After many failures, also clear auth in case it's corrupted
-                const shouldClearAuth = connectionFailures >= 6
+                const shouldClearAuth = connectionFailures >= 8
                 if (shouldClearAuth) {
                     console.log('🔄 Clearing credentials after persistent failures...')
                     connectionFailures = 0
                 }
 
                 waConnectionStatus = latestQrImage ? 'qr' : 'disconnected'
-                scheduleReconnect(reconnectDelay, authDir, shouldClearAuth)
+                // Wait 30s to let the version API CDN refresh
+                scheduleReconnect(30000, authDir, shouldClearAuth)
                 
                 // Exponential backoff: 3s → 6s → 12s → ... → max 120s
                 reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY)
