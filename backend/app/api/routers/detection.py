@@ -28,6 +28,7 @@ async def detect_image(
     Upload an image for fire detection inference.
     
     This runs YOLOv8 on the image, stores the bounding boxes,
+    captures annotated evidence to Supabase Storage if fire detected,
     and automatically triggers the late fusion engine if sensor data exists.
     """
     if not file.content_type.startswith("image/"):
@@ -39,7 +40,7 @@ async def detect_image(
     except Exception as e:
         raise HTTPException(400, f"Invalid image data: {e}")
     
-    # 1. Run AI inference
+    # 1. Run AI inference (includes image capture & upload)
     det_result = await detection_service.run_detection(
         image=image,
         device_id=device_id,
@@ -52,19 +53,26 @@ async def detect_image(
     r_client = redis_manager.get_client()
     
     if r_client and room_id:
-        r_client.xadd("fusion:events", {
+        stream_data = {
             "type": "image",
             "room_id": str(room_id),
             "score": str(det_result["max_confidence"]),
             "timestamp": str(time.time()),
             "detection_event_id": str(det_result.get("id"))
-        })
+        }
+        # Pass image_url if a capture was taken
+        image_url = det_result.get("image_url")
+        if image_url:
+            stream_data["image_url"] = image_url
+
+        r_client.xadd("fusion:events", stream_data)
     else:
         # Fallback if Redis is offline
         await fusion_service.run_fusion(
             image_score=det_result["max_confidence"],
             room_id=room_id,
             detection_event_id=det_result.get("id"),
+            image_url=det_result.get("image_url"),
         )
     
     # 3. Build response

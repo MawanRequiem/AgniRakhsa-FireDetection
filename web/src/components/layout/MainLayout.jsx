@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import FireAlertToast from '@/components/notifications/FireAlertToast';
 import { useUIStore } from '@/store/store';
 import { useEffect } from 'react';
 
@@ -22,6 +23,9 @@ export default function MainLayout() {
 
   return (
     <div className="min-h-screen text-[var(--ifrit-text-primary)]" style={{ backgroundColor: 'var(--ifrit-bg-secondary)' }}>
+      {/* Fire Alert Toast — renders above all content */}
+      <FireAlertToast />
+
       {/* Mobile Overlay — solid dark, no blur */}
       {!collapsed && (
         <div 

@@ -23,12 +23,15 @@ router.get('/status', (req, res) => {
 
 /**
  * POST /api/messages
- * Sends a WhatsApp message to the given phone number from the API request.
- * Expected Body: { "phone": "08123456789", "message": "Hello from backend!" }
+ * Sends a WhatsApp message to the given phone number.
+ * 
+ * Supports two modes:
+ * - Text only: { "phone": "08123456789", "message": "Hello!" }
+ * - Image + caption: { "phone": "08123456789", "message": "Caption text", "imageUrl": "https://..." }
  */
 router.post('/', async (req, res) => {
     try {
-        const { phone, message } = req.body
+        const { phone, message, imageUrl } = req.body
         
         // Input Validation
         if (!phone || !message) {
@@ -65,8 +68,27 @@ router.post('/', async (req, res) => {
         
         const result = results[0]
         
-        // Attempt to send message
-        await sock.sendMessage(targetJid, { text: message })
+        // Send message — image or text
+        if (imageUrl) {
+            // Image message with caption
+            console.log(`📸 Sending image message to ${targetJid} (url: ${imageUrl.substring(0, 60)}...)`)
+            try {
+                await sock.sendMessage(targetJid, {
+                    image: { url: imageUrl },
+                    caption: message,
+                })
+                console.log(`✅ Image message sent to ${targetJid}`)
+            } catch (imgErr) {
+                // Fallback: if image download fails, send as text with link
+                console.warn(`⚠️ Image send failed for ${targetJid}, falling back to text: ${imgErr.message}`)
+                const fallbackMsg = `${message}\n\n📸 Lihat gambar: ${imageUrl}`
+                await sock.sendMessage(targetJid, { text: fallbackMsg })
+                console.log(`✅ Fallback text message sent to ${targetJid}`)
+            }
+        } else {
+            // Plain text message
+            await sock.sendMessage(targetJid, { text: message })
+        }
         
         res.json({ success: true, message: 'Message queued/sent successfully' })
     } catch (error) {
