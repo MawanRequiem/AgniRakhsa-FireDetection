@@ -54,11 +54,11 @@ export default function Notifications() {
         setWhatsappStatus(data.status || 'disconnected');
         setWhatsappQr(data.qr || null);
         
-        // Speed up polling if scanning QR or connecting to make UX super snappy
-        if (data.status === 'qr' || data.status === 'connecting') {
-          setPollInterval(5000);
-        } else {
+        // Speed up polling whenever not connected so QR appears instantly
+        if (data.connected) {
           setPollInterval(30000);
+        } else {
+          setPollInterval(4000); // Fast poll to catch new QR codes quickly
         }
       } else {
         setWhatsappConnected(false);

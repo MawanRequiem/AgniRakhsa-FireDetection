@@ -23,7 +23,7 @@ async def get_whatsapp_status(
         "x-api-key": settings.GATEWAY_API_KEY
     }
     try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             response = await client.get(url, headers=headers)
             if response.status_code == 200:
                 data = response.json()

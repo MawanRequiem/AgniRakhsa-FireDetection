@@ -13,6 +13,7 @@ let latestQrImage = null
 let waConnectionStatus = 'disconnected' // 'connecting' | 'connected' | 'disconnected' | 'qr'
 let consecutiveFailures = 0
 let reconnectDelay = 3000 // Start at 3s, increases with backoff
+let hasEverConnected = false // Track if we ever had a successful connection
 const MAX_RECONNECT_DELAY = 60000 // Cap at 60s
 
 export const getWASocket = () => waSocket
@@ -102,6 +103,7 @@ export async function connectToWhatsApp() {
                     margin: 2,
                     color: { dark: '#000000', light: '#ffffff' }
                 })
+                console.log('📱 QR image generated for dashboard (base64 length:', latestQrImage.length, ')')
             } catch (err) {
                 console.error('Failed to generate base64 QR image:', err.message)
             }
@@ -120,15 +122,16 @@ export async function connectToWhatsApp() {
             consecutiveFailures++
 
             if (isLoggedOut) {
-                // Logged out explicitly — clear and stop
+                // Logged out explicitly — clear everything and show fresh QR
                 console.log('🔒 Logged out by user. Clearing credentials...')
-                waConnectionStatus = 'disconnected'
-                latestQr = null
-                latestQrImage = null
                 clearAuthDirectory(authDir)
                 consecutiveFailures = 0
                 reconnectDelay = 3000
-                // Still reconnect to show a fresh QR code
+                hasEverConnected = false
+                // Clear QR and status for fresh start
+                latestQr = null
+                latestQrImage = null
+                waConnectionStatus = 'disconnected'
                 console.log('Reconnecting in 5 seconds to generate new QR...')
                 setTimeout(() => connectToWhatsApp(), 5000)
                 return
@@ -140,11 +143,12 @@ export async function connectToWhatsApp() {
                 clearAuthDirectory(authDir)
                 consecutiveFailures = 0
                 reconnectDelay = 3000
-                waConnectionStatus = 'disconnected'
-                latestQr = null
-                latestQrImage = null
-                console.log('Reconnecting in 5 seconds to generate new QR...')
-                setTimeout(() => connectToWhatsApp(), 5000)
+                // IMPORTANT: Keep status as 'qr' and preserve last QR image
+                // so the dashboard still shows "scan required" state while reconnecting.
+                // The QR image will be replaced with a fresh one momentarily.
+                waConnectionStatus = 'qr'
+                console.log('Reconnecting in 3 seconds to generate new QR...')
+                setTimeout(() => connectToWhatsApp(), 3000)
                 return
             }
 
@@ -154,11 +158,22 @@ export async function connectToWhatsApp() {
                 clearAuthDirectory(authDir)
                 consecutiveFailures = 0
                 reconnectDelay = 3000
-                latestQr = null
-                latestQrImage = null
             }
 
-            waConnectionStatus = 'disconnected'
+            // Only clear QR data if we had a successful connection before (meaning session expired).
+            // If we never connected, keep the QR/status so dashboard shows "waiting to scan".
+            if (hasEverConnected) {
+                latestQr = null
+                latestQrImage = null
+                waConnectionStatus = 'disconnected'
+            } else {
+                // Keep the old QR visible (if any) — status stays as 'qr' if we had one
+                if (!latestQrImage) {
+                    waConnectionStatus = 'disconnected'
+                }
+                // else keep waConnectionStatus = 'qr' so dashboard shows the last QR
+            }
+            
             console.log(`Reconnecting in ${reconnectDelay / 1000} seconds...`)
             setTimeout(() => connectToWhatsApp(), reconnectDelay)
             
@@ -173,6 +188,7 @@ export async function connectToWhatsApp() {
             latestQrImage = null
             consecutiveFailures = 0
             reconnectDelay = 3000 // Reset backoff on successful connection
+            hasEverConnected = true
         }
     })
 
