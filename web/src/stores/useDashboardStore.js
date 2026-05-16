@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { customFetch } from '@/lib/api';
+import { useNotificationStore } from './useNotificationStore';
 
 export const useDashboardStore = create((set, get) => ({
   summary: {
@@ -220,6 +221,11 @@ export const useDashboardStore = create((set, get) => ({
                 [message.data.camera_id]: message.data
              }
           }));
+        }
+
+        // Route FIRE_ALERT events to the notification store for toast + sound
+        if (message.type === 'FIRE_ALERT') {
+          useNotificationStore.getState().addNotification(message.data);
         }
       } catch (error) {
         console.error('WebSocket message parsing error:', error);

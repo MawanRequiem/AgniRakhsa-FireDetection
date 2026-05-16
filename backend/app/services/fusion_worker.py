@@ -55,18 +55,19 @@ async def process_buffers():
             room_buffer["image"].remove(img_event)
             room_buffer["sensor"].remove(best_sensor)
             
-            # Run fusion
+            # Run fusion with image_url
             try:
                 await fusion_service.run_fusion(
                     image_score=img_event["score"],
                     room_id=img_event.get("room_id"),
                     detection_event_id=img_event.get("detection_event_id"),
-                    sensor_snapshot=best_sensor.get("snapshot")
+                    sensor_snapshot=best_sensor.get("snapshot"),
+                    image_url=img_event.get("image_url"),
                 )
             except Exception as e:
                 logger.error(f"Error running fusion: {e}")
         else:
-            # If the image event is getting old (> MATCH_WINDOW_SECONDS), we might want to 
+            # If the image event is getting old (>MATCH_WINDOW_SECONDS), we might want to 
             # run fusion with an empty sensor snapshot to not lose the image alert.
             if now - img_event["timestamp"] > MATCH_WINDOW_SECONDS:
                 logger.info(f"Image event for room {room_id} expired without sensor match. Fusing anyway.")
@@ -76,7 +77,8 @@ async def process_buffers():
                         image_score=img_event["score"],
                         room_id=img_event.get("room_id"),
                         detection_event_id=img_event.get("detection_event_id"),
-                        sensor_snapshot=None  # will fallback to latest in DB or threshold
+                        sensor_snapshot=None,  # will fallback to latest in DB or threshold
+                        image_url=img_event.get("image_url"),
                     )
                 except Exception as e:
                     logger.error(f"Error running fusion fallback: {e}")
@@ -118,7 +120,8 @@ async def run_fusion_worker():
                                 "score": float(message_data.get("score", 0.0)),
                                 "timestamp": ts,
                                 "room_id": room_id,
-                                "detection_event_id": message_data.get("detection_event_id")
+                                "detection_event_id": message_data.get("detection_event_id"),
+                                "image_url": message_data.get("image_url"),
                             })
                         elif event_type == "sensor":
                             # snapshot is serialized JSON

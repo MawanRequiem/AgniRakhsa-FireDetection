@@ -5,6 +5,7 @@ from io import BytesIO
 from PIL import Image
 import json
 import asyncio
+import time
 from typing import Dict
 from uuid import UUID
 
@@ -28,7 +29,7 @@ async def camera_stream_endpoint(websocket: WebSocket, camera_id: str):
     """
     logger.info(f"New camera stream connection attempt for camera: {camera_id}")
     
-    # Verify camera exists
+    # Verify camera exists and resolve room_id + device_id
     res = supabase.table("cameras").select("*").eq("id", camera_id).execute()
     if not res.data:
         await websocket.close(code=4004, reason="Camera not found")
@@ -37,15 +38,29 @@ async def camera_stream_endpoint(websocket: WebSocket, camera_id: str):
         
     camera_data = res.data[0]
     room_id = camera_data.get("room_id")
+    room_uuid = None
+    device_uuid = None
+
     if room_id:
         try:
             room_uuid = UUID(room_id)
         except ValueError:
             room_uuid = None
-    else:
-        room_uuid = None
-        
-    device_uuid = None # Cameras aren't full devices in our schema right now
+
+    # Resolve device_id: find the IoT device assigned to this camera's room
+    if room_uuid:
+        device_res = (
+            supabase.table("devices")
+            .select("id")
+            .eq("room_id", str(room_uuid))
+            .limit(1)
+            .execute()
+        )
+        if device_res.data:
+            try:
+                device_uuid = UUID(device_res.data[0]["id"])
+            except (ValueError, KeyError):
+                device_uuid = None
 
     await websocket.accept()
     active_cameras[camera_id] = websocket
@@ -71,7 +86,7 @@ async def camera_stream_endpoint(websocket: WebSocket, camera_id: str):
                 
                 frame_count += 1
                 
-                # Run YOLO inference
+                # Run YOLO inference (now includes image capture & upload)
                 det_result = await detection_service.run_detection(
                     image=image, 
                     device_id=device_uuid, 
@@ -91,32 +106,32 @@ async def camera_stream_endpoint(websocket: WebSocket, camera_id: str):
 
                 # Publish to Redis Stream for Late Fusion
                 from app.core.redis import redis_manager
-                import time
                 r_client = redis_manager.get_client()
                 
                 fusion_score_cache = 0
                 risk_level_cache = "pending"
                 
                 if r_client and room_uuid:
-                    r_client.xadd("fusion:events", {
+                    stream_data = {
                         "type": "image",
                         "room_id": str(room_uuid),
                         "score": str(det_result.get("max_confidence", 0.0)),
                         "timestamp": str(time.time()),
                         "detection_event_id": str(det_result.get("id"))
-                    })
-                    # Try to fetch last known fusion score for the dashboard
-                    try:
-                        # Assuming fusion worker or service updates the room status/score
-                        pass 
-                    except:
-                        pass
+                    }
+                    # Include image_url if capture was taken
+                    image_url = det_result.get("image_url")
+                    if image_url:
+                        stream_data["image_url"] = image_url
+
+                    r_client.xadd("fusion:events", stream_data)
                 else:
                     # Fallback
                     fusion_res = await fusion_service.run_fusion(
                         image_score=det_result.get("max_confidence", 0.0),
                         room_id=room_uuid,
-                        detection_event_id=det_result.get("id")
+                        detection_event_id=det_result.get("id"),
+                        image_url=det_result.get("image_url"),
                     )
                     fusion_score_cache = fusion_res.get("fusion_score", 0)
                     risk_level_cache = fusion_res.get("risk_level", "safe")
