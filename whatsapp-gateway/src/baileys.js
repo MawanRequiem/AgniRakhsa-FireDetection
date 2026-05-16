@@ -6,193 +6,225 @@ import QRCode from 'qrcode'
 import fs from 'fs'
 import path from 'path'
 
-// Store global states
+// ─── Global State ──────────────────────────────────────────────
 let waSocket = null
-let latestQr = null
 let latestQrImage = null
 let waConnectionStatus = 'disconnected' // 'connecting' | 'connected' | 'disconnected' | 'qr'
-let consecutiveFailures = 0
-let reconnectDelay = 3000 // Start at 3s, increases with backoff
-let hasEverConnected = false // Track if we ever had a successful connection
-const MAX_RECONNECT_DELAY = 60000 // Cap at 60s
 
+// ─── Version Cache ─────────────────────────────────────────────
+// Cache the successfully fetched WA version so we never fall back to a broken hardcoded one.
+let cachedWAVersion = null
+
+// ─── Reconnect Logic ───────────────────────────────────────────
+let connectionFailures = 0          // Only real 405-type failures
+let reconnectDelay = 3000
+const MAX_RECONNECT_DELAY = 120000  // Cap at 2 min
+let reconnectTimer = null           // Prevent duplicate timers
+
+// ─── Public Accessors ──────────────────────────────────────────
 export const getWASocket = () => waSocket
 
-export const getWASessionStatus = () => {
-    return {
-        connected: waConnectionStatus === 'connected',
-        status: waConnectionStatus,
-        qr: latestQrImage
-    }
-}
+export const getWASessionStatus = () => ({
+    connected: waConnectionStatus === 'connected',
+    status: waConnectionStatus,
+    qr: latestQrImage
+})
+
+// ─── Helpers ───────────────────────────────────────────────────
 
 /**
- * Clear auth credentials safely inside a Docker volume mount.
- * We cannot rmSync the root mount directory itself (EBUSY),
- * so we delete all files/subdirectories INSIDE it instead.
+ * Clear auth contents inside the Docker volume mount (can't rm the dir itself → EBUSY).
  */
 function clearAuthDirectory(dirPath) {
     try {
         if (!fs.existsSync(dirPath)) return
         const entries = fs.readdirSync(dirPath)
         for (const entry of entries) {
-            const fullPath = path.join(dirPath, entry)
-            fs.rmSync(fullPath, { recursive: true, force: true })
+            fs.rmSync(path.join(dirPath, entry), { recursive: true, force: true })
         }
-        console.log(`🗑️  Cleared ${entries.length} items inside ${dirPath}`)
+        console.log(`🗑️  Cleared ${entries.length} auth items`)
     } catch (err) {
-        console.error(`Failed to clear auth directory contents: ${err.message}`)
+        console.error(`Failed to clear auth directory: ${err.message}`)
     }
 }
 
+/**
+ * Fetch WA Web version with caching. Only hits the network when cache is empty.
+ * On failure, returns the cached version or null.
+ */
+async function getWAVersion() {
+    try {
+        const info = await fetchLatestBaileysVersion()
+        cachedWAVersion = info.version
+        console.log(`🤖 WA version fetched: v${info.version.join('.')} (latest: ${info.isLatest})`)
+        return cachedWAVersion
+    } catch (err) {
+        if (cachedWAVersion) {
+            console.warn(`⚠️  Version fetch failed, reusing cached v${cachedWAVersion.join('.')}`)
+            return cachedWAVersion
+        }
+        console.error(`❌ Version fetch failed and no cache available. Retrying in 10s...`)
+        return null // Caller should delay and retry
+    }
+}
+
+function scheduleReconnect(delay, authDir, shouldClearAuth = false) {
+    if (reconnectTimer) clearTimeout(reconnectTimer)
+    
+    if (shouldClearAuth) {
+        clearAuthDirectory(authDir)
+    }
+    
+    console.log(`⏳ Reconnecting in ${(delay / 1000).toFixed(0)}s...`)
+    reconnectTimer = setTimeout(() => {
+        reconnectTimer = null
+        connectToWhatsApp()
+    }, delay)
+}
+
+// ─── Main Connection ───────────────────────────────────────────
+
 export async function connectToWhatsApp() {
     waConnectionStatus = 'connecting'
-    
     const authDir = 'auth_info_baileys'
 
-    // Ensure directory exists (Docker volume may create it as empty mount)
+    // Ensure auth dir exists
     if (!fs.existsSync(authDir)) {
         fs.mkdirSync(authDir, { recursive: true })
     }
 
-    const { state, saveCreds } = await useMultiFileAuthState(authDir)
-    
-    // Fetch latest WhatsApp WEB version to prevent connection rejection
-    let version
-    try {
-        const versionInfo = await fetchLatestBaileysVersion()
-        version = versionInfo.version
-        console.log(`🤖 Menggunakan WA v${version.join('.')}, isLatest: ${versionInfo.isLatest}`)
-    } catch (err) {
-        // Fallback to a known working version if fetch fails (network issues in Docker)
-        version = [2, 3000, 1015901307]
-        console.warn(`⚠️  Failed to fetch latest WA version, using fallback: ${version.join('.')}`)
+    // Get WA version (cached or fresh). If totally unavailable, wait and retry.
+    const version = await getWAVersion()
+    if (!version) {
+        waConnectionStatus = latestQrImage ? 'qr' : 'disconnected'
+        scheduleReconnect(10000, authDir)
+        return
     }
 
-    // Setup logger 
-    const logger = pino({ level: 'silent' })
+    const { state, saveCreds } = await useMultiFileAuthState(authDir)
 
     const sock = makeWASocket({
         version,
         auth: state,
-        logger,
+        logger: pino({ level: 'silent' }),
         browser: Browsers.macOS('Desktop'),
         syncFullHistory: false,
         connectTimeoutMs: 30000,
-        qrTimeout: 40000,
+        qrTimeout: 60000,       // Give user 60s per QR cycle
     })
 
-    // Assign globally
     waSocket = sock
 
     sock.ev.on('creds.update', saveCreds)
 
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update
-        
+
+        // ── QR Received ────────────────────────────────────────
         if (qr) {
-            latestQr = qr
             waConnectionStatus = 'qr'
-            console.log('Scan the QR code below to connect:')
+            console.log('\n📱 New QR code generated:')
             qrcode.generate(qr, { small: true })
-            
-            // Generate base64 PNG QR code for dashboard
+
             try {
                 latestQrImage = await QRCode.toDataURL(qr, {
-                    width: 300,
-                    margin: 2,
+                    width: 300, margin: 2,
                     color: { dark: '#000000', light: '#ffffff' }
                 })
-                console.log('📱 QR image generated for dashboard (base64 length:', latestQrImage.length, ')')
+                console.log(`✅ QR image ready for dashboard (${latestQrImage.length} chars)`)
             } catch (err) {
-                console.error('Failed to generate base64 QR image:', err.message)
+                console.error('Failed to generate QR image:', err.message)
             }
         }
-        
+
+        // ── Connection Closed ──────────────────────────────────
         if (connection === 'close') {
             waSocket = null
             const statusCode = lastDisconnect?.error?.output?.statusCode
-            const errorMessage = lastDisconnect?.error?.message || lastDisconnect?.error || 'Unknown'
+            const errorMsg = lastDisconnect?.error?.message || String(lastDisconnect?.error || 'Unknown')
             const isLoggedOut = statusCode === DisconnectReason.loggedOut
-            const isQrExpired = statusCode === DisconnectReason.timedOut || 
-                                String(errorMessage).includes('QR refs')
-            
-            console.log(`Connection closed (code: ${statusCode}): ${errorMessage}`)
-            
-            consecutiveFailures++
+            const isQrTimeout = statusCode === DisconnectReason.timedOut || errorMsg.includes('QR refs')
+            const isStreamError = statusCode === 515
+            const isConnectionFailure = statusCode === 405
 
+            console.log(`\n🔌 Connection closed [${statusCode}]: ${errorMsg}`)
+
+            // ── CASE 1: Logged out explicitly ──────────────────
             if (isLoggedOut) {
-                // Logged out explicitly — clear everything and show fresh QR
-                console.log('🔒 Logged out by user. Clearing credentials...')
-                clearAuthDirectory(authDir)
-                consecutiveFailures = 0
-                reconnectDelay = 3000
-                hasEverConnected = false
-                // Clear QR and status for fresh start
-                latestQr = null
+                console.log('🔒 Logged out. Clearing all credentials...')
                 latestQrImage = null
                 waConnectionStatus = 'disconnected'
-                console.log('Reconnecting in 5 seconds to generate new QR...')
-                setTimeout(() => connectToWhatsApp(), 5000)
+                connectionFailures = 0
+                reconnectDelay = 3000
+                scheduleReconnect(5000, authDir, true)
                 return
             }
-            
-            if (isQrExpired) {
-                // QR code expired without being scanned — clear stale partial auth and retry
-                console.log('⏰ QR code expired. Clearing partial session and retrying...')
-                clearAuthDirectory(authDir)
-                consecutiveFailures = 0
-                reconnectDelay = 3000
-                // IMPORTANT: Keep status as 'qr' and preserve last QR image
-                // so the dashboard still shows "scan required" state while reconnecting.
-                // The QR image will be replaced with a fresh one momentarily.
+
+            // ── CASE 2: QR timed out (not scanned) ─────────────
+            // This is NORMAL. Just reconnect quickly to show a new QR.
+            // Do NOT increment failure counter. Do NOT clear credentials.
+            if (isQrTimeout) {
+                console.log('⏰ QR expired (not scanned). Generating new QR...')
+                // Keep latestQrImage visible until new one replaces it
                 waConnectionStatus = 'qr'
-                console.log('Reconnecting in 3 seconds to generate new QR...')
-                setTimeout(() => connectToWhatsApp(), 3000)
+                scheduleReconnect(2000, authDir, true) // Clear partial auth from unscanned QR
                 return
             }
 
-            // Generic connection failure — use exponential backoff
-            if (consecutiveFailures >= 5) {
-                console.log(`🔄 Persistent failures (${consecutiveFailures}). Clearing credentials and resetting...`)
-                clearAuthDirectory(authDir)
-                consecutiveFailures = 0
-                reconnectDelay = 3000
+            // ── CASE 3: Stream error (515) after QR was shown ──
+            // Often happens during/after scan attempt. Keep credentials.
+            if (isStreamError) {
+                console.log('⚡ Stream error. Retrying with existing credentials...')
+                waConnectionStatus = latestQrImage ? 'qr' : 'disconnected'
+                scheduleReconnect(3000, authDir) // Do NOT clear auth — scan may have partially worked
+                return
             }
 
-            // Only clear QR data if we had a successful connection before (meaning session expired).
-            // If we never connected, keep the QR/status so dashboard shows "waiting to scan".
-            if (hasEverConnected) {
-                latestQr = null
-                latestQrImage = null
-                waConnectionStatus = 'disconnected'
-            } else {
-                // Keep the old QR visible (if any) — status stays as 'qr' if we had one
-                if (!latestQrImage) {
-                    waConnectionStatus = 'disconnected'
+            // ── CASE 4: Connection failure (405) ───────────────
+            // The WA server rejected us. Usually version or network issue.
+            if (isConnectionFailure) {
+                connectionFailures++
+                console.log(`❌ Connection rejected by WA server (attempt ${connectionFailures})`)
+                
+                // After several failures, force re-fetch version
+                if (connectionFailures >= 3) {
+                    console.log('🔄 Clearing version cache to force fresh fetch...')
+                    cachedWAVersion = null // Force re-fetch on next connect
                 }
-                // else keep waConnectionStatus = 'qr' so dashboard shows the last QR
+
+                // After many failures, also clear auth in case it's corrupted
+                const shouldClearAuth = connectionFailures >= 6
+                if (shouldClearAuth) {
+                    console.log('🔄 Clearing credentials after persistent failures...')
+                    connectionFailures = 0
+                }
+
+                waConnectionStatus = latestQrImage ? 'qr' : 'disconnected'
+                scheduleReconnect(reconnectDelay, authDir, shouldClearAuth)
+                
+                // Exponential backoff: 3s → 6s → 12s → ... → max 120s
+                reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY)
+                return
             }
-            
-            console.log(`Reconnecting in ${reconnectDelay / 1000} seconds...`)
-            setTimeout(() => connectToWhatsApp(), reconnectDelay)
-            
-            // Exponential backoff: 3s → 6s → 12s → 24s → 48s → cap at 60s
-            reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY)
-            
-        } else if (connection === 'open') {
-            console.log('✅ WhatsApp connection opened successfully!')
+
+            // ── CASE 5: Any other disconnect ───────────────────
+            console.log('⚠️  Unexpected disconnect. Retrying...')
+            waConnectionStatus = latestQrImage ? 'qr' : 'disconnected'
+            scheduleReconnect(5000, authDir)
+        }
+
+        // ── Connection Opened ──────────────────────────────────
+        if (connection === 'open') {
+            console.log('✅ WhatsApp connected successfully!')
             waSocket = sock
             waConnectionStatus = 'connected'
-            latestQr = null
             latestQrImage = null
-            consecutiveFailures = 0
-            reconnectDelay = 3000 // Reset backoff on successful connection
-            hasEverConnected = true
+            connectionFailures = 0
+            reconnectDelay = 3000
         }
     })
 
-    sock.ev.on('messages.upsert', async m => {
+    sock.ev.on('messages.upsert', async (m) => {
         if (m.type === 'notify') {
             for (const msg of m.messages) {
                 try {
