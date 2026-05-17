@@ -38,6 +38,10 @@ SENSOR_TYPE_MAP: dict[str, str] = {
     "MQ2":   "smoke",           # Smoke / combustible gas
 }
 
+# Sensors to ignore during ingestion (hardware fault, bad data, etc.)
+# The model still expects flame_presence features — they'll default to 0.0
+DISABLED_SENSORS: set[str] = {"FLAME"}
+
 # Training column order (alphabetical from pivot — confirmed by user).
 TRAINING_COLUMNS = sorted(SENSOR_TYPE_MAP.values())
 # → ['cng', 'co', 'flame_presence', 'lpg', 'smoke']
@@ -136,9 +140,11 @@ class SensorAnomalyDetector:
             sensor_snapshot: Dict mapping sensor_type → value.
                              Example: {"MQ2": 150.0, "MQ4": 80.0, "FLAME": 3500.0, ...}
         """
-        # Map ESP32 sensor types → training column names
+        # Map ESP32 sensor types → training column names, skipping disabled sensors
         mapped = {}
         for sensor_type, value in sensor_snapshot.items():
+            if sensor_type in DISABLED_SENSORS:
+                continue
             training_name = SENSOR_TYPE_MAP.get(sensor_type)
             if training_name is not None:
                 mapped[training_name] = float(value)
