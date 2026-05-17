@@ -1,3 +1,18 @@
+"""
+Late Fusion Worker — Temporal matching of image + sensor events from Redis Stream.
+
+Architecture:
+  Redis Stream (fusion:events) ──→ Worker buffers ──→ Temporal Match ──→ Fusion Service
+
+The worker supports THREE fusion paths:
+  1. Image + Sensor match (full late fusion, weighted score)
+  2. Image-only fallback (after match window expires, sensor_snapshot from DB)
+  3. Sensor-only evaluation (independent sensor anomaly path, no camera needed)
+
+Path 3 is critical: high gas/flame/temperature readings MUST trigger alerts
+even if the camera is offline, obstructed, or not pointed at the fire source.
+"""
+
 import asyncio
 import logging
 import json
@@ -16,8 +31,24 @@ buffers: Dict[str, Dict[str, List[dict]]] = defaultdict(lambda: {"image": [], "s
 MAX_AGE_SECONDS = 5.0
 MATCH_WINDOW_SECONDS = 2.0
 
+# Sensor-only alert: minimum threshold score to trigger fusion without camera
+# This allows high gas readings to bypass the image requirement
+SENSOR_ONLY_THRESHOLD = 0.5
+
+# Track last sensor-only alert per room to prevent spam
+_sensor_only_cooldowns: Dict[str, float] = {}
+SENSOR_ONLY_COOLDOWN_SECONDS = 30
+
+
 async def process_buffers():
-    """Evaluate buffers for matches and clean up old events."""
+    """
+    Evaluate buffers for matches and clean up old events.
+    
+    Implements three fusion paths:
+    1. Image + Sensor match → full weighted late fusion
+    2. Image-only expired → fusion with DB sensor snapshot
+    3. Sensor-only high risk → fusion with image_score=0 (sensor-driven alert)
+    """
     now = time.time()
     
     for room_id, room_buffer in list(buffers.items()):
@@ -31,61 +62,125 @@ async def process_buffers():
         images = room_buffer["image"]
         sensors = room_buffer["sensor"]
         
-        if not images:
-            continue
+        # ─── Path 1 & 2: Image-driven fusion ─────────────────────────────
+        if images:
+            img_event = images[0]
             
-        # Try to find a match
-        # We take the oldest image event and try to find a sensor event within MATCH_WINDOW
-        img_event = images[0]
-        
-        best_sensor = None
-        best_diff = float('inf')
-        
-        for sens_event in sensors:
-            diff = abs(img_event["timestamp"] - sens_event["timestamp"])
-            if diff <= MATCH_WINDOW_SECONDS and diff < best_diff:
-                best_sensor = sens_event
-                best_diff = diff
+            best_sensor = None
+            best_diff = float('inf')
+            
+            for sens_event in sensors:
+                diff = abs(img_event["timestamp"] - sens_event["timestamp"])
+                if diff <= MATCH_WINDOW_SECONDS and diff < best_diff:
+                    best_sensor = sens_event
+                    best_diff = diff
+                    
+            if best_sensor:
+                # Path 1: Image + Sensor match!
+                logger.info(f"Fusion Match! Room {room_id}, diff: {best_diff:.3f}s")
                 
-        if best_sensor:
-            # Match found!
-            logger.info(f"Fusion Match! Room {room_id}, diff: {best_diff:.3f}s")
-            
-            # Remove them from buffers
-            room_buffer["image"].remove(img_event)
-            room_buffer["sensor"].remove(best_sensor)
-            
-            # Run fusion with image_url
-            try:
-                await fusion_service.run_fusion(
-                    image_score=img_event["score"],
-                    room_id=img_event.get("room_id"),
-                    detection_event_id=img_event.get("detection_event_id"),
-                    sensor_snapshot=best_sensor.get("snapshot"),
-                    image_url=img_event.get("image_url"),
-                )
-            except Exception as e:
-                logger.error(f"Error running fusion: {e}")
-        else:
-            # If the image event is getting old (>MATCH_WINDOW_SECONDS), we might want to 
-            # run fusion with an empty sensor snapshot to not lose the image alert.
-            if now - img_event["timestamp"] > MATCH_WINDOW_SECONDS:
-                logger.info(f"Image event for room {room_id} expired without sensor match. Fusing anyway.")
                 room_buffer["image"].remove(img_event)
+                room_buffer["sensor"].remove(best_sensor)
+                
                 try:
                     await fusion_service.run_fusion(
                         image_score=img_event["score"],
                         room_id=img_event.get("room_id"),
                         detection_event_id=img_event.get("detection_event_id"),
-                        sensor_snapshot=None,  # will fallback to latest in DB or threshold
+                        sensor_snapshot=best_sensor.get("snapshot"),
                         image_url=img_event.get("image_url"),
                     )
                 except Exception as e:
-                    logger.error(f"Error running fusion fallback: {e}")
+                    logger.error(f"Error running fusion (path 1): {e}")
+            else:
+                # Path 2: Image expired without sensor match
+                if now - img_event["timestamp"] > MATCH_WINDOW_SECONDS:
+                    logger.info(f"Image event for room {room_id} expired without sensor match. Fusing anyway.")
+                    room_buffer["image"].remove(img_event)
+                    try:
+                        await fusion_service.run_fusion(
+                            image_score=img_event["score"],
+                            room_id=img_event.get("room_id"),
+                            detection_event_id=img_event.get("detection_event_id"),
+                            sensor_snapshot=None,
+                            image_url=img_event.get("image_url"),
+                        )
+                    except Exception as e:
+                        logger.error(f"Error running fusion (path 2): {e}")
+        
+        # ─── Path 3: Sensor-only evaluation ──────────────────────────────
+        # Process sensor events that have NO matching image event.
+        # This is the critical path for aerosol/gas/flame sensor-only detection.
+        if sensors and not images:
+            # Take the oldest unmatched sensor event
+            sens_event = sensors[0]
+            
+            # Only process if it's old enough that we know no image is coming
+            if now - sens_event["timestamp"] > MATCH_WINDOW_SECONDS:
+                room_buffer["sensor"].remove(sens_event)
+                
+                # Check cooldown to prevent alert spam
+                last_alert = _sensor_only_cooldowns.get(room_id, 0)
+                if now - last_alert < SENSOR_ONLY_COOLDOWN_SECONDS:
+                    continue
+                
+                # Evaluate sensor risk using threshold/IF scoring
+                snapshot = sens_event.get("snapshot", {})
+                sensor_score = _evaluate_sensor_risk(snapshot, room_id)
+                
+                if sensor_score >= SENSOR_ONLY_THRESHOLD:
+                    logger.warning(
+                        f"🔥 SENSOR-ONLY ALERT for room {room_id}! "
+                        f"sensor_score={sensor_score:.3f} (threshold={SENSOR_ONLY_THRESHOLD}). "
+                        f"Snapshot: {snapshot}"
+                    )
+                    _sensor_only_cooldowns[room_id] = now
+                    
+                    try:
+                        # Run fusion with image_score=0 (sensor-driven)
+                        await fusion_service.run_fusion(
+                            image_score=0.0,
+                            room_id=room_id,
+                            detection_event_id=None,
+                            sensor_snapshot=snapshot,
+                            image_url=None,
+                        )
+                    except Exception as e:
+                        logger.error(f"Error running sensor-only fusion (path 3): {e}")
+                else:
+                    logger.debug(
+                        f"Sensor event for room {room_id} below threshold: "
+                        f"score={sensor_score:.3f} < {SENSOR_ONLY_THRESHOLD}"
+                    )
+
+
+def _evaluate_sensor_risk(snapshot: dict, room_id: str) -> float:
+    """
+    Evaluate sensor risk score using the same dual-path strategy as fusion_service:
+      1. Isolation Forest ML model (if loaded and room has enough data)
+      2. Rule-based threshold fallback
+    
+    Returns:
+        Float 0.0 (safe) to 1.0 (critical).
+    """
+    # Try Isolation Forest first
+    try:
+        from app.ai import registry
+        sensor_detector = registry.get_sensor_detector()
+        if sensor_detector.has_enough_data(room_id):
+            score = sensor_detector.predict(room_id)
+            logger.debug(f"Sensor-only IF score for room {room_id}: {score:.4f}")
+            return score
+    except (RuntimeError, Exception) as e:
+        logger.debug(f"IF model not available for sensor-only eval: {e}")
+    
+    # Fallback to threshold scoring
+    return fusion_service._compute_sensor_score_from_thresholds(snapshot)
+
 
 async def run_fusion_worker():
     """Background worker to read from fusion Redis stream and process events."""
-    logger.info("Starting Fusion Worker...")
+    logger.info("Starting Fusion Worker (with sensor-only alert path)...")
     
     # Wait for Redis to connect
     await asyncio.sleep(2)
