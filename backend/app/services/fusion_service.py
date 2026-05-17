@@ -214,18 +214,40 @@ async def run_fusion(
     
     # ─── Compute Sensor Score: ML Model → Threshold Fallback ──────────────
     algorithm = "v1.0-threshold-fallback"
+    # Always compute threshold score as a sanity baseline
+    threshold_score = _compute_sensor_score_from_thresholds(sensor_snapshot)
+    
     try:
         sensor_detector = registry.get_sensor_detector()
         if room_id and sensor_detector.has_enough_data(str(room_id)):
-            sensor_score = sensor_detector.predict(str(room_id))
+            if_score = sensor_detector.predict(str(room_id))
             algorithm = "v2.0-isolation-forest"
+            
+            # ─── IF Sanity Gate ────────────────────────────────────────
+            # The IF model can hallucinate on normal data (e.g. when disabled
+            # sensors produce zero-features). If ALL threshold-based scores
+            # indicate SAFE (< 0.15), clamp the IF score to prevent false alerts
+            # on obviously safe sensor readings like 5 ppm smoke.
+            IF_SANITY_FLOOR = 0.15
+            if threshold_score < IF_SANITY_FLOOR and if_score > 0.4:
+                logger.warning(
+                    f"IF sanity gate triggered for room {room_id}: "
+                    f"IF says {if_score:.3f} but thresholds say {threshold_score:.3f}. "
+                    f"Clamping to threshold score (IF likely hallucinating)."
+                )
+                sensor_score = threshold_score
+                algorithm += "+sanity-clamped"
+            else:
+                sensor_score = if_score
+            
             logger.info(
                 f"IF model used for room {room_id}: "
-                f"sensor_score={sensor_score:.4f}, "
+                f"if_raw={if_score:.4f}, threshold={threshold_score:.4f}, "
+                f"final_sensor={sensor_score:.4f}, "
                 f"buffer_status={sensor_detector.get_buffer_status()}"
             )
         else:
-            sensor_score = _compute_sensor_score_from_thresholds(sensor_snapshot)
+            sensor_score = threshold_score
             if room_id and sensor_detector.is_loaded:
                 buf_status = sensor_detector.get_buffer_status()
                 room_buf = buf_status.get(str(room_id), 0)
@@ -235,7 +257,7 @@ async def run_fusion(
                 )
     except RuntimeError:
         # Sensor model not loaded — use threshold fallback
-        sensor_score = _compute_sensor_score_from_thresholds(sensor_snapshot)
+        sensor_score = threshold_score
     
     # ─── Weighted Late Fusion ─────────────────────────────────────────────
     # Dynamic weight rebalancing:
@@ -459,7 +481,12 @@ async def _create_alert(
                             detection_sources.append(f"🌡️ Suhu ruangan sangat tinggi ({tv:.0f}°C)")
                             break
 
-            detection_text = "\n".join(detection_sources) if detection_sources else "📷 Kamera mendeteksi potensi api"
+            if detection_sources:
+                detection_text = "\n".join(detection_sources)
+            elif image_url:
+                detection_text = "📷 Kamera mendeteksi potensi api"
+            else:
+                detection_text = "🤖 Sensor mendeteksi anomali lingkungan"
 
             wa_message = (
                 f"🚨 *PERINGATAN KEBAKARAN — AgniRaksha*\n\n"
