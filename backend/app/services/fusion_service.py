@@ -245,10 +245,34 @@ async def run_fusion(
         sensor_score = _compute_sensor_score_from_thresholds(sensor_snapshot)
     
     # ─── Weighted Late Fusion ─────────────────────────────────────────────
-    fusion_score = (
-        settings.FUSION_WEIGHT_IMAGE * image_score
-        + settings.FUSION_WEIGHT_SENSOR * sensor_score
-    )
+    # Dynamic weight rebalancing:
+    #   - Normal mode (camera active): 60% image + 40% sensor
+    #   - Sensor-only mode (no camera): 100% sensor (rebalanced)
+    #   - Image-only mode (no sensor):  100% image  (rebalanced)
+    # This ensures sensor spikes can independently trigger alerts.
+    
+    is_sensor_only = image_score == 0.0 and sensor_score > 0.0
+    is_image_only = sensor_score == 0.0 and image_score > 0.0
+    
+    if is_sensor_only:
+        # Sensor-only: sensor drives the full score
+        fusion_score = sensor_score
+        algorithm += "+sensor-only"
+        logger.info(
+            f"Sensor-only mode: rebalanced weights to 100% sensor "
+            f"(sensor_score={sensor_score:.3f})"
+        )
+    elif is_image_only:
+        # Image-only: camera drives the full score
+        fusion_score = image_score
+        algorithm += "+image-only"
+    else:
+        # Normal late fusion: both sources available
+        fusion_score = (
+            settings.FUSION_WEIGHT_IMAGE * image_score
+            + settings.FUSION_WEIGHT_SENSOR * sensor_score
+        )
+    
     fusion_score = min(max(fusion_score, 0.0), 1.0)
     
     risk_level = _score_to_risk_level(fusion_score)
