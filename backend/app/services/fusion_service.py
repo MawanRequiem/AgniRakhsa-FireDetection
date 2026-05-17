@@ -39,7 +39,7 @@ SENSOR_THRESHOLDS = {
     "mq4":          (200,   400,    700,   "ppm"),    # Methane/CNG
     "mq6":          (200,   400,    700,   "ppm"),    # LPG/Butane
     "mq9b":         (50,    100,    200,   "ppm"),    # CO (more dangerous at lower ppm)
-    "flame":        (3000,  2000,   1000,  "raw"),    # Flame IR (lower = more fire)
+    # "flame":      (3000,  2000,   1000,  "raw"),    # DISABLED — hardware fault
     "shtc3_temp":   (40,    55,     70,    "°C"),     # Temperature
     "shtc3_humidity":(80,   60,     40,    "%RH"),    # Humidity (lower = drier = more risk)
 }
@@ -50,14 +50,14 @@ SENSOR_DISPLAY_NAMES = {
     "mq4": ("Gas Metana (CNG)", "ppm"),
     "mq6": ("Gas LPG", "ppm"),
     "mq9b": ("Karbon Monoksida (CO)", "ppm"),
-    "flame": ("Sensor Api Inframerah", ""),
+    # "flame": ("Sensor Api Inframerah", ""),  # DISABLED
     "shtc3_temp": ("Suhu Ruangan", "°C"),
     "shtc3_humidity": ("Kelembaban", "%"),
     "MQ2": ("Asap", "ppm"),
     "MQ4": ("Gas Metana (CNG)", "ppm"),
     "MQ6": ("Gas LPG", "ppm"),
     "MQ9B": ("Karbon Monoksida (CO)", "ppm"),
-    "FLAME": ("Sensor Api Inframerah", ""),
+    # "FLAME": ("Sensor Api Inframerah", ""),  # DISABLED
     "SHTC3_TEMP": ("Suhu Ruangan", "°C"),
     "SHTC3_HUMIDITY": ("Kelembaban", "%"),
 }
@@ -103,16 +103,9 @@ def _compute_sensor_score_from_thresholds(snapshot: dict) -> float:
         
         safe_max, warning, danger = thresholds[0], thresholds[1], thresholds[2]
         
-        # Special handling: flame sensor is inverted (lower value = more fire)
+        # FLAME sensor DISABLED — hardware fault, skip entirely
         if sensor_type.lower() == "flame":
-            if value <= danger:
-                score = 1.0
-            elif value <= warning:
-                score = 0.5 + 0.5 * (warning - value) / (warning - danger)
-            elif value <= safe_max:
-                score = 0.2 * (safe_max - value) / (safe_max - warning)
-            else:
-                score = 0.0
+            continue
         # Humidity: lower = drier = more fire risk
         elif sensor_type.lower() == "shtc3_humidity":
             if value <= danger:
@@ -441,12 +434,12 @@ async def _create_alert(
             # Determine what was detected
             detection_sources = []
             if sensor_snapshot:
-                # Check for flame sensor
-                flame_val = sensor_snapshot.get("FLAME") or sensor_snapshot.get("flame")
-                if flame_val is not None:
-                    fv = flame_val if isinstance(flame_val, (int, float)) else flame_val.get("value", 9999)
-                    if fv < 1500:
-                        detection_sources.append("🔥 Api terdeteksi oleh sensor inframerah")
+                # FLAME sensor DISABLED — hardware fault
+                # flame_val = sensor_snapshot.get("FLAME") or sensor_snapshot.get("flame")
+                # if flame_val is not None:
+                #     fv = flame_val if isinstance(flame_val, (int, float)) else flame_val.get("value", 9999)
+                #     if fv < 1500:
+                #         detection_sources.append("🔥 Api terdeteksi oleh sensor inframerah")
                 
                 # Check for high gas
                 for gas_key in ("MQ2", "mq2"):
