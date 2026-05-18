@@ -156,26 +156,15 @@ async def process_buffers():
 
 def _evaluate_sensor_risk(snapshot: dict, room_id: str) -> float:
     """
-    Evaluate sensor risk score using the same dual-path strategy as fusion_service:
-      1. Isolation Forest ML model (if loaded and room has enough data)
-      2. Rule-based threshold fallback
+    Evaluate sensor risk score using the shared dual-path strategy from fusion_service.
+    Includes IF sanity gate to prevent ML hallucinations.
     
     Returns:
         Float 0.0 (safe) to 1.0 (critical).
     """
-    # Try Isolation Forest first
-    try:
-        from app.ai import registry
-        sensor_detector = registry.get_sensor_detector()
-        if sensor_detector.has_enough_data(room_id):
-            score = sensor_detector.predict(room_id)
-            logger.debug(f"Sensor-only IF score for room {room_id}: {score:.4f}")
-            return score
-    except (RuntimeError, Exception) as e:
-        logger.debug(f"IF model not available for sensor-only eval: {e}")
-    
-    # Fallback to threshold scoring
-    return fusion_service._compute_sensor_score_from_thresholds(snapshot)
+    score, algorithm = fusion_service.score_sensors(room_id, snapshot)
+    logger.debug(f"Sensor-only eval for room {room_id}: score={score:.4f}, algorithm={algorithm}")
+    return score
 
 
 async def run_fusion_worker():
@@ -223,7 +212,8 @@ async def run_fusion_worker():
                             snapshot_str = message_data.get("snapshot", "{}")
                             try:
                                 snapshot = json.loads(snapshot_str)
-                            except:
+                            except (json.JSONDecodeError, TypeError) as e:
+                                logger.debug(f"Failed to parse sensor snapshot JSON: {e}")
                                 snapshot = {}
                                 
                             buffers[room_id]["sensor"].append({

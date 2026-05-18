@@ -5,6 +5,8 @@ from typing import Optional
 from datetime import datetime
 import logging
 
+logger = logging.getLogger(__name__)
+
 # Inisialisasi router
 router = APIRouter(
     prefix="/nlp",
@@ -119,6 +121,7 @@ async def analyze_x_reports(
 
     # 1. Ambil data dari X (Mendukung Multi-Page jika count > 20)
     all_tweets = []
+    api_result = {}  # Initialize before loop to prevent NameError
     current_cursor = cursor
     pages_to_fetch = (count + 19) // 20 # Estimasi jumlah page (GetXAPI ~20 per page)
     
@@ -235,7 +238,7 @@ async def analyze_x_reports(
                 }
             })
         except Exception as e:
-            print(f"ERROR: Gagal menganalisis tweet ke-{i+1}: {str(e)}")
+            logger.error(f"Failed to analyze tweet #{i+1}: {e}")
             continue
         
     return {

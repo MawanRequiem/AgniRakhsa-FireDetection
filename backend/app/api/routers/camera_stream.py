@@ -69,6 +69,9 @@ async def camera_stream_endpoint(websocket: WebSocket, camera_id: str):
     supabase.table("cameras").update({"status": "online"}).eq("id", camera_id).execute()
     
     frame_count = 0
+    _last_detection_state = False  # Track detection state transitions
+    _last_db_write_time = time.time()  # Throttle DB writes
+    _CAMERA_DB_WRITE_INTERVAL = 5.0  # Write to DB at most every 5 seconds
     
     try:
         while True:
@@ -93,16 +96,19 @@ async def camera_stream_endpoint(websocket: WebSocket, camera_id: str):
                     room_id=room_uuid
                 )
                 
-                # Update camera status if detection
+                # Throttled camera status update:
+                # Only write to DB on detection state change OR every 5 seconds
                 has_detection = det_result.get("max_confidence", 0) > 0
-                if has_detection:
+                now = time.time()
+                state_changed = has_detection != _last_detection_state
+                time_elapsed = now - _last_db_write_time >= _CAMERA_DB_WRITE_INTERVAL
+                
+                if state_changed or time_elapsed:
                     supabase.table("cameras").update(
-                        {"has_detection": True, "last_frame_at": "now()"}
+                        {"has_detection": has_detection, "last_frame_at": "now()"}
                     ).eq("id", camera_id).execute()
-                else:
-                     supabase.table("cameras").update(
-                        {"has_detection": False, "last_frame_at": "now()"}
-                    ).eq("id", camera_id).execute()
+                    _last_detection_state = has_detection
+                    _last_db_write_time = now
 
                 # Publish to Redis Stream for Late Fusion
                 from app.core.redis import redis_manager

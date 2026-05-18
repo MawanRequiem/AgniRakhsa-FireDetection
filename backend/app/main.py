@@ -20,6 +20,23 @@ async def lifespan(app: FastAPI):
         import logging
         logging.getLogger(__name__).error(f"Redis initialization failed: {e}")
 
+    # ─── Security Guard: Reject default SECRET_KEY in production ──────────
+    import os
+    _DEFAULT_SECRET = "ag-super-secret-key-pls-change-in-prod-2026"
+    if settings.SECRET_KEY == _DEFAULT_SECRET:
+        _env = os.getenv("ENVIRONMENT", "development").lower()
+        if _env == "production":
+            raise RuntimeError(
+                "FATAL: SECRET_KEY must be changed in production! "
+                "Set a strong random key in your .env file."
+            )
+        else:
+            import logging
+            logging.getLogger(__name__).warning(
+                "⚠️ Using default SECRET_KEY — NOT SAFE FOR PRODUCTION. "
+                "Set ENVIRONMENT=production and a real SECRET_KEY before deploying."
+            )
+
     # Load AI model into memory on startup
     try:
         registry.load_detector(

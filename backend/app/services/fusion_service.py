@@ -38,25 +38,19 @@ SENSOR_THRESHOLDS = {
     "mq2":          (300,   500,    800,   "ppm"),    # Smoke/combustible gas
     "mq4":          (200,   400,    700,   "ppm"),    # Methane/CNG
     "mq6":          (200,   400,    700,   "ppm"),    # LPG/Butane
-    "mq9b":         (50,    100,    200,   "ppm"),    # CO (more dangerous at lower ppm)
+    "mq9":          (50,    100,    200,   "ppm"),    # CO (more dangerous at lower ppm)
     # "flame":      (3000,  2000,   1000,  "raw"),    # DISABLED — hardware fault
     "shtc3_temp":   (40,    55,     70,    "°C"),     # Temperature
     "shtc3_humidity":(80,   60,     40,    "%RH"),    # Humidity (lower = drier = more risk)
 }
 
 # Human-readable sensor names for WhatsApp messages (layman Indonesian)
+# Keys are UPPERCASE. Use .upper() at lookup time for case-insensitive matching.
 SENSOR_DISPLAY_NAMES = {
-    "mq2": ("Asap", "ppm"),
-    "mq4": ("Gas Metana (CNG)", "ppm"),
-    "mq6": ("Gas LPG", "ppm"),
-    "mq9b": ("Karbon Monoksida (CO)", "ppm"),
-    # "flame": ("Sensor Api Inframerah", ""),  # DISABLED
-    "shtc3_temp": ("Suhu Ruangan", "°C"),
-    "shtc3_humidity": ("Kelembaban", "%"),
     "MQ2": ("Asap", "ppm"),
     "MQ4": ("Gas Metana (CNG)", "ppm"),
     "MQ6": ("Gas LPG", "ppm"),
-    "MQ9B": ("Karbon Monoksida (CO)", "ppm"),
+    "MQ9": ("Karbon Monoksida (CO)", "ppm"),
     # "FLAME": ("Sensor Api Inframerah", ""),  # DISABLED
     "SHTC3_TEMP": ("Suhu Ruangan", "°C"),
     "SHTC3_HUMIDITY": ("Kelembaban", "%"),
@@ -132,6 +126,66 @@ def _compute_sensor_score_from_thresholds(snapshot: dict) -> float:
     return max(risk_scores) if risk_scores else 0.0
 
 
+def score_sensors(room_id: Optional[str], snapshot: Optional[dict] = None) -> tuple[float, str]:
+    """
+    Shared dual-path sensor scoring with IF sanity gate.
+    
+    Used by both fusion_service.run_fusion() and fusion_worker._evaluate_sensor_risk()
+    to ensure consistent scoring logic across all fusion paths.
+    
+    Returns:
+        Tuple of (sensor_score, algorithm_version_string).
+    """
+    if snapshot is None:
+        snapshot = {}
+    
+    algorithm = "v1.0-threshold-fallback"
+    threshold_score = _compute_sensor_score_from_thresholds(snapshot)
+    
+    try:
+        sensor_detector = registry.get_sensor_detector()
+        if room_id and sensor_detector.has_enough_data(str(room_id)):
+            if_score = sensor_detector.predict(str(room_id))
+            algorithm = "v2.0-isolation-forest"
+            
+            # ─── IF Sanity Gate ────────────────────────────────────────
+            # The IF model can hallucinate on normal data (e.g. when disabled
+            # sensors produce zero-features). If ALL threshold-based scores
+            # indicate SAFE (< 0.15), clamp the IF score to prevent false alerts.
+            IF_SANITY_FLOOR = 0.15
+            if threshold_score < IF_SANITY_FLOOR and if_score > 0.4:
+                logger.warning(
+                    f"IF sanity gate triggered for room {room_id}: "
+                    f"IF says {if_score:.3f} but thresholds say {threshold_score:.3f}. "
+                    f"Clamping to threshold score (IF likely hallucinating)."
+                )
+                sensor_score = threshold_score
+                algorithm += "+sanity-clamped"
+            else:
+                sensor_score = if_score
+            
+            logger.info(
+                f"IF model used for room {room_id}: "
+                f"if_raw={if_score:.4f}, threshold={threshold_score:.4f}, "
+                f"final_sensor={sensor_score:.4f}, "
+                f"buffer_status={sensor_detector.get_buffer_status()}"
+            )
+        else:
+            sensor_score = threshold_score
+            if room_id and sensor_detector.is_loaded:
+                buf_status = sensor_detector.get_buffer_status()
+                room_buf = buf_status.get(str(room_id), 0)
+                logger.debug(
+                    f"IF model not ready for room {room_id}: "
+                    f"{room_buf}/9 samples. Using threshold fallback."
+                )
+    except RuntimeError:
+        # Sensor model not loaded — use threshold fallback
+        sensor_score = threshold_score
+    
+    return sensor_score, algorithm
+
+
 def _score_to_risk_level(fusion_score: float) -> str:
     """Map a fusion score (0-1) to a human-readable risk level."""
     if fusion_score >= settings.RISK_THRESHOLD_CRITICAL:
@@ -165,7 +219,7 @@ def _format_sensor_details_for_wa(snapshot: dict) -> str:
         if val is None:
             continue
 
-        display = SENSOR_DISPLAY_NAMES.get(sensor_key)
+        display = SENSOR_DISPLAY_NAMES.get(sensor_key.upper())
         if display:
             name, unit = display
             if unit:
