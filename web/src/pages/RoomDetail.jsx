@@ -7,6 +7,7 @@ import CameraFeed from '@/components/cctv/CameraFeed';
 import { useRoomsStore } from '@/stores/useRoomsStore';
 import { customFetch } from '@/lib/api';
 import { useDashboardStore } from '@/stores/useDashboardStore';
+import RoomDeviceCalibration from '@/components/devices/RoomDeviceCalibration';
 
 const SENSOR_CONFIG = {
   SHTC_TEMP: { label: 'Temperature', unit: '°C', type: 'env', max: 50 },
@@ -263,6 +264,8 @@ export default function RoomDetail() {
               <SensorBar key={k} label={SENSOR_CONFIG[k].label} value={v} unit={SENSOR_CONFIG[k].unit} type="fire" />
             )) : <p className="text-xs text-[var(--ifrit-text-muted)] italic">No fire sensors online.</p>}
           </div>
+
+          <RoomDeviceCalibration devices={room.devices} />
 
         </div>
       </div>
