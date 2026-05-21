@@ -217,9 +217,9 @@ export default function RoomDetail() {
                  )}
                </div>
                <div className="relative w-full pb-[56.25%] bg-black">
-                 <div className="absolute inset-0">
-                    <CameraFeed camera={camera} />
-                 </div>
+                  <div className="absolute inset-0">
+                     <CameraFeed camera={camera} hideBorder={true} />
+                  </div>
                </div>
             </div>
           ) : (
