@@ -554,3 +554,83 @@ async def diagnose_sensor_health(
     return results
 
 
+async def export_sensor_readings_to_csv(
+    room_id: Optional[UUID] = None,
+    device_id: Optional[UUID] = None,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+) -> str:
+    """
+    Query historical sensor readings for a room or specific device,
+    align them into 1-minute time buckets, pivot the metrics, and
+    return a cleanly formatted tabular CSV string.
+    """
+    # 1. Resolve active sensors
+    sensor_query = supabase.table("sensors").select("id, sensor_type, device_id")
+    if device_id:
+        sensor_query = sensor_query.eq("device_id", str(device_id))
+    elif room_id:
+        sensor_query = sensor_query.eq("room_id", str(room_id))
+    
+    sensor_res = sensor_query.execute()
+    sensors = sensor_res.data or []
+    if not sensors:
+        return "Timestamp,Device Name,Device MAC,Sensor Type,Value\n# No sensors found for target scope"
+
+    sensor_ids = [s["id"] for s in sensors]
+
+    # 2. Query device names and MAC addresses
+    device_ids = list(set(s["device_id"] for s in sensors if s.get("device_id")))
+    if device_ids:
+        device_res = supabase.table("devices").select("id, name, mac_address").in_("id", device_ids).execute()
+        device_map = {d["id"]: d for d in (device_res.data or [])}
+    else:
+        device_map = {}
+
+    # 3. Fetch readings in the specified range
+    readings_query = supabase.table("sensor_readings").select("sensor_id, value, reading_at").in_("sensor_id", sensor_ids)
+    if start_time:
+        readings_query = readings_query.gte("reading_at", start_time.isoformat())
+    if end_time:
+        readings_query = readings_query.lte("reading_at", end_time.isoformat())
+    
+    readings_res = readings_query.order("reading_at", desc=False).limit(20000).execute()
+    readings = readings_res.data or []
+    if not readings:
+        return "Timestamp,Device Name,Device MAC\n# No historical records found in this time range"
+
+    # 4. Process with Pandas
+    import pandas as pd
+    
+    sensor_rows = []
+    for s in sensors:
+        d = device_map.get(s["device_id"], {})
+        sensor_rows.append({
+            "sensor_id": s["id"],
+            "sensor_type": s["sensor_type"],
+            "device_name": d.get("name", "Unknown Node"),
+            "device_mac": d.get("mac_address", "—")
+        })
+    df_sensors = pd.DataFrame(sensor_rows)
+    df_readings = pd.DataFrame(readings)
+    
+    df_merged = pd.merge(df_readings, df_sensors, on="sensor_id")
+    if df_merged.empty:
+        return "Timestamp,Device Name,Device MAC\n# No combined logs match sensor configuration"
+
+    df_merged["reading_at_dt"] = pd.to_datetime(df_merged["reading_at"])
+    df_merged["Timestamp"] = df_merged["reading_at_dt"].dt.floor("1min").dt.strftime("%Y-%m-%d %H:%M:%S")
+
+    df_pivoted = df_merged.pivot_table(
+        index=["Timestamp", "device_name", "device_mac"],
+        columns="sensor_type",
+        values="value",
+        aggfunc="mean"
+    ).reset_index()
+
+    df_pivoted = df_pivoted.sort_values(by=["Timestamp", "device_name"])
+    
+    return df_pivoted.to_csv(index=False)
+
+
+

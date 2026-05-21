@@ -8,6 +8,7 @@ import { useRoomsStore } from '@/stores/useRoomsStore';
 import { customFetch } from '@/lib/api';
 import { useDashboardStore } from '@/stores/useDashboardStore';
 import RoomDeviceCalibration from '@/components/devices/RoomDeviceCalibration';
+import RoomDeviceExportCard from '@/components/devices/RoomDeviceExportCard';
 
 const SENSOR_CONFIG = {
   SHTC_TEMP: { label: 'Temperature', unit: '°C', type: 'env', max: 50 },
@@ -266,6 +267,7 @@ export default function RoomDetail() {
           </div>
 
           <RoomDeviceCalibration devices={room.devices} />
+          <RoomDeviceExportCard roomId={room.id} devices={room.devices} />
 
         </div>
       </div>
