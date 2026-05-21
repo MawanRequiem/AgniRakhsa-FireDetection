@@ -47,6 +47,7 @@ def login(
         httponly=True,
         secure=is_secure,
         samesite="lax",
+        path="/",
         max_age=8 * 24 * 60 * 60 # Berlaku 8 hari
     )
 
@@ -65,7 +66,7 @@ def logout(request: Request, response: Response):
     """
     Menghapus cookie access token untuk logout.
     """
-    is_secure = request.url.scheme == "https"
+    is_secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
     response.delete_cookie(
         key="access_token", 
         path="/", 
@@ -81,15 +82,15 @@ import jwt
 def read_users_me(
     response: Response,
     request: Request,
-    current_user: Annotated[security.Any, Depends(app.api.deps.get_current_user)]
+    current_user: Annotated[app.api.deps.User, Depends(app.api.deps.get_current_user)],
+    token: Annotated[str, Depends(app.api.deps.get_token_from_cookie)]
 ):
     """
     Mendapatkan profil user saat ini berdasarkan cookie dan mengekspos token CSRF.
     """
     if token:
         try:
-            token_clean = token.replace("Bearer ", "")
-            payload = jwt.decode(token_clean, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
             csrf_token = payload.get("csrf")
             if csrf_token:
                response.headers["X-CSRF-Token"] = csrf_token
