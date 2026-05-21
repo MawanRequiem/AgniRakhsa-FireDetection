@@ -171,10 +171,10 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="lg:col-span-2 border rounded-lg overflow-hidden"
+          className="lg:col-span-2 lg:h-[360px] flex flex-col border rounded-lg overflow-hidden"
           style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-primary)' }}
         >
-          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
+          <div className="flex items-center justify-between p-4 border-b flex-shrink-0" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
             <div className="flex items-center gap-3">
               <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Real-time Activity</h3>
               <select 
@@ -189,7 +189,7 @@ export default function Dashboard() {
             </div>
             {/* Dynamic Legend rendered inside SensorsOverview */}
           </div>
-          <div className="p-4">
+          <div className="p-4 flex-1 min-h-0 relative flex flex-col justify-center">
             <SensorsOverview />
           </div>
         </motion.div>
@@ -198,10 +198,10 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="lg:col-span-1 flex flex-col h-full border rounded-lg overflow-hidden"
+          className="lg:col-span-1 lg:h-[360px] flex flex-col border rounded-lg overflow-hidden"
           style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-primary)' }}
         >
-          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
+          <div className="flex items-center justify-between p-4 border-b flex-shrink-0" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
             <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Recent Activity</h3>
             <button 
               onClick={() => navigate('/alerts')}
@@ -212,7 +212,7 @@ export default function Dashboard() {
             </button>
           </div>
           
-          <div className="p-4 flex-1 overflow-y-auto custom-scrollbar" style={{ backgroundColor: 'var(--ifrit-bg-primary)' }}>
+          <div className="p-4 flex-1 overflow-y-auto custom-scrollbar min-h-0" style={{ backgroundColor: 'var(--ifrit-bg-primary)' }}>
             {isLoading && recentAlerts.length === 0 ? (
               <div className="animate-pulse space-y-2">
                 {[1,2,3].map(i => (
