@@ -20,7 +20,7 @@ def run_test():
         "name": "Fusion Test Device",
         "mac_address": TEST_MAC_ADDRESS,
         "room_name": TEST_ROOM_NAME,
-        "sensor_types": ["shtc3_temp", "mq2", "mq4"]
+        "sensor_types": ["shtc3_temp", "mq2", "mq4", "pir"]
     }
     
     try:
@@ -59,6 +59,8 @@ def run_test():
         readings.append({"sensor_id": sensors["mq2"], "value": 600.0})
     if "mq4" in sensors:
         readings.append({"sensor_id": sensors["mq4"], "value": 450.0})
+    if "pir" in sensors:
+        readings.append({"sensor_id": sensors["pir"], "value": 1.0})
 
     batch_payload = {
         "device_id": device_id,

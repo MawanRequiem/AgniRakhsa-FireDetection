@@ -9,7 +9,9 @@ import { customFetch } from '@/lib/api';
 import { useDashboardStore } from '@/stores/useDashboardStore';
 
 const SENSOR_CONFIG = {
+  SHTC3_TEMP: { label: 'Temperature', unit: '°C', type: 'env', max: 50 },
   SHTC_TEMP: { label: 'Temperature', unit: '°C', type: 'env', max: 50 },
+  SHTC3_HUMIDITY: { label: 'Humidity', unit: '%', type: 'env', max: 100 },
   SHTC_HUM: { label: 'Humidity', unit: '%', type: 'env', max: 100 },
   FLAME: { label: 'Flame (IR)', unit: 'raw', type: 'fire', max: 4095 },
   MQ2: { label: 'MQ-2 (Smoke/LPG)', unit: 'ppm', type: 'gas', max: 4095 },
@@ -18,8 +20,10 @@ const SENSOR_CONFIG = {
   MQ6: { label: 'MQ-6 (LPG)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ7: { label: 'MQ-7 (CO)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ9: { label: 'MQ-9 (CO/Methane)', unit: 'ppm', type: 'gas', max: 4095 },
+  MQ9B: { label: 'MQ-9 (CO/Methane)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ135: { label: 'MQ-135 (Air Quality)', unit: 'ppm', type: 'gas', max: 4095 },
   LDR: { label: 'LDR (Light)', unit: 'raw', type: 'env', max: 4095 },
+  PIR: { label: 'PIR (Motion)', unit: '', type: 'motion', max: 1 },
 };
 
 function SensorBar({ label, value, unit, type }) {
@@ -164,9 +168,10 @@ export default function RoomDetail() {
   const camera = cameras.length > 0 ? cameras[0] : null;
   const alerts = room.active_alerts || [];
   
-  const envSensors = Object.entries(sensorReadings).filter(([k]) => SENSOR_CONFIG[k]?.type === 'env');
-  const gasSensors = Object.entries(sensorReadings).filter(([k]) => SENSOR_CONFIG[k]?.type === 'gas');
-  const fireSensors = Object.entries(sensorReadings).filter(([k]) => SENSOR_CONFIG[k]?.type === 'fire');
+  const envSensors = Object.entries(sensorReadings).filter(([k]) => SENSOR_CONFIG[k.toUpperCase()]?.type === 'env');
+  const gasSensors = Object.entries(sensorReadings).filter(([k]) => SENSOR_CONFIG[k.toUpperCase()]?.type === 'gas');
+  const fireSensors = Object.entries(sensorReadings).filter(([k]) => SENSOR_CONFIG[k.toUpperCase()]?.type === 'fire');
+  const motionSensors = Object.entries(sensorReadings).filter(([k]) => SENSOR_CONFIG[k.toUpperCase()]?.type === 'motion');
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
@@ -241,7 +246,7 @@ export default function RoomDetail() {
               <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>Environment & Light</h3>
             </div>
             {envSensors.length > 0 ? envSensors.map(([k, v]) => (
-              <SensorBar key={k} label={SENSOR_CONFIG[k].label} value={v} unit={SENSOR_CONFIG[k].unit} type="env" />
+              <SensorBar key={k} label={SENSOR_CONFIG[k.toUpperCase()].label} value={v} unit={SENSOR_CONFIG[k.toUpperCase()].unit} type="env" />
             )) : <p className="text-xs text-[var(--ifrit-text-muted)] italic">No environment sensors online.</p>}
           </div>
 
@@ -251,7 +256,7 @@ export default function RoomDetail() {
               <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>Smoke & Gas Levels</h3>
             </div>
             {gasSensors.length > 0 ? gasSensors.map(([k, v]) => (
-              <SensorBar key={k} label={SENSOR_CONFIG[k].label} value={v} unit={SENSOR_CONFIG[k].unit} type="gas" />
+              <SensorBar key={k} label={SENSOR_CONFIG[k.toUpperCase()].label} value={v} unit={SENSOR_CONFIG[k.toUpperCase()].unit} type="gas" />
             )) : <p className="text-xs text-[var(--ifrit-text-muted)] italic">No gas sensors online.</p>}
           </div>
 
@@ -261,9 +266,29 @@ export default function RoomDetail() {
               <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>Fire Detections</h3>
             </div>
             {fireSensors.length > 0 ? fireSensors.map(([k, v]) => (
-              <SensorBar key={k} label={SENSOR_CONFIG[k].label} value={v} unit={SENSOR_CONFIG[k].unit} type="fire" />
+              <SensorBar key={k} label={SENSOR_CONFIG[k.toUpperCase()].label} value={v} unit={SENSOR_CONFIG[k.toUpperCase()].unit} type="fire" />
             )) : <p className="text-xs text-[var(--ifrit-text-muted)] italic">No fire sensors online.</p>}
           </div>
+
+          {motionSensors.length > 0 && (
+            <div className="border rounded-xl p-4" style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)' }}>
+              <div className="flex items-center gap-2 mb-4">
+                <Activity className="w-4 h-4 text-amber-500 animate-pulse" />
+                <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>Motion & Occupancy</h3>
+              </div>
+              {motionSensors.map(([k, v]) => {
+                const isMotion = v === 1;
+                return (
+                  <div key={k} className="flex justify-between items-center p-3 rounded-md bg-[var(--ifrit-bg-tertiary)] border border-[var(--ifrit-border)]">
+                    <span className="text-xs font-semibold text-[var(--ifrit-text-secondary)]">PIR Motion Status</span>
+                    <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded transition-all duration-300 ${isMotion ? 'bg-amber-500/10 text-amber-500 border border-amber-500/30 shadow-[0_0_8px_rgba(245,158,11,0.2)]' : 'bg-green-500/10 text-green-500 border border-green-500/30'}`}>
+                      {isMotion ? '🚶 MOTION DETECTED' : '🟢 SECURE'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
         </div>
       </div>

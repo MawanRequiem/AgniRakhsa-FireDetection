@@ -13,6 +13,7 @@ const SENSOR_COLORS = {
   SHTC_TEMP: '#f97316',      // orange (legacy)
   SHTC_HUM: '#10b981',       // emerald (legacy)
   LDR: '#eab308',            // gold/amber
+  PIR: '#f59e0b',            // amber/motion
   // Legacy keys for backwards compat
   co: '#F59E0B',
   lpg: '#60A5FA',
@@ -24,7 +25,7 @@ const SENSOR_COLORS = {
 const FALLBACK_COLORS = ['#6366f1', '#ec4899', '#14b8a6', '#eab308', '#a855f7', '#f43f5e', '#0ea5e9'];
 
 function getColor(key, index) {
-  return SENSOR_COLORS[key] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+  return SENSOR_COLORS[key.toUpperCase()] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
 }
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -38,20 +39,40 @@ const CustomTooltip = ({ active, payload, label }) => {
       }}
     >
       <p className="font-mono mb-1" style={{ color: 'var(--ifrit-text-muted)' }}>{label}</p>
-      {payload.map(entry => (
-        <div key={entry.dataKey} className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-          <span style={{ color: 'var(--ifrit-text-secondary)' }}>{entry.dataKey}:</span>
-          <span className="font-mono font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>
-            {typeof entry.value === 'number' ? entry.value.toFixed(1) : entry.value}
-          </span>
-        </div>
-      ))}
+      {payload.map(entry => {
+        let valueStr = typeof entry.value === 'number' ? entry.value.toFixed(1) : entry.value;
+        const keyUpper = entry.dataKey.toUpperCase();
+        if (keyUpper === 'LDR') {
+          valueStr = `${entry.value.toFixed(1)}%`;
+        } else if (keyUpper === 'PIR') {
+          valueStr = entry.value === 1 ? 'Motion' : 'No Motion';
+        }
+        return (
+          <div key={entry.dataKey} className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+            <span style={{ color: 'var(--ifrit-text-secondary)' }}>{entry.dataKey}:</span>
+            <span className="font-mono font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>
+              {valueStr}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 };
 
 export default function SensorChart({ data, sensors = [], height = 280 }) {
+  const scaledData = (data || []).map(point => {
+    const newPoint = { ...point };
+    if (newPoint.LDR !== undefined) {
+      newPoint.LDR = newPoint.LDR / 40.95;
+    }
+    if (newPoint.ldr !== undefined) {
+      newPoint.ldr = newPoint.ldr / 40.95;
+    }
+    return newPoint;
+  });
+
   return (
     <div
       className="rounded-md border p-4"
@@ -64,7 +85,7 @@ export default function SensorChart({ data, sensors = [], height = 280 }) {
         Sensor Trends
       </h3>
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+        <LineChart data={scaledData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--ifrit-border)" opacity={0.4} />
           <XAxis
             dataKey="time"

@@ -135,6 +135,28 @@ export default function NodeCard({ device, roomName, latestReadings }) {
         );
       })()}
 
+      {/* PIR Sensor */}
+      {(latestReadings?.PIR !== undefined || latestReadings?.pir !== undefined) && (() => {
+        const pirVal = latestReadings.PIR !== undefined ? latestReadings.PIR : latestReadings.pir;
+        const isMotion = pirVal === 1;
+        const pirHealth = sensorHealth?.sensors?.find(s => s.device_id === device.id && (s.sensor_type === 'PIR' || s.sensor_type === 'pir'));
+        const isPirUnhealthy = pirHealth && pirHealth.status !== 'healthy';
+        
+        return (
+          <div className={`flex items-center justify-between p-2 rounded-md mb-3 ${isPirUnhealthy ? 'bg-red-500/10 border border-red-500/30' : isMotion ? 'bg-amber-500/10 border border-amber-500/30 animate-pulse' : 'bg-[var(--ifrit-bg-tertiary)]'}`} title={isPirUnhealthy ? `${pirHealth.status}: ${pirHealth.details?.reason}` : ''}>
+            <div className="flex items-center gap-2">
+              <Activity className={`w-3.5 h-3.5 ${isPirUnhealthy ? 'text-red-500' : isMotion ? 'text-amber-500 animate-pulse' : 'text-[var(--ifrit-text-muted)]'}`} />
+              <span className="text-xs font-medium text-[var(--ifrit-text-primary)]">
+                MOTION (PIR) {isPirUnhealthy && <AlertTriangle className="inline w-2.5 h-2.5 text-red-500 ml-1" />}
+              </span>
+            </div>
+            <span className={`text-xs font-mono font-semibold ${isPirUnhealthy ? 'text-red-500 line-through opacity-70' : isMotion ? 'text-amber-500 font-bold' : 'text-[var(--ifrit-text-secondary)]'}`}>
+              {isMotion ? '🚶 MOTION' : '🟢 SECURE'}
+            </span>
+          </div>
+        );
+      })()}
+
       {/* Gas Sensors (MQ Series) */}
       <div className="flex-1 flex flex-col gap-1.5">
         <h4 className="text-[10px] uppercase font-semibold text-[var(--ifrit-text-muted)] mb-1">Gas Array (PPM)</h4>

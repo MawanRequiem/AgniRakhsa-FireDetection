@@ -16,6 +16,7 @@ const SENSOR_COLORS = {
   SHTC_TEMP: '#f97316',
   SHTC_HUM: 'var(--ifrit-safe)',
   LDR: '#eab308',
+  PIR: '#f59e0b',
 };
 
 const SENSOR_FALLBACK_COLOR = '#6b7280';
@@ -43,7 +44,14 @@ export default function SensorsOverview() {
       } catch {
         label = point.time || '';
       }
-      return { ...point, time: label };
+      const newPoint = { ...point, time: label };
+      if (newPoint.LDR !== undefined) {
+        newPoint.LDR = newPoint.LDR / 40.95;
+      }
+      if (newPoint.ldr !== undefined) {
+        newPoint.ldr = newPoint.ldr / 40.95;
+      }
+      return newPoint;
     });
   }, [sensorHistory]);
 

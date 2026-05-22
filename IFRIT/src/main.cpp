@@ -18,6 +18,7 @@
 #define MQ9_PIN 33
 #define FLAME_PIN 19
 #define LDR_PIN 25
+#define PIR_PIN 23
 
 // --- Firmware Version ---
 #define FIRMWARE_VERSION "3.0.0-ADAPTIVE-CAL"
@@ -38,9 +39,9 @@ const unsigned long TELEMETRY_INTERVAL_MS = 2000;  // Send readings every 2s
 const unsigned long HEARTBEAT_INTERVAL_MS = 30000; // Send heartbeat every 30s
 
 // --- Sensor Configuration & Thresholds ---
-const int NUM_SENSORS = 8;
+const int NUM_SENSORS = 9;
 const char *SENSOR_TYPES[NUM_SENSORS] = {"MQ2",       "MQ4",      "MQ6",  "MQ9",
-                                         "SHTC_TEMP", "SHTC_HUM", "FLAME", "LDR"};
+                                         "SHTC_TEMP", "SHTC_HUM", "FLAME", "LDR", "PIR"};
 
 // Thresholds for triggering local alarm
 const float ALARM_THRESHOLDS[NUM_SENSORS] = {
@@ -51,7 +52,8 @@ const float ALARM_THRESHOLDS[NUM_SENSORS] = {
     45.0,  // TEMP (Celsius)
     100.0, // HUMIDITY (%)
     0.5,   // FLAME (Digital: 0 is fire)
-    4095.0 // LDR (raw light, will not trigger local alarm)
+    4095.0, // LDR (raw light, will not trigger local alarm)
+    1.0    // PIR (motion, will not trigger local alarm directly)
 };
 
 // =============================================================================
@@ -686,6 +688,7 @@ void setup() {
 
   pinMode(FLAME_PIN, INPUT);
   pinMode(LDR_PIN, INPUT);
+  pinMode(PIR_PIN, INPUT);
 
   // Inisialisasi SHTC3 via I2C
   if (!shtc3.begin()) {
@@ -836,6 +839,9 @@ void loop() {
     // Baca tingkat kecerahan cahaya dari LDR sensor (raw analog)
     values[7] = analogRead(LDR_PIN);
 
+    // Baca status gerakan dari PIR sensor (Digital: 1 is motion)
+    values[8] = digitalRead(PIR_PIN);
+
     // ─── Serial Debug Output ───
     bool isWarmingUp = pendingAutoCalibration && (currentMillis < WARMUP_TIME_MS);
     if (isWarmingUp) {
@@ -866,13 +872,15 @@ void loop() {
     Serial.printf("  Flame (IR)   : %.0f %s\n", values[6],
                   values[6] == LOW ? "[FIRE!]" : "[Safe]");
     Serial.printf("  LDR   (Light): %.1f raw\n", values[7]);
+    Serial.printf("  PIR   (Motion): %.0f %s\n", values[8],
+                  values[8] == HIGH ? "[MOTION DETECTED]" : "[Safe]");
     Serial.println("=======================");
 
     // ─── Local Alarm Logic ───
     bool alarmTriggered = false;
     for (int i = 0; i < NUM_SENSORS; i++) {
-      if (strcmp(SENSOR_TYPES[i], "LDR") == 0) {
-        // Skip LDR from alarm trigger logic
+      if (strcmp(SENSOR_TYPES[i], "LDR") == 0 || strcmp(SENSOR_TYPES[i], "PIR") == 0) {
+        // Skip LDR and PIR from alarm trigger logic
         continue;
       }
       if (strcmp(SENSOR_TYPES[i], "FLAME") == 0) {
