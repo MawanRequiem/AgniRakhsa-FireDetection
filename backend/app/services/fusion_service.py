@@ -54,6 +54,7 @@ SENSOR_DISPLAY_NAMES = {
     # "FLAME": ("Sensor Api Inframerah", ""),  # DISABLED
     "SHTC3_TEMP": ("Suhu Ruangan", "°C"),
     "SHTC3_HUMIDITY": ("Kelembaban", "%"),
+    "LDR": ("Kecerahan Cahaya", "raw"),
 }
 
 # Alert cooldown per room to prevent spam (room_id → last_alert_timestamp)

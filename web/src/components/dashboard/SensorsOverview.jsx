@@ -13,6 +13,9 @@ const SENSOR_COLORS = {
   MQ135: '#ec4899',
   SHTC3_TEMP: '#f97316',
   SHTC3_HUMIDITY: 'var(--ifrit-safe)',
+  SHTC_TEMP: '#f97316',
+  SHTC_HUM: 'var(--ifrit-safe)',
+  LDR: '#eab308',
 };
 
 const SENSOR_FALLBACK_COLOR = '#6b7280';

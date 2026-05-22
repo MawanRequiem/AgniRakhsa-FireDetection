@@ -1,4 +1,4 @@
-import { Activity, Flame, Thermometer, Wind, AlertTriangle, Droplets } from 'lucide-react';
+import { Activity, Flame, Thermometer, Wind, AlertTriangle, Droplets, Sun } from 'lucide-react';
 import StatusIndicator from '@/components/ui/StatusIndicator';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardStore } from '@/stores/useDashboardStore';
@@ -12,8 +12,9 @@ export default function NodeCard({ device, roomName, latestReadings }) {
   const isBurnIn = device.status === 'burn_in';
   
   // Format specific sensor readings
-  const temp = latestReadings?.SHTC3_TEMP?.toFixed(1) || '--';
-  const hum = latestReadings?.SHTC3_HUMIDITY?.toFixed(1) || '--';
+  const temp = latestReadings?.SHTC3_TEMP?.toFixed(1) || latestReadings?.SHTC_TEMP?.toFixed(1) || '--';
+  const hum = latestReadings?.SHTC3_HUMIDITY?.toFixed(1) || latestReadings?.SHTC_HUM?.toFixed(1) || '--';
+  const ldr = latestReadings?.LDR !== undefined ? Math.round(latestReadings.LDR) : '--';
   
   // Gas sensors (ppm)
   const mqSensors = ['MQ2', 'MQ4', 'MQ5', 'MQ6', 'MQ7', 'MQ9B', 'MQ135'];
@@ -63,10 +64,10 @@ export default function NodeCard({ device, roomName, latestReadings }) {
         </div>
       </div>
       
-      {/* SHTC3 Environment */}
-      <div className="grid grid-cols-2 gap-2 mb-4">
+      {/* SHTC3/LDR Environment */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
         {(() => {
-          const tempHealth = sensorHealth?.sensors?.find(s => s.device_id === device.id && s.sensor_type === 'SHTC3_TEMP');
+          const tempHealth = sensorHealth?.sensors?.find(s => s.device_id === device.id && (s.sensor_type === 'SHTC3_TEMP' || s.sensor_type === 'SHTC_TEMP'));
           const isTempUnhealthy = tempHealth && tempHealth.status !== 'healthy';
           return (
             <div className={`flex items-center gap-2 p-2 rounded-md ${isTempUnhealthy ? 'bg-red-500/10 border border-red-500/30' : 'bg-[var(--ifrit-bg-tertiary)]'}`} title={isTempUnhealthy ? `${tempHealth.status}: ${tempHealth.details?.reason}` : ''}>
@@ -82,7 +83,7 @@ export default function NodeCard({ device, roomName, latestReadings }) {
         })()}
         
         {(() => {
-          const humHealth = sensorHealth?.sensors?.find(s => s.device_id === device.id && s.sensor_type === 'SHTC3_HUMIDITY');
+          const humHealth = sensorHealth?.sensors?.find(s => s.device_id === device.id && (s.sensor_type === 'SHTC3_HUMIDITY' || s.sensor_type === 'SHTC_HUM'));
           const isHumUnhealthy = humHealth && humHealth.status !== 'healthy';
           return (
             <div className={`flex items-center gap-2 p-2 rounded-md ${isHumUnhealthy ? 'bg-red-500/10 border border-red-500/30' : 'bg-[var(--ifrit-bg-tertiary)]'}`} title={isHumUnhealthy ? `${humHealth.status}: ${humHealth.details?.reason}` : ''}>
@@ -92,6 +93,22 @@ export default function NodeCard({ device, roomName, latestReadings }) {
                   HUM {isHumUnhealthy && <AlertTriangle className="inline w-2.5 h-2.5 text-red-500" />}
                 </span>
                 <span className={`text-xs font-mono ${isHumUnhealthy ? 'text-red-500 line-through opacity-70' : 'text-[var(--ifrit-text-primary)]'}`}>{hum}%</span>
+              </div>
+            </div>
+          );
+        })()}
+
+        {(() => {
+          const ldrHealth = sensorHealth?.sensors?.find(s => s.device_id === device.id && s.sensor_type === 'LDR');
+          const isLdrUnhealthy = ldrHealth && ldrHealth.status !== 'healthy';
+          return (
+            <div className={`flex items-center gap-2 p-2 rounded-md ${isLdrUnhealthy ? 'bg-red-500/10 border border-red-500/30' : 'bg-[var(--ifrit-bg-tertiary)]'}`} title={isLdrUnhealthy ? `${ldrHealth.status}: ${ldrHealth.details?.reason}` : ''}>
+              <Sun className={`w-3 h-3 ${isLdrUnhealthy ? 'text-red-500' : 'text-amber-500'}`} />
+              <div className="flex flex-col">
+                <span className="text-[10px] text-[var(--ifrit-text-muted)]">
+                  LIGHT {isLdrUnhealthy && <AlertTriangle className="inline w-2.5 h-2.5 text-red-500" />}
+                </span>
+                <span className={`text-xs font-mono ${isLdrUnhealthy ? 'text-red-500 line-through opacity-70' : 'text-[var(--ifrit-text-primary)]'}`}>{ldr}</span>
               </div>
             </div>
           );

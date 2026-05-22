@@ -372,6 +372,7 @@ SENSOR_EXPECTED_RANGE: dict[str, tuple[float, float, float]] = {
     "FLAME":       (0,    4095,   4095),
     "SHTC3_TEMP":  (-40,  125,    None),   # No ADC ceiling for digital sensors
     "SHTC3_HUM":   (0,    100,    None),
+    "LDR":         (0,    4095,   4095),
 }
 
 # Thresholds for health heuristics

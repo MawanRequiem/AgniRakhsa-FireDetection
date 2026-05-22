@@ -28,6 +28,7 @@ SENSOR_CONFIGS = [
     {"type": "FLAME", "unit": "raw", "norm_min": 3000, "norm_max": 4095, "anomaly_min": 100, "anomaly_max": 1000}, # Flame is analog pull-up, lower means flame
     {"type": "SHTC3_TEMP", "unit": "C", "norm_min": 20.0, "norm_max": 30.0, "anomaly_min": 50.0, "anomaly_max": 85.0},
     {"type": "SHTC3_HUMIDITY", "unit": "%", "norm_min": 40.0, "norm_max": 60.0, "anomaly_min": 10.0, "anomaly_max": 30.0},
+    {"type": "LDR", "unit": "raw", "norm_min": 500, "norm_max": 3500, "anomaly_min": 500, "anomaly_max": 3500},
 ]
 
 def bootstrap_env():

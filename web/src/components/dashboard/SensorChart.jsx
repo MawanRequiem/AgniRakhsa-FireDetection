@@ -10,6 +10,9 @@ const SENSOR_COLORS = {
   MQ135: '#ec4899',  // pink   — Air Quality
   SHTC3_TEMP: '#f97316',     // orange
   SHTC3_HUMIDITY: '#10b981', // emerald
+  SHTC_TEMP: '#f97316',      // orange (legacy)
+  SHTC_HUM: '#10b981',       // emerald (legacy)
+  LDR: '#eab308',            // gold/amber
   // Legacy keys for backwards compat
   co: '#F59E0B',
   lpg: '#60A5FA',

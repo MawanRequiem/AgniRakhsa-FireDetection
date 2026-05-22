@@ -17,6 +17,7 @@
 #define MQ6_PIN 32
 #define MQ9_PIN 33
 #define FLAME_PIN 19
+#define LDR_PIN 25
 
 // --- Firmware Version ---
 #define FIRMWARE_VERSION "3.0.0-ADAPTIVE-CAL"
@@ -37,9 +38,9 @@ const unsigned long TELEMETRY_INTERVAL_MS = 2000;  // Send readings every 2s
 const unsigned long HEARTBEAT_INTERVAL_MS = 30000; // Send heartbeat every 30s
 
 // --- Sensor Configuration & Thresholds ---
-const int NUM_SENSORS = 7;
+const int NUM_SENSORS = 8;
 const char *SENSOR_TYPES[NUM_SENSORS] = {"MQ2",       "MQ4",      "MQ6",  "MQ9",
-                                         "SHTC_TEMP", "SHTC_HUM", "FLAME"};
+                                         "SHTC_TEMP", "SHTC_HUM", "FLAME", "LDR"};
 
 // Thresholds for triggering local alarm
 const float ALARM_THRESHOLDS[NUM_SENSORS] = {
@@ -49,7 +50,8 @@ const float ALARM_THRESHOLDS[NUM_SENSORS] = {
     600.0, // MQ9 (ppm)
     45.0,  // TEMP (Celsius)
     100.0, // HUMIDITY (%)
-    0.5    // FLAME (Digital: 0 is fire)
+    0.5,   // FLAME (Digital: 0 is fire)
+    4095.0 // LDR (raw light, will not trigger local alarm)
 };
 
 // =============================================================================
@@ -683,6 +685,7 @@ void setup() {
   Serial.println("=============================================\n");
 
   pinMode(FLAME_PIN, INPUT);
+  pinMode(LDR_PIN, INPUT);
 
   // Inisialisasi SHTC3 via I2C
   if (!shtc3.begin()) {
@@ -830,6 +833,9 @@ void loop() {
     // Baca status api dari sensor Flame (Logika Biner)
     values[6] = digitalRead(FLAME_PIN);
 
+    // Baca tingkat kecerahan cahaya dari LDR sensor (raw analog)
+    values[7] = analogRead(LDR_PIN);
+
     // ─── Serial Debug Output ───
     bool isWarmingUp = pendingAutoCalibration && (currentMillis < WARMUP_TIME_MS);
     if (isWarmingUp) {
@@ -859,11 +865,16 @@ void loop() {
     Serial.printf("  Hum   (SHTC3): %.1f %%\n", values[5]);
     Serial.printf("  Flame (IR)   : %.0f %s\n", values[6],
                   values[6] == LOW ? "[FIRE!]" : "[Safe]");
+    Serial.printf("  LDR   (Light): %.1f raw\n", values[7]);
     Serial.println("=======================");
 
     // ─── Local Alarm Logic ───
     bool alarmTriggered = false;
     for (int i = 0; i < NUM_SENSORS; i++) {
+      if (strcmp(SENSOR_TYPES[i], "LDR") == 0) {
+        // Skip LDR from alarm trigger logic
+        continue;
+      }
       if (strcmp(SENSOR_TYPES[i], "FLAME") == 0) {
         // Flame sensor: fire when value is LOW (pull-up logic)
         if (values[i] < ALARM_THRESHOLDS[i])

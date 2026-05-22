@@ -19,6 +19,7 @@ const SENSOR_CONFIG = {
   MQ7: { label: 'MQ-7 (CO)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ9: { label: 'MQ-9 (CO/Methane)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ135: { label: 'MQ-135 (Air Quality)', unit: 'ppm', type: 'gas', max: 4095 },
+  LDR: { label: 'LDR (Light)', unit: 'raw', type: 'env', max: 4095 },
 };
 
 function SensorBar({ label, value, unit, type }) {
@@ -237,7 +238,7 @@ export default function RoomDetail() {
           <div className="border rounded-xl p-4" style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)' }}>
             <div className="flex items-center gap-2 mb-4">
               <Thermometer className="w-4 h-4 text-blue-400" />
-              <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>Air & Temperature</h3>
+              <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>Environment & Light</h3>
             </div>
             {envSensors.length > 0 ? envSensors.map(([k, v]) => (
               <SensorBar key={k} label={SENSOR_CONFIG[k].label} value={v} unit={SENSOR_CONFIG[k].unit} type="env" />
