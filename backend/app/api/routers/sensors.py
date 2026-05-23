@@ -85,12 +85,12 @@ async def get_sensor_history(
 
 @router.get("/export")
 async def export_gas_records(
+    current_user: CurrentUser,
     room_id: Optional[UUID] = Query(None),
     device_id: Optional[UUID] = Query(None),
     preset: Optional[str] = Query("24h"),
     start_time: Optional[datetime] = Query(None),
     end_time: Optional[datetime] = Query(None),
-    current_user: CurrentUser = Depends(),
 ):
     """
     Export historical gas records as a downloadable Excel-compatible CSV file.
