@@ -19,7 +19,7 @@
 #define FLAME_PIN 19
 
 // --- Firmware Version ---
-#define FIRMWARE_VERSION "3.0.0-ADAPTIVE-CAL"
+#define FIRMWARE_VERSION "3.0.1-ADAPTIVE-CAL"
 
 // --- WiFi Configuration ---
 const char *WIFI_SSID = "MaOne_Cisco";
@@ -33,7 +33,7 @@ const char *DEVICE_NAME = "Demo Hari Selasa";
 const char *ROOM_NAME = "Ruang Raka Herdika";
 
 // --- Telemetry Configuration ---
-const unsigned long TELEMETRY_INTERVAL_MS = 2000;  // Send readings every 2s
+const unsigned long TELEMETRY_INTERVAL_MS = 5000;  // Send readings every 5s
 const unsigned long HEARTBEAT_INTERVAL_MS = 30000; // Send heartbeat every 30s
 
 // --- Sensor Configuration & Thresholds ---
@@ -141,6 +141,13 @@ bool burninDone = false;
 
 // MQ sensor ADC pins in order: MQ2, MQ4, MQ6, MQ9
 const int MQ_PINS[NUM_MQ_SENSORS] = {MQ2_PIN, MQ4_PIN, MQ6_PIN, MQ9_PIN};
+
+// Persistent HTTP/TLS clients (connection reuse)
+WiFiClientSecure secureClient;
+WiFiClient plainClient;
+HTTPClient telemetryHttp;
+
+bool telemetryHttpInitialized = false;
 
 // =============================================================================
 // LAYER 1: NVS PERSISTENT STORAGE
@@ -729,6 +736,7 @@ void setup() {
   // ─── Connect to network ───
   Serial.println("\n[BOOT] Step 2: Connecting to WiFi...");
   connectWiFi();
+  secureClient.setInsecure();
 
   // ─── Provision with backend ───
   Serial.println("\n[BOOT] Step 3: Provisioning device...");
@@ -885,12 +893,22 @@ void loop() {
 
     // ─── Send Telemetry to Backend (Bypassed only during heater warm-up) ───
     if (!isWarmingUp) {
-      WiFiClientSecure secureClient;
-      WiFiClient plainClient;
-      HTTPClient http;
       String url = String(API_BASE_URL) + "/sensors/readings/batch";
-      beginHttp(http, secureClient, plainClient, url);
-      http.addHeader("Content-Type", "application/json");
+      
+      // Initialize telemetry client to reuse connection
+      if (!telemetryHttpInitialized) {
+        telemetryHttp.begin(secureClient, url);
+
+        telemetryHttp.setReuse(true);
+        telemetryHttp.setTimeout(15000);
+
+        telemetryHttp.addHeader("Content-Type", "application/json");
+        telemetryHttp.addHeader("Connection", "keep-alive");
+
+        telemetryHttpInitialized = true;
+
+        Serial.println("[HTTP] Persistent telemetry connection initialized");
+      }
 
       JsonDocument doc;
       doc["device_id"] = deviceId;
@@ -912,15 +930,20 @@ void loop() {
       String payload;
       serializeJson(doc, payload);
 
-      int httpCode = http.POST(payload);
+      int httpCode = telemetryHttp.POST(payload);
       if (httpCode > 0 && httpCode < 400) {
         Serial.println("[TELEMETRY] Sent OK (" + String(httpCode) +
                        ") Alarm: " + (alarmTriggered ? "ON" : "OFF"));
-      } else {
+      }
+      else if(httpCode <= 0){
+        Serial.println("[HTTP] Connection dropped. Reinitializing...");
+        telemetryHttp.end();
+        telemetryHttpInitialized = false; // Telemetry client will reinitialize during loop when needed
+      }
+      else {
         Serial.println("[TELEMETRY] Failed: " + String(httpCode));
       }
 
-      http.end();
     } else {
       Serial.println("[TELEMETRY] Bypassed: Waiting for heater stabilization...");
     }
