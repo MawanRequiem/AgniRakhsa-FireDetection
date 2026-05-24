@@ -11,6 +11,7 @@ from app.core.db import supabase
 router = APIRouter(prefix="/devices", tags=["devices"])
 
 
+@router.get("", response_model=list[DeviceOut])
 @router.get("/", response_model=list[DeviceOut])
 async def list_devices(room_id: UUID | None = None):
     """List all IoT devices."""
@@ -31,6 +32,7 @@ async def get_device(device_id: UUID):
     return res.data[0]
 
 
+@router.post("", response_model=DeviceOut)
 @router.post("/", response_model=DeviceOut)
 async def register_device(device: DeviceCreate):
     """Register a new IoT device."""

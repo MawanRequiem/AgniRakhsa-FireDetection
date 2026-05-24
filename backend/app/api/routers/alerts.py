@@ -10,6 +10,7 @@ from app.core.db import supabase
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
 
+@router.get("", response_model=AlertsResponse)
 @router.get("/", response_model=AlertsResponse)
 async def list_alerts(
     page: int = 1,

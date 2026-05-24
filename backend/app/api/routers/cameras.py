@@ -47,6 +47,7 @@ class CameraOut(BaseModel):
     created_at: Optional[datetime] = None
 
 
+@router.get("", response_model=list[CameraOut])
 @router.get("/", response_model=list[CameraOut])
 async def list_cameras(room_id: UUID | None = None):
     """List all registered cameras."""
@@ -71,6 +72,7 @@ async def get_camera(camera_id: UUID):
     return result.data[0]
 
 
+@router.post("", response_model=CameraOut)
 @router.post("/", response_model=CameraOut)
 async def register_camera(camera: CameraCreate):
     """Register a new camera source."""
