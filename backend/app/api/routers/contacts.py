@@ -7,6 +7,7 @@ from app.api.deps import CurrentUser
 
 router = APIRouter()
 
+@router.get("", response_model=List[Contact])
 @router.get("/", response_model=List[Contact])
 async def list_contacts(
     current_user: CurrentUser,
@@ -22,6 +23,7 @@ async def list_contacts(
     res = query.order("created_at").execute()
     return res.data
 
+@router.post("", response_model=Contact, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=Contact, status_code=status.HTTP_201_CREATED)
 async def create_contact(
     contact_in: ContactCreate,

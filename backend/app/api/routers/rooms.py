@@ -10,6 +10,7 @@ from app.core.db import supabase
 router = APIRouter(prefix="/rooms", tags=["rooms"])
 
 
+@router.get("")
 @router.get("/")
 async def list_rooms():
     """List all rooms with device status and sensor counts."""
@@ -70,6 +71,7 @@ async def get_room(room_id: UUID):
     return room
 
 
+@router.post("", response_model=RoomOut)
 @router.post("/", response_model=RoomOut)
 async def create_room(room: RoomCreate):
     """Create a new room."""

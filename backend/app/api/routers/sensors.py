@@ -184,6 +184,7 @@ async def check_sensor_health(
     }
 
 
+@router.get("", response_model=list[SensorOut])
 @router.get("/", response_model=list[SensorOut])
 async def list_sensors(room_id: Optional[UUID] = None):
     """List all registered sensors."""
