@@ -123,6 +123,7 @@ const float PARAM_B[NUM_MQ_SENSORS] = {-2.222, -2.786, -2.35, -2.244};
 
 Adafruit_SHTC3 shtc3 = Adafruit_SHTC3();
 Preferences prefs;
+uint8_t provisioningKey[32];
 
 String deviceId = "";
 String sensorUuids[NUM_SENSORS];
@@ -196,6 +197,76 @@ void saveCalibrationToNVS() {
 
   isCalibrated = true;
   Serial.println("[NVS] Calibration saved to flash!");
+}
+
+// loads device secret also from NVS, flashed in production.
+bool loadProvisioningKey() {
+  prefs.begin("agni_sec", true);
+
+  size_t len = prefs.getBytesLength("prov_key");
+
+  if (len != 32) {
+      prefs.end();
+      return false;
+  }
+
+  size_t read = prefs.getBytes(
+      "prov_key",
+      provisioningKey,
+      32
+  );
+
+  prefs.end();
+
+  return read == 32;
+}
+
+// receive provisioning key over serial in hex format and save to NVS
+bool handleSerialProvisioning() {
+  if (!Serial.available()) {
+    return false;
+  }
+
+  String line = Serial.readStringUntil('\n');
+  line.trim();
+
+  if (!line.startsWith("PROVISION_KEY:")) {
+    return false;
+  }
+
+  String hexKey = line.substring(strlen("PROVISION_KEY:"));
+  hexKey.trim();
+
+  if (hexKey.length() != 64) {
+    Serial.println("[SECURITY] Invalid key length");
+    return false;
+  }
+
+  uint8_t keyBytes[32];
+
+  for (int i = 0; i < 32; i++) {
+    String byteHex = hexKey.substring(i * 2, i * 2 + 2);
+    keyBytes[i] = strtoul(byteHex.c_str(), nullptr, 16);
+  }
+
+  prefs.begin("agni_sec", false);
+
+  size_t written = prefs.putBytes(
+      "prov_key",
+      keyBytes,
+      32
+  );
+
+  prefs.end();
+
+  if (written != 32) {
+    Serial.println("[SECURITY] Failed to save key");
+    return false;
+  }
+
+  Serial.println("[SECURITY] Device secret provisioned successfully");
+
+  return true;
 }
 
 // =============================================================================
@@ -394,6 +465,13 @@ void beginHttp(HTTPClient &http, WiFiClientSecure &secureClient, WiFiClient &pla
   http.addHeader("User-Agent", "ESP32-AgniRakhsa-MCU"); // Avoid being flagged or stalled by Cloudflare WAF/Shield
 }
 
+// Normalized mac address helper
+String normalizeMacAddress(String mac) {
+  mac.replace("-", ":");
+  mac.toUpperCase();
+  return mac;
+}
+
 /** Provision device with backend — get device_id and sensor UUIDs. */
 bool provisionDevice() {
   Serial.println("[PROVISION] Registering with backend...");
@@ -406,9 +484,15 @@ bool provisionDevice() {
   http.addHeader("Content-Type", "application/json");
 
   JsonDocument doc;
+  String normalizedMac = normalizeMacAddress(WiFi.macAddress());
+  uint64_t timestamp = time(NULL);
+  String message = normalizedMac + ":" + String(timestamp);
+  String signature = hmacSHA256(provisioningKey,32,message);
   doc["name"] = DEVICE_NAME;
-  doc["mac_address"] = WiFi.macAddress();
+  doc["mac_address"] = normalizedMac;
   doc["room_name"] = ROOM_NAME;
+  doc["timestamp"] = timestamp;
+  doc["signature"] = signature;
 
   JsonArray types = doc["sensor_types"].to<JsonArray>();
   for (int i = 0; i < NUM_SENSORS; i++) {
@@ -598,6 +682,69 @@ void checkRemoteCalibrationCommand() {
   http.end();
 }
 
+// Sync time to NTP server
+#include "time.h"
+#include "esp_sntp.h"
+bool syncTime() {
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+
+  struct tm timeinfo;
+
+  Serial.print("[NTP] Syncing");
+
+  for (int i = 0; i < 30; i++) {
+    if (getLocalTime(&timeinfo)) {
+      Serial.println("\n[NTP] Time synced");
+      return true;
+    }
+
+    Serial.print(".");
+    delay(500);
+  }
+
+  Serial.println("\n[NTP] Failed");
+  return false;
+}
+
+// helper for hmac signing
+#include <mbedtls/md.h>
+String hmacSHA256(const uint8_t* key, size_t keyLen, const String& message) {
+  uint8_t hmacResult[32];
+
+  mbedtls_md_context_t ctx;
+  mbedtls_md_init(&ctx);
+
+  const mbedtls_md_info_t* info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+
+  mbedtls_md_setup(&ctx, info, 1);
+
+  mbedtls_md_hmac_starts(
+      &ctx,
+      key,
+      keyLen
+  );
+
+  mbedtls_md_hmac_update(
+      &ctx,
+      (const unsigned char*)message.c_str(),
+      message.length()
+  );
+
+  mbedtls_md_hmac_finish(&ctx, hmacResult);
+
+  mbedtls_md_free(&ctx);
+
+  char hexOutput[65];
+
+  for (int i = 0; i < 32; i++) {
+      sprintf(&hexOutput[i * 2], "%02x", hmacResult[i]);
+  }
+
+  hexOutput[64] = '\0';
+
+  return String(hexOutput);
+}
+
 /** Send periodic heartbeat to backend. */
 void sendHeartbeat() {
   if (deviceId == "")
@@ -736,6 +883,26 @@ void setup() {
   // ─── Connect to network ───
   Serial.println("\n[BOOT] Step 2: Connecting to WiFi...");
   connectWiFi();
+  // Has to be done after WiFI is initialized to get actual MAC Address.
+  if (!loadProvisioningKey()) {
+    Serial.println("[SECURITY] No valid device secret found!");
+    Serial.print("[SECURITY] Device MAC: ");
+    Serial.println(WiFi.macAddress()); // Should already be printed by connectWiFi function but reprinted anyway for redundancy.
+    Serial.println("[SECURITY] Waiting for provisioning over serial...");
+  
+    while (true) {
+      if (handleSerialProvisioning()) {
+        Serial.println("[SECURITY] Rebooting...");
+        delay(1000);
+        ESP.restart();
+      }
+  
+      delay(100);
+    }
+  }
+
+  Serial.println("\n[BOOT] Step 2.5: Syncing device's time");
+  syncTime();
   secureClient.setInsecure();
 
   // ─── Provision with backend ───
