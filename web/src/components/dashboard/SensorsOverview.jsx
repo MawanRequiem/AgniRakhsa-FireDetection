@@ -12,22 +12,38 @@ const SENSOR_COLORS = {
   MQ9B: '#3b82f6', // Blue - CO/Methane
   MQ135: '#ec4899', // Pink - Air Quality
   SHTC3_TEMP: '#f97316', // Orange - Temperature
+  SHTC_TEMP: '#f97316',
   SHTC3_HUMIDITY: '#0284c7', // Sky Blue - Humidity
+  SHTC3_HUM: '#0284c7',
+  SHTC_HUM: '#0284c7',
 };
 
 const SENSOR_LABELS = {
-  MQ2: 'MQ-2 Smoke/LPG',
-  MQ4: 'MQ-4 Methane',
-  MQ5: 'MQ-5 Nat Gas',
-  MQ6: 'MQ-6 LPG',
-  MQ7: 'MQ-7 CO',
-  MQ9B: 'MQ-9B CO/CH4',
-  MQ135: 'MQ-135 Air Quality',
+  MQ2: 'MQ-2 (Smoke/LPG)',
+  MQ4: 'MQ-4 (Methane)',
+  MQ5: 'MQ-5 (Natural Gas)',
+  MQ6: 'MQ-6 (LPG)',
+  MQ7: 'MQ-7 (CO)',
+  MQ9B: 'MQ-9B (CO)',
+  MQ135: 'MQ-135 (Air Quality)',
   SHTC3_TEMP: 'Temperature (°C)',
+  SHTC_TEMP: 'Temperature (°C)',
   SHTC3_HUMIDITY: 'Humidity (%)',
+  SHTC3_HUM: 'Humidity (%)',
+  SHTC_HUM: 'Humidity (%)',
 };
 
 const SENSOR_FALLBACK_COLOR = '#6b7280';
+
+function getColor(key) {
+  const matchedKey = Object.keys(SENSOR_COLORS).find(k => k.toLowerCase() === key.toLowerCase());
+  return matchedKey ? SENSOR_COLORS[matchedKey] : SENSOR_FALLBACK_COLOR;
+}
+
+function getLabel(key) {
+  const matchedKey = Object.keys(SENSOR_LABELS).find(k => k.toLowerCase() === key.toLowerCase());
+  return matchedKey ? SENSOR_LABELS[matchedKey] : key;
+}
 
 export default function SensorsOverview() {
   const sensorHistory = useDashboardStore((state) => state.sensorHistory);
@@ -78,7 +94,7 @@ export default function SensorsOverview() {
         <AreaChart data={formattedData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
           <defs>
             {sensorKeys.map((key) => {
-              const color = SENSOR_COLORS[key] || SENSOR_FALLBACK_COLOR;
+              const color = getColor(key);
               return (
                 <linearGradient key={`grad-${key}`} id={`grad-${key}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={color} stopOpacity={0.15}/>
@@ -99,7 +115,7 @@ export default function SensorsOverview() {
             stroke="var(--ifrit-border)"
           />
           <Tooltip
-            formatter={(value, name) => [value, SENSOR_LABELS[name] || name]}
+            formatter={(value, name) => [value, getLabel(name)]}
             contentStyle={{
               backgroundColor: 'var(--ifrit-bg-secondary)',
               border: '1px solid var(--ifrit-border)',
@@ -112,15 +128,16 @@ export default function SensorsOverview() {
           <Legend 
             verticalAlign="top"
             align="right"
-            formatter={(value) => SENSOR_LABELS[value] || value}
+            formatter={(value) => getLabel(value)}
             wrapperStyle={{ fontSize: '9px', fontFamily: "'JetBrains Mono', monospace", paddingBottom: '12px' }}
           />
           {sensorKeys.map((key) => (
             <Area
               key={key}
+              name={getLabel(key)}
               type="monotone"
               dataKey={key}
-              stroke={SENSOR_COLORS[key] || SENSOR_FALLBACK_COLOR}
+              stroke={getColor(key)}
               fill={`url(#grad-${key})`}
               strokeWidth={1.5}
               dot={false}
