@@ -11,9 +11,20 @@ import RoomDeviceCalibration from '@/components/devices/RoomDeviceCalibration';
 import RoomDeviceExportCard from '@/components/devices/RoomDeviceExportCard';
 
 const SENSOR_CONFIG = {
+  // Temperature keys
   SHTC_TEMP: { label: 'Temperature', unit: '°C', type: 'env', max: 50 },
+  SHTC3_TEMP: { label: 'Temperature', unit: '°C', type: 'env', max: 50 },
+  
+  // Humidity keys
   SHTC_HUM: { label: 'Humidity', unit: '%', type: 'env', max: 100 },
+  SHTC3_HUMIDITY: { label: 'Humidity', unit: '%', type: 'env', max: 100 },
+  SHTC3_HUM: { label: 'Humidity', unit: '%', type: 'env', max: 100 },
+  
+  // Flame keys
   FLAME: { label: 'Flame (IR)', unit: 'raw', type: 'fire', max: 4095 },
+  flame: { label: 'Flame (IR)', unit: 'raw', type: 'fire', max: 4095 },
+
+  // Gas keys
   MQ2: { label: 'MQ-2 (Smoke/LPG)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ4: { label: 'MQ-4 (Methane)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ5: { label: 'MQ-5 (Natural Gas)', unit: 'ppm', type: 'gas', max: 4095 },
@@ -21,20 +32,60 @@ const SENSOR_CONFIG = {
   MQ7: { label: 'MQ-7 (CO)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ9B: { label: 'MQ-9B (CO)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ135: { label: 'MQ-135 (Air Quality)', unit: 'ppm', type: 'gas', max: 4095 },
+  
+  // Legacy / Lowercase keys
+  co: { label: 'MQ-7 (CO)', unit: 'ppm', type: 'gas', max: 4095 },
+  lpg: { label: 'MQ-6 (LPG)', unit: 'ppm', type: 'gas', max: 4095 },
+  smoke: { label: 'MQ-2 (Smoke/LPG)', unit: 'ppm', type: 'gas', max: 4095 },
+  cng: { label: 'MQ-5 (Natural Gas)', unit: 'ppm', type: 'gas', max: 4095 },
 };
 
 function SensorBar({ label, value, unit, type }) {
   const config = Object.values(SENSOR_CONFIG).find(c => c.label === label);
   const max = config ? config.max : 4095;
-  const pct = Math.min(100, Math.max(0, (value / max) * 100));
   
-  let colorClass = "bg-[var(--ifrit-brand)]";
+  // Calculate percentage
+  let pct = Math.min(100, Math.max(0, (value / max) * 100));
+  if (label.toLowerCase().includes('flame')) {
+    // Invert for active-low flame sensor: 0 raw = 100% danger/intensity, 4095 raw = 0% danger/intensity
+    pct = Math.min(100, Math.max(0, 100 - (value / max) * 100));
+  }
+
+  // Determine color and status
+  let color = 'var(--ifrit-info)'; // Default info blue
+  let isPulsing = false;
+
   if (type === 'fire') {
-    colorClass = value < 1000 ? "bg-[var(--ifrit-fire)] animate-pulse" : "bg-[var(--ifrit-safe)]";
+    if (value < 1000) {
+      color = 'var(--ifrit-fire)';
+      isPulsing = true;
+    } else {
+      color = 'var(--ifrit-safe)';
+    }
   } else if (type === 'gas') {
-    colorClass = value > 800 ? "bg-[var(--ifrit-warning)]" : "bg-[var(--ifrit-safe)]";
+    if (value > 1500) {
+      color = 'var(--ifrit-fire)';
+    } else if (value > 800) {
+      color = 'var(--ifrit-warning)';
+    } else {
+      color = 'var(--ifrit-safe)';
+    }
   } else if (type === 'env') {
-    if (label.includes('Temp') && value > 35) colorClass = "bg-[var(--ifrit-warning)]";
+    if (label.toLowerCase().includes('temp')) {
+      if (value > 45) {
+        color = 'var(--ifrit-fire)';
+      } else if (value > 35) {
+        color = 'var(--ifrit-warning)';
+      } else {
+        color = 'var(--ifrit-info)';
+      }
+    } else if (label.toLowerCase().includes('humid')) {
+      if (value > 80 || value < 30) {
+        color = 'var(--ifrit-warning)';
+      } else {
+        color = 'var(--ifrit-info)';
+      }
+    }
   }
 
   return (
@@ -44,7 +95,10 @@ function SensorBar({ label, value, unit, type }) {
         <span className="font-mono text-[var(--ifrit-text-primary)]">{value?.toFixed(1)} {unit}</span>
       </div>
       <div className="h-1.5 w-full bg-[var(--ifrit-bg-tertiary)] rounded-full overflow-hidden border border-[var(--ifrit-border)]">
-        <div className={`h-full ${colorClass} transition-all duration-500`} style={{ width: `${pct}%` }} />
+        <div 
+          className={`h-full transition-all duration-500 ${isPulsing ? 'animate-pulse' : ''}`} 
+          style={{ width: `${pct}%`, backgroundColor: color }} 
+        />
       </div>
     </div>
   );
@@ -201,41 +255,46 @@ export default function RoomDetail() {
       </div>
 
       <h2 className="text-sm font-bold mb-2 mt-4" style={{ color: 'var(--ifrit-text-muted)' }}>Safety Dashboard</h2>
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Prominent Camera Feed */}
-        <div className="xl:col-span-2 flex flex-col gap-6">
+        {/* Left Column: Widescreen Camera Feed & Administration Tools */}
+        <div className="lg:col-span-2 space-y-6">
           {camera ? (
-            <div className="flex flex-col rounded-xl overflow-hidden border-2" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: camera.has_detection ? 'var(--ifrit-fire)' : 'var(--ifrit-border)' }}>
-               <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--ifrit-border)' }}>
-                 <div className="flex items-center gap-2">
-                   <Video className="w-4 h-4" style={{ color: 'var(--ifrit-text-secondary)' }} />
-                   <h2 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>Live Video Feed</h2>
-                 </div>
-                 {camera.has_detection && (
-                   <span className="text-[10px] font-bold text-white bg-red-600 px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
-                     <AlertTriangle className="w-3 h-3" /> DANGER DETECTED
-                   </span>
-                 )}
-               </div>
-               <div className="relative w-full pb-[56.25%] bg-black">
-                  <div className="absolute inset-0">
-                     <CameraFeed camera={camera} hideBorder={true} />
-                  </div>
-               </div>
+            <div 
+              className="relative w-full rounded-xl overflow-hidden border shadow-sm transition-all duration-300" 
+              style={{ 
+                aspectRatio: '16/9',
+                borderColor: camera.has_detection ? 'var(--ifrit-fire)' : 'var(--ifrit-border)',
+                boxShadow: camera.has_detection ? '0 0 20px rgba(239, 68, 68, 0.2)' : 'none'
+              }}
+            >
+              <CameraFeed camera={camera} hideBorder={true} />
             </div>
           ) : (
-             <div className="p-12 text-center border-2 border-dashed rounded-xl flex flex-col items-center justify-center h-full" style={{ borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-muted)', backgroundColor: 'var(--ifrit-bg-tertiary)' }}>
-               <Video className="w-8 h-8 mb-2 opacity-50" />
-               <p>No camera connected to this area.</p>
-               <p className="text-[10px] font-mono mt-1 opacity-50">Contact security to add a camera</p>
-             </div>
+            <div 
+              className="p-8 text-center border border-dashed rounded-xl flex flex-col items-center justify-center min-h-[260px] lg:h-[320px]" 
+              style={{ 
+                borderColor: 'var(--ifrit-border)', 
+                color: 'var(--ifrit-text-muted)', 
+                backgroundColor: 'var(--ifrit-bg-tertiary)' 
+              }}
+            >
+              <Video className="w-8 h-8 mb-3 opacity-40 text-[var(--ifrit-brand)]" />
+              <p className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>No Live Video Stream</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--ifrit-text-secondary)' }}>CCTV feed is not configured for this safety area.</p>
+              <p className="text-[10px] font-mono mt-3 opacity-55">Contact system administrator to link a camera</p>
+            </div>
           )}
+
+          {/* Admin panels side-by-side */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <RoomDeviceCalibration devices={room.devices} />
+            <RoomDeviceExportCard roomId={room.id} devices={room.devices} />
+          </div>
         </div>
 
-        {/* Logical Sensor Groups */}
-        <div className="xl:col-span-1 flex flex-col gap-4">
-          
+        {/* Right Column: Sensor Groups */}
+        <div className="lg:col-span-1 space-y-6">
           <div className="border rounded-xl p-4" style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)' }}>
             <div className="flex items-center gap-2 mb-4">
               <Thermometer className="w-4 h-4 text-blue-400" />
@@ -265,11 +324,8 @@ export default function RoomDetail() {
               <SensorBar key={k} label={SENSOR_CONFIG[k].label} value={v} unit={SENSOR_CONFIG[k].unit} type="fire" />
             )) : <p className="text-xs text-[var(--ifrit-text-muted)] italic">No fire sensors online.</p>}
           </div>
-
-          <RoomDeviceCalibration devices={room.devices} />
-          <RoomDeviceExportCard roomId={room.id} devices={room.devices} />
-
         </div>
+
       </div>
 
       <h2 className="text-sm font-bold mb-2 mt-8 pt-4 border-t" style={{ color: 'var(--ifrit-text-muted)', borderColor: 'var(--ifrit-border)' }}>Historical Data</h2>
@@ -307,7 +363,7 @@ export default function RoomDetail() {
            
            <div className="flex-1 mt-2">
              {trendData.length > 0 ? (
-               <SensorChart data={trendData} sensors={Object.keys(trendData[0]).filter(k => k !== 'time')} timeRange={timeRange} height={300} />
+               <SensorChart data={trendData} timeRange={timeRange} height={300} />
              ) : (
                <div className="h-[300px] flex items-center justify-center" style={{ color: 'var(--ifrit-text-muted)' }}>
                  <p className="text-xs font-mono">NO HISTORICAL DATA IN WINDOW</p>

@@ -51,6 +51,42 @@ const parseDateStr = (timeStr) => {
   return isNaN(d.getTime()) ? null : d;
 };
 
+const mergeChartData = (rawData) => {
+  if (!rawData || rawData.length === 0) return [];
+  const map = new Map();
+  for (const point of rawData) {
+    if (!point.time) continue;
+    
+    let timeKey = point.time;
+    const twoDigitYearRegex = /^(\d{2})-(\d{2})-(\d{2})([T\s])/;
+    if (twoDigitYearRegex.test(timeKey)) {
+      timeKey = '20' + timeKey;
+    }
+    timeKey = timeKey.replace(' ', 'T');
+    
+    if (!map.has(timeKey)) {
+      map.set(timeKey, { ...point, time: timeKey });
+    } else {
+      const existing = map.get(timeKey);
+      Object.keys(point).forEach(k => {
+        if (k !== 'time' && k !== 'device_id') {
+          if (existing[k] !== undefined) {
+            const isDangerMetric = k.toLowerCase().includes('flame') || k.toLowerCase().includes('mq');
+            if (isDangerMetric) {
+              existing[k] = Math.max(existing[k], point[k]);
+            } else {
+              existing[k] = (existing[k] + point[k]) / 2;
+            }
+          } else {
+            existing[k] = point[k];
+          }
+        }
+      });
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => a.time.localeCompare(b.time));
+};
+
 function getColor(key) {
   const matchedKey = Object.keys(SENSOR_COLORS).find(k => k.toLowerCase() === key.toLowerCase());
   return matchedKey ? SENSOR_COLORS[matchedKey] : SENSOR_FALLBACK_COLOR;
@@ -64,16 +100,18 @@ function getLabel(key) {
 export default function SensorsOverview({ timeRange = '1H' }) {
   const sensorHistory = useDashboardStore((state) => state.sensorHistory);
 
+  const mergedHistory = useMemo(() => mergeChartData(sensorHistory), [sensorHistory]);
+
   const sensorKeys = useMemo(() => {
-    if (!sensorHistory || sensorHistory.length === 0) return [];
+    if (!mergedHistory || mergedHistory.length === 0) return [];
     const keys = new Set();
-    for (const point of sensorHistory) {
+    for (const point of mergedHistory) {
       for (const key of Object.keys(point)) {
         if (key !== 'time' && key !== 'device_id') keys.add(key);
       }
     }
     return Array.from(keys);
-  }, [sensorHistory]);
+  }, [mergedHistory]);
 
   const hasRawSensor = useMemo(() => {
     return sensorKeys.some(key => key.toLowerCase().includes('flame'));
@@ -107,7 +145,7 @@ export default function SensorsOverview({ timeRange = '1H' }) {
     }
   };
 
-  if (!sensorHistory || sensorHistory.length === 0) {
+  if (!mergedHistory || mergedHistory.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[220px] gap-3">
         <Activity className="w-8 h-8 opacity-20 animate-pulse text-[var(--ifrit-text-muted)]" />
@@ -126,7 +164,7 @@ export default function SensorsOverview({ timeRange = '1H' }) {
   return (
     <div className="w-full h-full min-h-[220px]">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={sensorHistory} margin={{ top: 5, right: hasRawSensor ? 35 : 10, left: -25, bottom: 0 }}>
+        <AreaChart data={mergedHistory} margin={{ top: 5, right: hasRawSensor ? 35 : 10, left: -25, bottom: 0 }}>
           <defs>
             {sensorKeys.map((key) => {
               const color = getColor(key);
@@ -173,9 +211,15 @@ export default function SensorsOverview({ timeRange = '1H' }) {
           />
           <Legend 
             verticalAlign="top"
-            align="right"
-            formatter={(value) => getLabel(value)}
-            wrapperStyle={{ fontSize: '9px', fontFamily: "'JetBrains Mono', monospace", paddingBottom: '12px' }}
+            align="left"
+            iconType="circle"
+            iconSize={8}
+            formatter={(value) => (
+              <span className="text-[11px] font-medium tracking-wide" style={{ color: 'var(--ifrit-text-secondary)', fontFamily: "'Outfit', sans-serif" }}>
+                {getLabel(value)}
+              </span>
+            )}
+            wrapperStyle={{ paddingBottom: '16px', paddingLeft: '10px' }}
           />
           {sensorKeys.map((key) => {
             const isRaw = key.toLowerCase().includes('flame');

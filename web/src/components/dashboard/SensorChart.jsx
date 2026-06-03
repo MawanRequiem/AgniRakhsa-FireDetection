@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 
 // Extended color palette for all possible sensor types
@@ -67,6 +68,42 @@ const parseDateStr = (timeStr) => {
   return isNaN(d.getTime()) ? null : d;
 };
 
+const mergeChartData = (rawData) => {
+  if (!rawData || rawData.length === 0) return [];
+  const map = new Map();
+  for (const point of rawData) {
+    if (!point.time) continue;
+    
+    let timeKey = point.time;
+    const twoDigitYearRegex = /^(\d{2})-(\d{2})-(\d{2})([T\s])/;
+    if (twoDigitYearRegex.test(timeKey)) {
+      timeKey = '20' + timeKey;
+    }
+    timeKey = timeKey.replace(' ', 'T');
+    
+    if (!map.has(timeKey)) {
+      map.set(timeKey, { ...point, time: timeKey });
+    } else {
+      const existing = map.get(timeKey);
+      Object.keys(point).forEach(k => {
+        if (k !== 'time' && k !== 'device_id') {
+          if (existing[k] !== undefined) {
+            const isDangerMetric = k.toLowerCase().includes('flame') || k.toLowerCase().includes('mq');
+            if (isDangerMetric) {
+              existing[k] = Math.max(existing[k], point[k]);
+            } else {
+              existing[k] = (existing[k] + point[k]) / 2;
+            }
+          } else {
+            existing[k] = point[k];
+          }
+        }
+      });
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => a.time.localeCompare(b.time));
+};
+
 const CustomTooltip = ({ active, payload, label, timeRange = '1H' }) => {
   if (!active || !payload?.length) return null;
 
@@ -108,7 +145,23 @@ const CustomTooltip = ({ active, payload, label, timeRange = '1H' }) => {
 };
 
 export default function SensorChart({ data, sensors = [], timeRange = '1H', height = 280 }) {
-  const hasRawSensor = sensors.some(key => key.toLowerCase().includes('flame'));
+  const mergedData = useMemo(() => mergeChartData(data), [data]);
+
+  const chartSensors = useMemo(() => {
+    const keys = new Set(sensors);
+    for (const point of mergedData) {
+      Object.keys(point).forEach(key => {
+        if (key !== 'time' && key !== 'device_id') {
+          keys.add(key);
+        }
+      });
+    }
+    return Array.from(keys);
+  }, [mergedData, sensors]);
+
+  const hasRawSensor = useMemo(() => {
+    return chartSensors.some(key => key.toLowerCase().includes('flame'));
+  }, [chartSensors]);
 
   const formatXAxisTick = (timeStr) => {
     const d = parseDateStr(timeStr);
@@ -135,7 +188,7 @@ export default function SensorChart({ data, sensors = [], timeRange = '1H', heig
         Sensor Trends
       </h3>
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={{ top: 5, right: hasRawSensor ? 35 : 5, bottom: 5, left: -20 }}>
+        <LineChart data={mergedData} margin={{ top: 5, right: hasRawSensor ? 35 : 5, bottom: 5, left: -20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--ifrit-border)" opacity={0.4} />
           <XAxis
             dataKey="time"
@@ -163,11 +216,17 @@ export default function SensorChart({ data, sensors = [], timeRange = '1H', heig
           <Tooltip content={<CustomTooltip timeRange={timeRange} />} />
           <Legend 
             verticalAlign="top"
-            align="right"
-            formatter={(value) => getLabel(value)}
-            wrapperStyle={{ fontSize: '9px', fontFamily: "'JetBrains Mono', monospace", paddingBottom: '12px' }}
+            align="left"
+            iconType="circle"
+            iconSize={8}
+            formatter={(value) => (
+              <span className="text-[11px] font-medium tracking-wide" style={{ color: 'var(--ifrit-text-secondary)', fontFamily: "'Outfit', sans-serif" }}>
+                {getLabel(value)}
+              </span>
+            )}
+            wrapperStyle={{ paddingBottom: '16px', paddingLeft: '10px' }}
           />
-          {sensors.map((key, index) => {
+          {chartSensors.map((key, index) => {
             const isRaw = key.toLowerCase().includes('flame');
             return (
               <Line
