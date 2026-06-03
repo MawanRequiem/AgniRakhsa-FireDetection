@@ -55,8 +55,29 @@ function getLabel(key) {
   return matchedKey ? SENSOR_LABELS[matchedKey] : key;
 }
 
-const CustomTooltip = ({ active, payload, label }) => {
+const CustomTooltip = ({ active, payload, label, timeRange = '1H' }) => {
   if (!active || !payload?.length) return null;
+
+  const formatTooltipLabel = (timeStr) => {
+    if (!timeStr) return '';
+    try {
+      const d = new Date(timeStr);
+      if (isNaN(d.getTime())) return timeStr;
+      
+      if (timeRange === '1H' || timeRange === '24H') {
+        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+      } else {
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        return `${day}/${month}/${year} ${time}`;
+      }
+    } catch {
+      return timeStr;
+    }
+  };
+
   return (
     <div
       className="rounded-md border px-3 py-2 text-xs"
@@ -65,7 +86,7 @@ const CustomTooltip = ({ active, payload, label }) => {
         borderColor: 'var(--ifrit-border)',
       }}
     >
-      <p className="font-mono mb-1" style={{ color: 'var(--ifrit-text-muted)' }}>{label}</p>
+      <p className="font-mono mb-1" style={{ color: 'var(--ifrit-text-muted)' }}>{formatTooltipLabel(label)}</p>
       {payload.map(entry => (
         <div key={entry.dataKey} className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
@@ -79,8 +100,26 @@ const CustomTooltip = ({ active, payload, label }) => {
   );
 };
 
-export default function SensorChart({ data, sensors = [], height = 280 }) {
+export default function SensorChart({ data, sensors = [], timeRange = '1H', height = 280 }) {
   const hasRawSensor = sensors.some(key => key.toLowerCase().includes('flame'));
+
+  const formatXAxisTick = (timeStr) => {
+    if (!timeStr) return '';
+    try {
+      const d = new Date(timeStr);
+      if (isNaN(d.getTime())) return timeStr;
+      
+      if (timeRange === '1H' || timeRange === '24H') {
+        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      } else {
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        return `${day}/${month}`;
+      }
+    } catch {
+      return timeStr;
+    }
+  };
 
   return (
     <div
@@ -98,6 +137,7 @@ export default function SensorChart({ data, sensors = [], height = 280 }) {
           <CartesianGrid strokeDasharray="3 3" stroke="var(--ifrit-border)" opacity={0.4} />
           <XAxis
             dataKey="time"
+            tickFormatter={formatXAxisTick}
             tick={{ fontSize: 10, fill: 'var(--ifrit-text-muted)', fontFamily: 'monospace' }}
             interval="preserveStartEnd"
             axisLine={{ stroke: 'var(--ifrit-border)' }}
@@ -118,7 +158,7 @@ export default function SensorChart({ data, sensors = [], height = 280 }) {
             tickLine={false}
             domain={[0, 4095]}
           />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip timeRange={timeRange} />} />
           {sensors.map((key, index) => {
             const isRaw = key.toLowerCase().includes('flame');
             return (

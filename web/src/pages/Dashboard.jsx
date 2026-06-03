@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Building2, Activity, BellRing, Route, HardDrive, Thermometer, Wind } from 'lucide-react';
@@ -31,11 +31,20 @@ export default function Dashboard() {
 
   const { rooms, fetchRooms } = useRoomsStore();
 
+  const [selectedDevice, setSelectedDevice] = useState('ALL');
+  const [timeRange, setTimeRange] = useState('1H');
+
+  const minutesMap = { '1H': 60, '24H': 1440, '7D': 10080, '30D': 43200 };
+
+  useEffect(() => {
+    const mins = minutesMap[timeRange] || 60;
+    fetchSensorHistory(selectedDevice, mins);
+  }, [selectedDevice, timeRange, fetchSensorHistory]);
+
   useEffect(() => {
     fetchSummary();
     fetchRecentAlerts();
     fetchDevices();
-    fetchSensorHistory();
     fetchSensorHealth();
     fetchRooms();
     connectWebSocket();
@@ -52,7 +61,7 @@ export default function Dashboard() {
       disconnectWebSocket();
       clearInterval(statusPoll);
     };
-  }, [fetchSummary, fetchRecentAlerts, fetchDevices, fetchSensorHistory, fetchSensorHealth, fetchRooms, connectWebSocket, disconnectWebSocket]);
+  }, [fetchSummary, fetchRecentAlerts, fetchDevices, fetchSensorHealth, fetchRooms, connectWebSocket, disconnectWebSocket]);
 
   const getRoomName = (roomId) => {
     if (!roomId) return 'Unassigned';
@@ -186,6 +195,8 @@ export default function Dashboard() {
             <div className="flex items-center gap-3">
               <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Real-time Activity</h3>
               <select 
+                value={selectedDevice}
+                onChange={(e) => setSelectedDevice(e.target.value)}
                 className="text-xs p-1.5 pr-6 rounded-md border outline-none cursor-pointer"
                 style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-secondary)' }}
               >
@@ -195,10 +206,31 @@ export default function Dashboard() {
                 ))}
               </select>
             </div>
-            {/* Dynamic Legend rendered inside SensorsOverview */}
+            
+            {/* Time Range Filter */}
+            <div className="flex items-center rounded-md p-0.5 border" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
+              {['1H', '24H', '7D', '30D'].map(range => (
+                <button
+                  key={range}
+                  onClick={() => setTimeRange(range)}
+                  className={`px-2 py-1 text-[10px] font-semibold rounded transition-colors cursor-pointer ${
+                    timeRange === range 
+                      ? 'shadow border font-bold'
+                      : 'hover:text-[var(--ifrit-text-primary)]'
+                  }`}
+                  style={timeRange === range ? { 
+                    backgroundColor: 'var(--ifrit-bg-primary)', 
+                    borderColor: 'var(--ifrit-border)', 
+                    color: 'var(--ifrit-text-primary)' 
+                  } : { color: 'var(--ifrit-text-muted)' }}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="p-4 flex-1 min-h-0 relative flex flex-col justify-center">
-            <SensorsOverview />
+            <SensorsOverview timeRange={timeRange} />
           </div>
         </motion.div>
         

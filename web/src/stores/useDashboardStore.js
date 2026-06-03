@@ -73,9 +73,9 @@ export const useDashboardStore = create((set, get) => ({
     }
   },
 
-  fetchSensorHistory: async (deviceId) => {
+  fetchSensorHistory: async (deviceId, minutes = 60) => {
     try {
-      const params = new URLSearchParams({ minutes: '30' });
+      const params = new URLSearchParams({ minutes: String(minutes) });
       if (deviceId && deviceId !== 'ALL') {
         params.set('device_id', deviceId);
       }

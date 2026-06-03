@@ -45,7 +45,7 @@ function getLabel(key) {
   return matchedKey ? SENSOR_LABELS[matchedKey] : key;
 }
 
-export default function SensorsOverview() {
+export default function SensorsOverview({ timeRange = '1H' }) {
   const sensorHistory = useDashboardStore((state) => state.sensorHistory);
 
   const sensorKeys = useMemo(() => {
@@ -59,18 +59,43 @@ export default function SensorsOverview() {
     return Array.from(keys);
   }, [sensorHistory]);
 
-  const formattedData = useMemo(() => {
-    return sensorHistory.map((point) => {
-      let label = '';
-      try {
-        const d = new Date(point.time);
-        label = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-      } catch {
-        label = point.time || '';
+  const formatXAxisTick = (timeStr) => {
+    if (!timeStr) return '';
+    try {
+      const d = new Date(timeStr);
+      if (isNaN(d.getTime())) return timeStr;
+      
+      if (timeRange === '1H' || timeRange === '24H') {
+        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      } else {
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        return `${day}/${month}`;
       }
-      return { ...point, time: label };
-    });
-  }, [sensorHistory]);
+    } catch {
+      return timeStr;
+    }
+  };
+
+  const formatTooltipLabel = (timeStr) => {
+    if (!timeStr) return '';
+    try {
+      const d = new Date(timeStr);
+      if (isNaN(d.getTime())) return timeStr;
+      
+      if (timeRange === '1H' || timeRange === '24H') {
+        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+      } else {
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        return `${day}/${month}/${year} ${time}`;
+      }
+    } catch {
+      return timeStr;
+    }
+  };
 
   if (!sensorHistory || sensorHistory.length === 0) {
     return (
@@ -91,7 +116,7 @@ export default function SensorsOverview() {
   return (
     <div className="w-full h-full min-h-[220px]">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={formattedData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
+        <AreaChart data={sensorHistory} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
           <defs>
             {sensorKeys.map((key) => {
               const color = getColor(key);
@@ -106,6 +131,7 @@ export default function SensorsOverview() {
           <CartesianGrid strokeDasharray="3 3" stroke="var(--ifrit-border)" opacity={0.15} />
           <XAxis 
             dataKey="time" 
+            tickFormatter={formatXAxisTick}
             tick={{ fill: 'var(--ifrit-text-muted)', fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
             stroke="var(--ifrit-border)"
             interval="preserveStartEnd"
@@ -115,6 +141,7 @@ export default function SensorsOverview() {
             stroke="var(--ifrit-border)"
           />
           <Tooltip
+            labelFormatter={formatTooltipLabel}
             formatter={(value, name) => [value, getLabel(name)]}
             contentStyle={{
               backgroundColor: 'var(--ifrit-bg-secondary)',

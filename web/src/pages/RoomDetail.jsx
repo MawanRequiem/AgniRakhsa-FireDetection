@@ -107,7 +107,7 @@ export default function RoomDetail() {
   }
 
   useEffect(() => {
-    const minutesMap = { '1H': 60, '24H': 1440, '7D': 1440, '30D': 1440 };
+    const minutesMap = { '1H': 60, '24H': 1440, '7D': 10080, '30D': 43200 };
     const fetchHistory = async () => {
       try {
         const params = new URLSearchParams({
@@ -307,7 +307,7 @@ export default function RoomDetail() {
            
            <div className="flex-1 mt-2">
              {trendData.length > 0 ? (
-               <SensorChart data={trendData} sensors={Object.keys(trendData[0]).filter(k => k !== 'time')} height={300} />
+               <SensorChart data={trendData} sensors={Object.keys(trendData[0]).filter(k => k !== 'time')} timeRange={timeRange} height={300} />
              ) : (
                <div className="h-[300px] flex items-center justify-center" style={{ color: 'var(--ifrit-text-muted)' }}>
                  <p className="text-xs font-mono">NO HISTORICAL DATA IN WINDOW</p>
