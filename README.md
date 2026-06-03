@@ -2,7 +2,47 @@
 
 > **Ifrit** — An advanced AI-powered fire detection platform that combines Computer Vision with IoT Sensor Fusion for highly accurate, early-warning alerts.
 
-![Ifrit System Architecture](https://via.placeholder.com/800x400.png?text=Ifrit+System+Architecture)
+## 🏗 System Architecture
+
+```mermaid
+graph TD
+    %% Define Styles
+    classDef hardware fill:#475569,stroke:#94a3b8,stroke-width:2px,color:#fff;
+    classDef backend fill:#0ea5e9,stroke:#38bdf8,stroke-width:2px,color:#fff;
+    classDef web fill:#10b981,stroke:#34d399,stroke-width:2px,color:#fff;
+    classDef bot fill:#22c55e,stroke:#4ade80,stroke-width:2px,color:#fff;
+    classDef db fill:#f59e0b,stroke:#fbbf24,stroke-width:2px,color:#fff;
+    
+    subgraph Edge ["Edge Devices"]
+        S[IFRIT IoT Sensors]:::hardware
+        C[CCTV Cameras]:::hardware
+    end
+
+    subgraph Core ["Core Intelligence"]
+        B((FastAPI Backend)):::backend
+        F{Late Fusion Engine\nAI & ML}:::backend
+    end
+
+    subgraph Infra ["Infrastructure"]
+        DB[(Supabase DB)]:::db
+        R[(Redis Cache)]:::db
+    end
+
+    subgraph Present ["Presentation Layer"]
+        W[React Web Dashboard]:::web
+        WA[WhatsApp Gateway]:::bot
+    end
+
+    %% Data Flow
+    S -->|Sensor Telemetry| B
+    C -->|Video Frames| B
+    B --> F
+    F -->|Risk State| DB
+    B <-->|Rate Limit & PubSub| R
+    F -->|Real-time Events| W
+    F -->|Critical Alerts| WA
+    WA <-->|Chatbot / NLP| Users([Security Officers])
+```
 
 This repository is a **monorepo** containing all the microservices, frontend applications, and hardware firmware required to run the Ifrit platform.
 
