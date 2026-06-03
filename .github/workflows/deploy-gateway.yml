@@ -1,19 +1,19 @@
-name: Deploy to Production
+name: Deploy WhatsApp Gateway
 
 on:
   push:
     branches:
       - main
+    paths:
+      - 'whatsapp-gateway/**'
 
 jobs:
-  deploy:
-    # Ini akan mencari agen di server Dalang Anda
+  deploy-gateway:
     runs-on: self-hosted
 
     steps:
-      - name: Pull latest code and Deploy
+      - name: Pull latest code and Deploy Gateway
         run: |
-          # Pindah ke direktori utama repo Anda
           cd ~/AgniRakhsa-FireDetection
           
           # Ambil update terbaru dari GitHub
@@ -21,9 +21,7 @@ jobs:
           git reset --hard origin/main
           
           # Tulis file env di direktori yang benar
-          echo "${{ secrets.WEB_ENV }}" > web/.env
-          echo "${{ secrets.BACKEND_ENV }}" > backend/.env
           echo "${{ secrets.GATEWAY_ENV }}" > whatsapp-gateway/.env
           
-          # Rebuild dan jalankan dockercompose
-          docker compose up -d --build
+          # Rebuild dan jalankan docker compose HANYA untuk gateway
+          docker compose up -d --build whatsapp-gateway
