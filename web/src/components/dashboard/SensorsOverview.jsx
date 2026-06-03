@@ -16,6 +16,8 @@ const SENSOR_COLORS = {
   SHTC3_HUMIDITY: '#0284c7', // Sky Blue - Humidity
   SHTC3_HUM: '#0284c7',
   SHTC_HUM: '#0284c7',
+  FLAME: '#F87171', // Light Red - Flame
+  flame: '#F87171',
 };
 
 const SENSOR_LABELS = {
@@ -31,6 +33,8 @@ const SENSOR_LABELS = {
   SHTC3_HUMIDITY: 'Humidity (%)',
   SHTC3_HUM: 'Humidity (%)',
   SHTC_HUM: 'Humidity (%)',
+  FLAME: 'Flame (IR)',
+  flame: 'Flame',
 };
 
 const SENSOR_FALLBACK_COLOR = '#6b7280';
@@ -58,6 +62,10 @@ export default function SensorsOverview({ timeRange = '1H' }) {
     }
     return Array.from(keys);
   }, [sensorHistory]);
+
+  const hasRawSensor = useMemo(() => {
+    return sensorKeys.some(key => key.toLowerCase().includes('flame'));
+  }, [sensorKeys]);
 
   const formatXAxisTick = (timeStr) => {
     if (!timeStr) return '';
@@ -116,7 +124,7 @@ export default function SensorsOverview({ timeRange = '1H' }) {
   return (
     <div className="w-full h-full min-h-[220px]">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={sensorHistory} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
+        <AreaChart data={sensorHistory} margin={{ top: 5, right: hasRawSensor ? -10 : 10, left: -25, bottom: 0 }}>
           <defs>
             {sensorKeys.map((key) => {
               const color = getColor(key);
@@ -137,6 +145,15 @@ export default function SensorsOverview({ timeRange = '1H' }) {
             interval="preserveStartEnd"
           />
           <YAxis 
+            yAxisId="left"
+            tick={{ fill: 'var(--ifrit-text-muted)', fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }} 
+            stroke="var(--ifrit-border)"
+          />
+          <YAxis 
+            yAxisId="right"
+            orientation="right"
+            hide={!hasRawSensor}
+            domain={[0, 4095]}
             tick={{ fill: 'var(--ifrit-text-muted)', fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }} 
             stroke="var(--ifrit-border)"
           />
@@ -158,19 +175,23 @@ export default function SensorsOverview({ timeRange = '1H' }) {
             formatter={(value) => getLabel(value)}
             wrapperStyle={{ fontSize: '9px', fontFamily: "'JetBrains Mono', monospace", paddingBottom: '12px' }}
           />
-          {sensorKeys.map((key) => (
-            <Area
-              key={key}
-              name={getLabel(key)}
-              type="monotone"
-              dataKey={key}
-              stroke={getColor(key)}
-              fill={`url(#grad-${key})`}
-              strokeWidth={1.5}
-              dot={false}
-              activeDot={{ r: 4, strokeWidth: 1 }}
-            />
-          ))}
+          {sensorKeys.map((key) => {
+            const isRaw = key.toLowerCase().includes('flame');
+            return (
+              <Area
+                key={key}
+                name={getLabel(key)}
+                type="monotone"
+                dataKey={key}
+                yAxisId={isRaw ? 'right' : 'left'}
+                stroke={getColor(key)}
+                fill={`url(#grad-${key})`}
+                strokeWidth={1.5}
+                dot={false}
+                activeDot={{ r: 4, strokeWidth: 1 }}
+              />
+            );
+          })}
         </AreaChart>
       </ResponsiveContainer>
     </div>
