@@ -629,6 +629,7 @@ void connectWiFi() {
 void beginHttp(HTTPClient &http, WiFiClientSecure &secureClient, WiFiClient &plainClient, const String &url) {
   if (url.startsWith("https://")) {
     secureClient.setInsecure();
+    secureClient.setBufferSizes(4096, 2048); // Set SSL buffers to 4KB RX / 2KB TX to save heap
     http.begin(secureClient, url);
   } else {
     http.begin(plainClient, url);
@@ -773,6 +774,13 @@ void checkRemoteCalibrationCommand() {
       // Close the polling connection immediately to free SSL heap memory
       http.end();
 
+      // Temporarily suspend persistent telemetry connection to free memory
+      if (telemetryHttpInitialized) {
+        telemetryHttp.end();
+        telemetryHttpInitialized = false;
+        Serial.println("[HTTP] Suspended persistent telemetry connection to free memory for calibration");
+      }
+
       String ackUrl = String(API_BASE_URL) + "/calibration/" + deviceId +
                       "/commands/" + commandId + "/ack";
 
@@ -790,6 +798,12 @@ void checkRemoteCalibrationCommand() {
 
         // Run calibration
         bool success = calibrateSensors();
+
+        // Ensure WiFi is connected before sending results (recover from any transient WiFi drops during calibration)
+        if (WiFi.status() != WL_CONNECTED) {
+          Serial.println("[REMOTE] WiFi disconnected during calibration, reconnecting...");
+          connectWiFi();
+        }
 
         if (success) {
           // Report results back (uses its own connection, which is fine since http is closed)
@@ -1090,6 +1104,7 @@ void setup() {
   Serial.println("\n[BOOT] Step 2.5: Syncing device's time");
   syncTime();
   secureClient.setInsecure();
+  secureClient.setBufferSizes(4096, 2048); // Set SSL buffers to 4KB RX / 2KB TX to save heap
 
   // ─── Provision with backend ───
   Serial.println("\n[BOOT] Step 3: Provisioning device...");
