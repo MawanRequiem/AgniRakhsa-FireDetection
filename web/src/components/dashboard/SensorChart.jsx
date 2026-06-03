@@ -1,4 +1,4 @@
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 
 // Extended color palette for all possible sensor types
 const SENSOR_COLORS = {
@@ -55,26 +55,33 @@ function getLabel(key) {
   return matchedKey ? SENSOR_LABELS[matchedKey] : key;
 }
 
+const parseDateStr = (timeStr) => {
+  if (!timeStr) return null;
+  let normalized = timeStr;
+  const twoDigitYearRegex = /^(\d{2})-(\d{2})-(\d{2})([T\s])/;
+  if (twoDigitYearRegex.test(timeStr)) {
+    normalized = '20' + timeStr;
+  }
+  normalized = normalized.replace(' ', 'T');
+  const d = new Date(normalized);
+  return isNaN(d.getTime()) ? null : d;
+};
+
 const CustomTooltip = ({ active, payload, label, timeRange = '1H' }) => {
   if (!active || !payload?.length) return null;
 
   const formatTooltipLabel = (timeStr) => {
-    if (!timeStr) return '';
-    try {
-      const d = new Date(timeStr);
-      if (isNaN(d.getTime())) return timeStr;
-      
-      if (timeRange === '1H' || timeRange === '24H') {
-        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-      } else {
-        const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const year = d.getFullYear();
-        const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-        return `${day}/${month}/${year} ${time}`;
-      }
-    } catch {
-      return timeStr;
+    const d = parseDateStr(timeStr);
+    if (!d) return timeStr || '';
+    
+    if (timeRange === '1H' || timeRange === '24H') {
+      return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    } else {
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      return `${day}/${month}/${year} ${time}`;
     }
   };
 
@@ -104,20 +111,15 @@ export default function SensorChart({ data, sensors = [], timeRange = '1H', heig
   const hasRawSensor = sensors.some(key => key.toLowerCase().includes('flame'));
 
   const formatXAxisTick = (timeStr) => {
-    if (!timeStr) return '';
-    try {
-      const d = new Date(timeStr);
-      if (isNaN(d.getTime())) return timeStr;
-      
-      if (timeRange === '1H' || timeRange === '24H') {
-        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-      } else {
-        const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        return `${day}/${month}`;
-      }
-    } catch {
-      return timeStr;
+    const d = parseDateStr(timeStr);
+    if (!d) return timeStr || '';
+    
+    if (timeRange === '1H' || timeRange === '24H') {
+      return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    } else {
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      return `${day}/${month}`;
     }
   };
 
@@ -133,7 +135,7 @@ export default function SensorChart({ data, sensors = [], timeRange = '1H', heig
         Sensor Trends
       </h3>
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={{ top: 5, right: hasRawSensor ? -10 : 5, bottom: 5, left: -20 }}>
+        <LineChart data={data} margin={{ top: 5, right: hasRawSensor ? 35 : 5, bottom: 5, left: -20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--ifrit-border)" opacity={0.4} />
           <XAxis
             dataKey="time"
@@ -159,6 +161,12 @@ export default function SensorChart({ data, sensors = [], timeRange = '1H', heig
             domain={[0, 4095]}
           />
           <Tooltip content={<CustomTooltip timeRange={timeRange} />} />
+          <Legend 
+            verticalAlign="top"
+            align="right"
+            formatter={(value) => getLabel(value)}
+            wrapperStyle={{ fontSize: '9px', fontFamily: "'JetBrains Mono', monospace", paddingBottom: '12px' }}
+          />
           {sensors.map((key, index) => {
             const isRaw = key.toLowerCase().includes('flame');
             return (

@@ -39,6 +39,18 @@ const SENSOR_LABELS = {
 
 const SENSOR_FALLBACK_COLOR = '#6b7280';
 
+const parseDateStr = (timeStr) => {
+  if (!timeStr) return null;
+  let normalized = timeStr;
+  const twoDigitYearRegex = /^(\d{2})-(\d{2})-(\d{2})([T\s])/;
+  if (twoDigitYearRegex.test(timeStr)) {
+    normalized = '20' + timeStr;
+  }
+  normalized = normalized.replace(' ', 'T');
+  const d = new Date(normalized);
+  return isNaN(d.getTime()) ? null : d;
+};
+
 function getColor(key) {
   const matchedKey = Object.keys(SENSOR_COLORS).find(k => k.toLowerCase() === key.toLowerCase());
   return matchedKey ? SENSOR_COLORS[matchedKey] : SENSOR_FALLBACK_COLOR;
@@ -68,40 +80,30 @@ export default function SensorsOverview({ timeRange = '1H' }) {
   }, [sensorKeys]);
 
   const formatXAxisTick = (timeStr) => {
-    if (!timeStr) return '';
-    try {
-      const d = new Date(timeStr);
-      if (isNaN(d.getTime())) return timeStr;
-      
-      if (timeRange === '1H' || timeRange === '24H') {
-        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-      } else {
-        const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        return `${day}/${month}`;
-      }
-    } catch {
-      return timeStr;
+    const d = parseDateStr(timeStr);
+    if (!d) return timeStr || '';
+    
+    if (timeRange === '1H' || timeRange === '24H') {
+      return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    } else {
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      return `${day}/${month}`;
     }
   };
 
   const formatTooltipLabel = (timeStr) => {
-    if (!timeStr) return '';
-    try {
-      const d = new Date(timeStr);
-      if (isNaN(d.getTime())) return timeStr;
-      
-      if (timeRange === '1H' || timeRange === '24H') {
-        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-      } else {
-        const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const year = d.getFullYear();
-        const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-        return `${day}/${month}/${year} ${time}`;
-      }
-    } catch {
-      return timeStr;
+    const d = parseDateStr(timeStr);
+    if (!d) return timeStr || '';
+    
+    if (timeRange === '1H' || timeRange === '24H') {
+      return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    } else {
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      return `${day}/${month}/${year} ${time}`;
     }
   };
 
@@ -124,7 +126,7 @@ export default function SensorsOverview({ timeRange = '1H' }) {
   return (
     <div className="w-full h-full min-h-[220px]">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={sensorHistory} margin={{ top: 5, right: hasRawSensor ? -10 : 10, left: -25, bottom: 0 }}>
+        <AreaChart data={sensorHistory} margin={{ top: 5, right: hasRawSensor ? 35 : 10, left: -25, bottom: 0 }}>
           <defs>
             {sensorKeys.map((key) => {
               const color = getColor(key);
