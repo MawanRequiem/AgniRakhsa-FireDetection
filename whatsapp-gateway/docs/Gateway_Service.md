@@ -15,12 +15,6 @@ When the backend's Late Fusion engine detects a fire risk (Critical/High), it se
 - An attached image frame from the CCTV camera (if available)
 - Actionable steps for the personnel
 
-### 2. Interactive NLP Chatbot
-The gateway listens to incoming WhatsApp messages from registered personnel. 
-- If a message is received (e.g., *"Tolong cek status ruang server"*), it forwards the message payload to the Python backend's NLP endpoint (`/api/v1/nlp_routes/chat`).
-- The Python backend processes the natural language, checks the database, generates a response, and replies.
-- The gateway then forwards this response back to the user on WhatsApp.
-
 ## Running the Gateway
 
 ```bash

@@ -9,6 +9,7 @@ The project is built on a microservices-inspired architecture, consisting of fou
 1. **Backend & AI Core (`/backend`)**
    - Built with Python and FastAPI.
    - Handles the heavy lifting: running YOLO object detection on camera feeds, processing sensor data using Isolation Forest ML models, and serving the REST API and WebSockets.
+   - **X (Twitter) Sentiment Analysis**: Runs a Bi-LSTM NLP model to crawl X for keywords (like "kebakaran") and analyze public sentiment/panic as an additional early-warning and social monitoring signal.
    - Connects to Supabase for all database storage and authentication.
 
 2. **Web Dashboard (`/web`)**
@@ -17,7 +18,7 @@ The project is built on a microservices-inspired architecture, consisting of fou
 
 3. **WhatsApp Gateway (`/whatsapp-gateway`)**
    - Built with Node.js and Baileys.
-   - Acts as the primary notification dispatcher. It sends critical alerts with images directly to WhatsApp and features an NLP-powered chatbot allowing users to query room statuses naturally.
+   - Acts as the primary notification dispatcher. It automatically broadcasts critical alerts with images directly to WhatsApp groups or security personnel.
 
 4. **IFRIT IoT Sensors (`/IFRIT`)**
    - The edge hardware devices built on ESP32 microcontrollers.
@@ -33,8 +34,8 @@ graph TD
     B -->|WebSocket Updates| E[React Web Dashboard]
     B -->|REST Alert Trigger| F[WhatsApp Gateway]
     F -->|WhatsApp Message| G[Security Personnel]
-    G -->|Questions| F
-    F -->|NLP Query| B
+    H((X / Twitter API)) -->|Fetch Tweets| B
+    B -->|Bi-LSTM Sentiment| D
 ```
 
 ## Documentation Map

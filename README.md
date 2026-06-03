@@ -12,15 +12,21 @@ graph TD
     classDef web fill:#10b981,stroke:#34d399,stroke-width:2px,color:#fff;
     classDef bot fill:#22c55e,stroke:#4ade80,stroke-width:2px,color:#fff;
     classDef db fill:#f59e0b,stroke:#fbbf24,stroke-width:2px,color:#fff;
+    classDef external fill:#8b5cf6,stroke:#a78bfa,stroke-width:2px,color:#fff;
     
     subgraph Edge ["Edge Devices"]
         S[IFRIT IoT Sensors]:::hardware
         C[CCTV Cameras]:::hardware
     end
 
+    subgraph Ext ["External Data"]
+        X((X / Twitter API)):::external
+    end
+
     subgraph Core ["Core Intelligence"]
         B((FastAPI Backend)):::backend
-        F{Late Fusion Engine\nAI & ML}:::backend
+        F{Late Fusion Engine}:::backend
+        NLP{Bi-LSTM Sentiment\nAnalysis Engine}:::backend
     end
 
     subgraph Infra ["Infrastructure"]
@@ -36,12 +42,14 @@ graph TD
     %% Data Flow
     S -->|Sensor Telemetry| B
     C -->|Video Frames| B
+    X -->|Fetch Tweets| NLP
+    NLP -->|Sentiment Logs| DB
     B --> F
     F -->|Risk State| DB
     B <-->|Rate Limit & PubSub| R
     F -->|Real-time Events| W
     F -->|Critical Alerts| WA
-    WA <-->|Chatbot / NLP| Users([Security Officers])
+    WA -->|Broadcasts| Users([Security Officers])
 ```
 
 This repository is a **monorepo** containing all the microservices, frontend applications, and hardware firmware required to run the Ifrit platform.
