@@ -2,12 +2,16 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 
 // Extended color palette for all possible sensor types
 const SENSOR_COLORS = {
-  MQ2: '#F59E0B',    // amber  - Smoke / LPG
-  MQ4: '#3b82f6',    // blue   - Methane
+  MQ2: '#F59E0B',    // amber - Smoke / LPG
+  MQ4: '#3b82f6',    // blue - Methane
   MQ5: '#8b5cf6',    // violet - Natural Gas / LPG
-  MQ7: '#ef4444',    // red    - Carbon Monoxide
-  MQ9B: '#06b6d4',   // cyan   - CO + Methane
-  MQ135: '#ec4899',  // pink   - Air Quality
+  MQ6: '#60A5FA',    // blue-light - LPG
+  MQ7: '#ef4444',    // red - Carbon Monoxide
+  MQ9B: '#06b6d4',   // cyan - CO + Methane
+  MQ135: '#ec4899',  // pink - Air Quality
+  SHTC_TEMP: '#f97316',      // orange - Temp
+  SHTC_HUM: '#10b981',       // emerald - Hum
+  FLAME: '#F87171',          // red-light - Flame
   SHTC3_TEMP: '#f97316',     // orange
   SHTC3_HUMIDITY: '#10b981', // emerald
   // Legacy keys for backwards compat
@@ -21,7 +25,8 @@ const SENSOR_COLORS = {
 const FALLBACK_COLORS = ['#6366f1', '#ec4899', '#14b8a6', '#eab308', '#a855f7', '#f43f5e', '#0ea5e9'];
 
 function getColor(key, index) {
-  return SENSOR_COLORS[key] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+  const matchedKey = Object.keys(SENSOR_COLORS).find(k => k.toLowerCase() === key.toLowerCase());
+  return matchedKey ? SENSOR_COLORS[matchedKey] : FALLBACK_COLORS[index % FALLBACK_COLORS.length];
 }
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -49,6 +54,8 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export default function SensorChart({ data, sensors = [], height = 280 }) {
+  const hasRawSensor = sensors.some(key => key.toLowerCase().includes('flame'));
+
   return (
     <div
       className="rounded-md border p-4"
@@ -61,7 +68,7 @@ export default function SensorChart({ data, sensors = [], height = 280 }) {
         Sensor Trends
       </h3>
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+        <LineChart data={data} margin={{ top: 5, right: hasRawSensor ? -10 : 5, bottom: 5, left: -20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--ifrit-border)" opacity={0.4} />
           <XAxis
             dataKey="time"
@@ -71,22 +78,36 @@ export default function SensorChart({ data, sensors = [], height = 280 }) {
             tickLine={false}
           />
           <YAxis
+            yAxisId="left"
             tick={{ fontSize: 10, fill: 'var(--ifrit-text-muted)', fontFamily: 'monospace' }}
             axisLine={false}
             tickLine={false}
           />
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            hide={!hasRawSensor}
+            tick={{ fontSize: 10, fill: 'var(--ifrit-text-muted)', fontFamily: 'monospace' }}
+            axisLine={false}
+            tickLine={false}
+            domain={[0, 4095]}
+          />
           <Tooltip content={<CustomTooltip />} />
-          {sensors.map((key, index) => (
-            <Line
-              key={key}
-              type="monotone"
-              dataKey={key}
-              stroke={getColor(key, index)}
-              strokeWidth={1.5}
-              dot={false}
-              activeDot={{ r: 3, fill: getColor(key, index) }}
-            />
-          ))}
+          {sensors.map((key, index) => {
+            const isRaw = key.toLowerCase().includes('flame');
+            return (
+              <Line
+                key={key}
+                type="monotone"
+                dataKey={key}
+                yAxisId={isRaw ? 'right' : 'left'}
+                stroke={getColor(key, index)}
+                strokeWidth={1.5}
+                dot={false}
+                activeDot={{ r: 3, fill: getColor(key, index) }}
+              />
+            );
+          })}
         </LineChart>
       </ResponsiveContainer>
     </div>
