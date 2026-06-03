@@ -22,11 +22,37 @@ const SENSOR_COLORS = {
   flame: '#F87171',
 };
 
+// Friendly labels for sensors
+const SENSOR_LABELS = {
+  SHTC_TEMP: 'Temperature',
+  SHTC3_TEMP: 'Temperature',
+  SHTC_HUM: 'Humidity',
+  SHTC3_HUMIDITY: 'Humidity',
+  FLAME: 'Flame (IR)',
+  MQ2: 'MQ-2 (Smoke/LPG)',
+  MQ4: 'MQ-4 (Methane)',
+  MQ5: 'MQ-5 (Natural Gas)',
+  MQ6: 'MQ-6 (LPG)',
+  MQ7: 'MQ-7 (CO)',
+  MQ9B: 'MQ-9B (CO)',
+  MQ135: 'MQ-135 (Air Quality)',
+  co: 'CO',
+  lpg: 'LPG',
+  smoke: 'Smoke',
+  cng: 'CNG',
+  flame: 'Flame',
+};
+
 const FALLBACK_COLORS = ['#6366f1', '#ec4899', '#14b8a6', '#eab308', '#a855f7', '#f43f5e', '#0ea5e9'];
 
 function getColor(key, index) {
   const matchedKey = Object.keys(SENSOR_COLORS).find(k => k.toLowerCase() === key.toLowerCase());
   return matchedKey ? SENSOR_COLORS[matchedKey] : FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+}
+
+function getLabel(key) {
+  const matchedKey = Object.keys(SENSOR_LABELS).find(k => k.toLowerCase() === key.toLowerCase());
+  return matchedKey ? SENSOR_LABELS[matchedKey] : key;
 }
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -43,7 +69,7 @@ const CustomTooltip = ({ active, payload, label }) => {
       {payload.map(entry => (
         <div key={entry.dataKey} className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-          <span style={{ color: 'var(--ifrit-text-secondary)' }}>{entry.dataKey}:</span>
+          <span style={{ color: 'var(--ifrit-text-secondary)' }}>{entry.name || entry.dataKey}:</span>
           <span className="font-mono font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>
             {typeof entry.value === 'number' ? entry.value.toFixed(1) : entry.value}
           </span>
@@ -98,6 +124,7 @@ export default function SensorChart({ data, sensors = [], height = 280 }) {
             return (
               <Line
                 key={key}
+                name={getLabel(key)}
                 type="monotone"
                 dataKey={key}
                 yAxisId={isRaw ? 'right' : 'left'}
