@@ -7,6 +7,8 @@
  *       These pins are reserved for camera and should not be used for sensors.
  */
 
+#include <Arduino.h>
+
 // =============================================================================
 // Sensor Pin Mapping (used in Wokwi diagram)
 // =============================================================================
