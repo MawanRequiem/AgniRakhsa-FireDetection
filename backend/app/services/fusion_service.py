@@ -389,9 +389,26 @@ async def run_fusion(
     
     # Update room status
     if room_id:
-        supabase.table("rooms").update(
-            {"status": risk_level}
-        ).eq("id", str(room_id)).execute()
+        should_update = True
+        if risk_level == "safe":
+            try:
+                active_res = (
+                    supabase.table("alerts")
+                    .select("id")
+                    .eq("room_id", str(room_id))
+                    .eq("is_acknowledged", False)
+                    .execute()
+                )
+                if active_res.data:
+                    should_update = False
+                    logger.info(f"Skipping room status update to 'safe' for room {room_id} because there are unacknowledged alerts.")
+            except Exception as e:
+                logger.error(f"Error checking active alerts in run_fusion: {e}")
+                
+        if should_update:
+            supabase.table("rooms").update(
+                {"status": risk_level}
+            ).eq("id", str(room_id)).execute()
     
     return {
         "id": fusion_record.get("id"),

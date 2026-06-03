@@ -22,6 +22,7 @@ from collections import defaultdict
 
 from app.core.redis import redis_manager
 from app.services import fusion_service
+from app.core.db import supabase
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +153,26 @@ async def process_buffers():
                         f"Sensor event for room {room_id} below threshold: "
                         f"score={sensor_score:.3f} < {SENSOR_ONLY_THRESHOLD}"
                     )
+                    try:
+                        # If sensors are safe, check if room status needs to be reset to safe.
+                        # Only reset if there are no active (unacknowledged) alerts for this room.
+                        room_res = supabase.table("rooms").select("status").eq("id", str(room_id)).execute()
+                        if room_res.data:
+                            current_status = room_res.data[0].get("status")
+                            if current_status != "safe":
+                                # Check active alerts
+                                active_res = (
+                                    supabase.table("alerts")
+                                    .select("id")
+                                    .eq("room_id", str(room_id))
+                                    .eq("is_acknowledged", False)
+                                    .execute()
+                                )
+                                if not active_res.data:
+                                    logger.info(f"Resetting room {room_id} status to safe (sensors are safe, no active alerts)")
+                                    supabase.table("rooms").update({"status": "safe"}).eq("id", str(room_id)).execute()
+                    except Exception as e:
+                        logger.error(f"Error resetting room {room_id} status to safe: {e}")
 
 
 def _evaluate_sensor_risk(snapshot: dict, room_id: str) -> float:
