@@ -18,7 +18,7 @@
 #define MQ4_PIN 35
 #define MQ6_PIN 32
 #define MQ9B_PIN 33
-#define FLAME_PIN 19
+#define FLAME_PIN 36
 
 // --- Firmware Version ---
 #define FIRMWARE_VERSION "4.0.0-MQ9B-FLAME-WIFI"
