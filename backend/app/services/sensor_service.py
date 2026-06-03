@@ -137,6 +137,55 @@ async def ingest_readings(device_id: UUID, readings: list[dict]) -> int:
             }
         })
 
+    # 6.5 Auto-complete active/pending commands and update device status if we receive telemetry
+    try:
+        active_commands_res = (
+            supabase.table("device_commands")
+            .select("id, command, status")
+            .eq("device_id", str(device_id))
+            .in_("status", ["pending", "in_progress"])
+            .execute()
+        )
+        if active_commands_res.data:
+            for cmd in active_commands_res.data:
+                cmd_id = cmd["id"]
+                cmd_name = cmd["command"]
+                logger.info(
+                    f"Auto-completing stuck/active command '{cmd_name}' (ID: {cmd_id}) "
+                    f"for device {device_id} due to new telemetry ingestion."
+                )
+                # 1. Update command status to completed
+                supabase.table("device_commands").update({
+                    "status": "completed",
+                    "completed_at": datetime.now(timezone.utc).isoformat()
+                }).eq("id", cmd_id).execute()
+
+                # 2. Update device status according to command type
+                target_status = "online"
+                if cmd_name == "REBURNIN":
+                    target_status = "burn_in"
+                else:
+                    dev_res = supabase.table("devices").select("created_at").eq("id", str(device_id)).execute()
+                    if dev_res.data:
+                        created_at_str = dev_res.data[0]["created_at"].replace("Z", "+00:00")
+                        created_at = datetime.fromisoformat(created_at_str)
+                        if (datetime.now(timezone.utc) - created_at).total_seconds() < 86400:
+                            target_status = "burn_in"
+
+                supabase.table("devices").update({"status": target_status}).eq("id", str(device_id)).execute()
+                
+                # 3. Broadcast status update via WebSocket
+                await manager.broadcast({
+                    "type": "DEVICE_STATUS_CHANGE",
+                    "data": {
+                        "device_id": str(device_id),
+                        "status": target_status,
+                        "name": device_name,
+                    }
+                })
+    except Exception as e:
+        logger.error(f"Error auto-completing stuck device commands: {e}")
+
     # 7. Feed sensor anomaly detector buffer (for Isolation Forest ML model)
     try:
         from app.ai import registry
