@@ -770,59 +770,68 @@ void checkRemoteCalibrationCommand() {
       String command = doc["command"].as<String>();
       String commandId = doc["command_id"].as<String>();
 
+      // Close the polling connection immediately to free SSL heap memory
+      http.end();
+
+      String ackUrl = String(API_BASE_URL) + "/calibration/" + deviceId +
+                      "/commands/" + commandId + "/ack";
+
+      int ackResult = 0; // Declare once at function scope to avoid any block-redefinition errors
+
       if (command == "RECALIBRATE") {
         Serial.println("\n[REMOTE] Server requested RECALIBRATE!");
 
-        WiFiClientSecure secureAckClient;
-        WiFiClient plainAckClient;
-        HTTPClient ackHttp;
-        String ackUrl = String(API_BASE_URL) + "/calibration/" + deviceId +
-                        "/commands/" + commandId + "/ack";
-
         // Acknowledge command in progress
-        beginHttp(ackHttp, secureAckClient, plainAckClient, ackUrl);
-        ackHttp.addHeader("Content-Type", "application/json");
-        ackHttp.POST("{\"status\":\"in_progress\"}");
-        ackHttp.end();
+        beginHttp(http, secureClient, plainClient, ackUrl);
+        http.addHeader("Content-Type", "application/json");
+        ackResult = http.POST(String("{\"status\":\"in_progress\"}"));
+        Serial.printf("[REMOTE] ACK in_progress HTTP code: %d\n", ackResult);
+        http.end();
 
         // Run calibration
         bool success = calibrateSensors();
 
         if (success) {
-          // Report results back
+          // Report results back (uses its own connection, which is fine since http is closed)
           sendCalibrationToServer();
 
-          // Acknowledge command completion
-          beginHttp(ackHttp, secureAckClient, plainAckClient, ackUrl);
-          ackHttp.addHeader("Content-Type", "application/json");
-          ackHttp.POST("{\"status\":\"completed\"}");
-          ackHttp.end();
+          // Wait a moment for socket cleanup and memory reclamation
+          delay(1000);
+
+          // Acknowledge command completion with a fresh client because 15 mins have passed
+          WiFiClientSecure freshSecureClient;
+          WiFiClient freshPlainClient;
+          HTTPClient freshHttp;
+          beginHttp(freshHttp, freshSecureClient, freshPlainClient, ackUrl);
+          freshHttp.addHeader("Content-Type", "application/json");
+          ackResult = freshHttp.POST(String("{\"status\":\"completed\"}"));
+          Serial.printf("[REMOTE] ACK completed HTTP code: %d\n", ackResult);
+          freshHttp.end();
 
           Serial.println(
               "[REMOTE] Recalibration complete, ACK completed sent.");
         } else {
-          // Acknowledge command failure
-          beginHttp(ackHttp, secureAckClient, plainAckClient, ackUrl);
-          ackHttp.addHeader("Content-Type", "application/json");
-          ackHttp.POST("{\"status\":\"failed\"}");
-          ackHttp.end();
+          // Acknowledge command failure with a fresh client because 15 mins have passed
+          WiFiClientSecure freshSecureClient;
+          WiFiClient freshPlainClient;
+          HTTPClient freshHttp;
+          beginHttp(freshHttp, freshSecureClient, freshPlainClient, ackUrl);
+          freshHttp.addHeader("Content-Type", "application/json");
+          ackResult = freshHttp.POST(String("{\"status\":\"failed\"}"));
+          Serial.printf("[REMOTE] ACK failed HTTP code: %d\n", ackResult);
+          freshHttp.end();
 
           Serial.println("[REMOTE] Recalibration failed, ACK failed sent.");
         }
       } else if (command == "REBURNIN") {
         Serial.println("\n[REMOTE] Server requested REBURNIN!");
 
-        WiFiClientSecure secureAckClient;
-        WiFiClient plainAckClient;
-        HTTPClient ackHttp;
-        String ackUrl = String(API_BASE_URL) + "/calibration/" + deviceId +
-                        "/commands/" + commandId + "/ack";
-
         // Acknowledge command in progress
-        beginHttp(ackHttp, secureAckClient, plainAckClient, ackUrl);
-        ackHttp.addHeader("Content-Type", "application/json");
-        ackHttp.POST("{\"status\":\"in_progress\"}");
-        ackHttp.end();
+        beginHttp(http, secureClient, plainClient, ackUrl);
+        http.addHeader("Content-Type", "application/json");
+        ackResult = http.POST(String("{\"status\":\"in_progress\"}"));
+        Serial.printf("[REMOTE] ACK in_progress HTTP code: %d\n", ackResult);
+        http.end();
 
         // Perform re-burnin NVS and memory reset
         prefs.begin("ifrit_time", false); // read-write
@@ -838,16 +847,21 @@ void checkRemoteCalibrationCommand() {
         cumulativeMins = 0;
         burninDone = false;
 
-        // Acknowledge command completion
-        beginHttp(ackHttp, secureAckClient, plainAckClient, ackUrl);
-        ackHttp.addHeader("Content-Type", "application/json");
-        ackHttp.POST("{\"status\":\"completed\"}");
-        ackHttp.end();
+        // Acknowledge command completion with a fresh client
+        WiFiClientSecure freshSecureClient;
+        WiFiClient freshPlainClient;
+        HTTPClient freshHttp;
+        beginHttp(freshHttp, freshSecureClient, freshPlainClient, ackUrl);
+        freshHttp.addHeader("Content-Type", "application/json");
+        ackResult = freshHttp.POST(String("{\"status\":\"completed\"}"));
+        Serial.printf("[REMOTE] ACK completed HTTP code: %d\n", ackResult);
+        freshHttp.end();
 
         Serial.println("[REMOTE] Re-burnin initiated. Restarting device...");
         delay(1500);
         ESP.restart();
       }
+      return;
     }
   }
 
