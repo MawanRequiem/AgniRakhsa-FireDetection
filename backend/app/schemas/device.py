@@ -48,6 +48,8 @@ class DeviceProvisionRequest(BaseModel):
     mac_address: str = Field(..., description="Device MAC address")
     room_name: Optional[str] = Field(default=None, description="Auto-assign to room by name")
     sensor_types: list[str] = Field(..., description="List of sensor types this device has (e.g. ['MQ2', 'MQ4'])")
+    timestamp: Optional[int] = Field(default=None, description="Unix epoch timestamp for replay protection")
+    signature: Optional[str] = Field(default=None, description="HMAC-SHA256 hex digest")
 
 class DeviceProvisionResponse(BaseModel):
     """Returned to MCU containing its assigned UUIDs."""
