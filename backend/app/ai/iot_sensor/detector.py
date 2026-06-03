@@ -40,7 +40,7 @@ SENSOR_TYPE_MAP: dict[str, str] = {
 
 # Sensors to ignore during ingestion (hardware fault, bad data, etc.)
 # The model still expects flame_presence features — they'll default to 0.0
-DISABLED_SENSORS: set[str] = {"FLAME"}
+DISABLED_SENSORS: set[str] = set()  # All sensors now active
 
 # Training column order (alphabetical from pivot — confirmed by user).
 TRAINING_COLUMNS = sorted(SENSOR_TYPE_MAP.values())

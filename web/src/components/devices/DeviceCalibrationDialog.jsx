@@ -198,7 +198,7 @@ export default function DeviceCalibrationDialog({ open, onOpenChange, device }) 
                   <p className="font-mono text-lg" style={{ color: 'var(--ifrit-text-primary)' }}>{formatNumber(calibration.r0_mq6)} <span className="text-xs" style={{ color: 'var(--ifrit-text-muted)' }}>kΩ</span></p>
                 </div>
                 <div className="p-3 rounded-lg border" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-tertiary)' }}>
-                  <p className="text-xs mb-1" style={{ color: 'var(--ifrit-text-muted)' }}>MQ-9 (CO)</p>
+                  <p className="text-xs mb-1" style={{ color: 'var(--ifrit-text-muted)' }}>MQ-9B (CO)</p>
                   <p className="font-mono text-lg" style={{ color: 'var(--ifrit-text-primary)' }}>{formatNumber(calibration.r0_mq9)} <span className="text-xs" style={{ color: 'var(--ifrit-text-muted)' }}>kΩ</span></p>
                 </div>
               </div>

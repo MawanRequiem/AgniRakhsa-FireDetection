@@ -269,7 +269,7 @@ function DeviceCalibrationItem({ device }) {
               </span>
             </div>
             <div className="p-2 rounded-lg border flex flex-col justify-center" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
-              <span className="text-[9px]" style={{ color: 'var(--ifrit-text-muted)' }}>MQ-9 (CO)</span>
+              <span className="text-[9px]" style={{ color: 'var(--ifrit-text-muted)' }}>MQ-9B (CO)</span>
               <span className="font-mono text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>
                 {formatNumber(calibration.r0_mq9)} <span className="text-[10px]" style={{ color: 'var(--ifrit-text-muted)' }}>kΩ</span>
               </span>

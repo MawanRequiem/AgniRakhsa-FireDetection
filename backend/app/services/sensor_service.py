@@ -368,7 +368,7 @@ SENSOR_EXPECTED_RANGE: dict[str, tuple[float, float, float]] = {
     "MQ4":         (0,    5000,   4095),
     "MQ5":         (0,    5000,   4095),
     "MQ6":         (0,    5000,   4095),
-    "MQ9":         (0,    3000,   4095),
+    "MQ9B":        (0,    3000,   4095),
     "FLAME":       (0,    4095,   4095),
     "SHTC3_TEMP":  (-40,  125,    None),   # No ADC ceiling for digital sensors
     "SHTC3_HUM":   (0,    100,    None),

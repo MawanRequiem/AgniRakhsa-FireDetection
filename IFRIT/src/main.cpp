@@ -15,15 +15,15 @@
 #define MQ2_PIN 34
 #define MQ4_PIN 35
 #define MQ6_PIN 32
-#define MQ9_PIN 33
+#define MQ9B_PIN 33
 #define FLAME_PIN 19
 
 // --- Firmware Version ---
-#define FIRMWARE_VERSION "3.0.1-ADAPTIVE-CAL"
+#define FIRMWARE_VERSION "4.0.0-MQ9B-FLAME-WIFI"
 
-// --- WiFi Configuration ---
-const char *WIFI_SSID = "MaOne_Cisco";
-const char *WIFI_PASSWORD = "networkasik";
+// --- WiFi Configuration (stored in NVS, configurable via Serial) ---
+String wifiSSID = "";
+String wifiPassword = "";
 
 // --- Backend API Configuration ---
 const char *API_BASE_URL = "https://ifrit.space/api/v1";
@@ -38,7 +38,7 @@ const unsigned long HEARTBEAT_INTERVAL_MS = 30000; // Send heartbeat every 30s
 
 // --- Sensor Configuration & Thresholds ---
 const int NUM_SENSORS = 7;
-const char *SENSOR_TYPES[NUM_SENSORS] = {"MQ2",       "MQ4",      "MQ6",  "MQ9",
+const char *SENSOR_TYPES[NUM_SENSORS] = {"MQ2",       "MQ4",      "MQ6",  "MQ9B",
                                          "SHTC_TEMP", "SHTC_HUM", "FLAME"};
 
 // Thresholds for triggering local alarm
@@ -46,10 +46,10 @@ const float ALARM_THRESHOLDS[NUM_SENSORS] = {
     600.0, // MQ2 (ppm)
     600.0, // MQ4 (ppm)
     600.0, // MQ6 (ppm)
-    600.0, // MQ9 (ppm)
+    600.0, // MQ9B (ppm)
     45.0,  // TEMP (Celsius)
     100.0, // HUMIDITY (%)
-    0.5    // FLAME (Digital: 0 is fire)
+    500.0  // FLAME (Analog: < 500 = intense fire, emergency fallback only)
 };
 
 // =============================================================================
@@ -68,14 +68,14 @@ const float RL_VALUE = 10.0;
 const float VC_VALUE = 5.0;
 
 // Clean Air Ratio (Rs/R0 in clean air) — from each sensor's datasheet
-// Order: MQ2, MQ4, MQ6, MQ9
-const float CLEAN_AIR_RATIO[NUM_MQ_SENSORS] = {9.83, 4.4, 10.0, 9.9};
+// Order: MQ2, MQ4, MQ6, MQ9B
+const float CLEAN_AIR_RATIO[NUM_MQ_SENSORS] = {9.83, 4.4, 10.0, 9.6};
 
 // Exponential Regression: PPM = A × (Rs/R0)^B
 // Source: MQUnifiedsensor library (extracted from official datasheets via
-// WebPlotDigitizer) Order: MQ2(LPG), MQ4(CH4), MQ6(LPG), MQ9(CO)
-const float PARAM_A[NUM_MQ_SENSORS] = {574.25, 1012.7, 1009.2, 599.65};
-const float PARAM_B[NUM_MQ_SENSORS] = {-2.222, -2.786, -2.35, -2.244};
+// WebPlotDigitizer) Order: MQ2(LPG), MQ4(CH4), MQ6(LPG), MQ9B(CO)
+const float PARAM_A[NUM_MQ_SENSORS] = {574.25, 1012.7, 1009.2, 1000.5};
+const float PARAM_B[NUM_MQ_SENSORS] = {-2.222, -2.786, -2.35, -2.186};
 
 // --- Calibration Tuning ---
 #define CALIBRATION_SAMPLES 900   // Number of ADC samples to average (900 samples * 1000ms = 15 minutes)
@@ -101,7 +101,7 @@ const float PARAM_B[NUM_MQ_SENSORS] = {-2.222, -2.786, -2.35, -2.244};
  *   MQ-2  → LPG / Smoke
  *   MQ-4  → CH4 (Methane)
  *   MQ-6  → LPG
- *   MQ-9  → CO (Carbon Monoxide)
+ *   MQ-9B → CO (Carbon Monoxide)
  *   SHTC3 → Temperature (simulated as DHT22 in Wokwi)
  *   FLAME → IR Flame Sensor (analog, lower = fire detected)
  */
@@ -140,8 +140,8 @@ bool pendingAutoCalibration = false;
 unsigned long cumulativeMins = 0;
 bool burninDone = false;
 
-// MQ sensor ADC pins in order: MQ2, MQ4, MQ6, MQ9
-const int MQ_PINS[NUM_MQ_SENSORS] = {MQ2_PIN, MQ4_PIN, MQ6_PIN, MQ9_PIN};
+// MQ sensor ADC pins in order: MQ2, MQ4, MQ6, MQ9B
+const int MQ_PINS[NUM_MQ_SENSORS] = {MQ2_PIN, MQ4_PIN, MQ6_PIN, MQ9B_PIN};
 
 // Persistent HTTP/TLS clients (connection reuse)
 WiFiClientSecure secureClient;
@@ -166,10 +166,10 @@ bool loadCalibrationFromNVS() {
     R0_VALUES[0] = prefs.getFloat("R0_MQ2", 10.0);
     R0_VALUES[1] = prefs.getFloat("R0_MQ4", 10.0);
     R0_VALUES[2] = prefs.getFloat("R0_MQ6", 10.0);
-    R0_VALUES[3] = prefs.getFloat("R0_MQ9", 10.0);
+    R0_VALUES[3] = prefs.getFloat("R0_MQ9B", 10.0);
 
     Serial.println("[NVS] Calibration loaded:");
-    const char *mqNames[] = {"MQ2", "MQ4", "MQ6", "MQ9"};
+    const char *mqNames[] = {"MQ2", "MQ4", "MQ6", "MQ9B"};
     for (int i = 0; i < NUM_MQ_SENSORS; i++) {
       Serial.printf("  %s R0 = %.4f kOhm\n", mqNames[i], R0_VALUES[i]);
     }
@@ -190,7 +190,7 @@ void saveCalibrationToNVS() {
   prefs.putFloat("R0_MQ2", R0_VALUES[0]);
   prefs.putFloat("R0_MQ4", R0_VALUES[1]);
   prefs.putFloat("R0_MQ6", R0_VALUES[2]);
-  prefs.putFloat("R0_MQ9", R0_VALUES[3]);
+  prefs.putFloat("R0_MQ9B", R0_VALUES[3]);
   prefs.putBool("calibrated", true);
   prefs.putULong("cal_time", millis() / 1000);
   prefs.end();
@@ -345,7 +345,7 @@ bool calibrateSensors() {
   }
 
   // Calculate R0 = avg(Rs) / CleanAirRatio
-  const char *mqNames[] = {"MQ2", "MQ4", "MQ6", "MQ9"};
+  const char *mqNames[] = {"MQ2", "MQ4", "MQ6", "MQ9B"};
   bool allValid = true;
 
   for (int i = 0; i < NUM_MQ_SENSORS; i++) {
@@ -433,24 +433,194 @@ float calculatePPM(int rawADC, int sensorIndex) {
 // NETWORKING
 // =============================================================================
 
-/** Connect to WiFi, blocking until successful. */
-void connectWiFi() {
-  Serial.print("Connecting to WiFi: ");
-  Serial.println(WIFI_SSID);
+/**
+ * Load WiFi credentials from NVS flash.
+ * Returns true if valid SSID was found.
+ */
+bool loadWiFiFromNVS() {
+  prefs.begin("agni_wifi", true); // Read-only
+  wifiSSID = prefs.getString("ssid", "");
+  wifiPassword = prefs.getString("password", "");
+  prefs.end();
 
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  if (wifiSSID.length() > 0) {
+    Serial.printf("[WIFI] Loaded credentials from NVS: SSID='%s'\n", wifiSSID.c_str());
+    return true;
+  }
+  Serial.println("[WIFI] No WiFi credentials found in NVS.");
+  return false;
+}
 
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+/**
+ * Save WiFi credentials to NVS flash.
+ */
+void saveWiFiToNVS(const String &ssid, const String &password) {
+  prefs.begin("agni_wifi", false); // Read-write
+  prefs.putString("ssid", ssid);
+  prefs.putString("password", password);
+  prefs.end();
+  Serial.printf("[WIFI] Credentials saved to NVS: SSID='%s'\n", ssid.c_str());
+}
+
+/**
+ * Scan nearby WiFi networks and return the count.
+ * Prints a numbered list for the user to select from.
+ */
+int scanAndPrintNetworks() {
+  Serial.println("\n[WIFI] Scanning nearby networks...");
+  int n = WiFi.scanNetworks();
+  if (n == 0) {
+    Serial.println("[WIFI] No networks found. Check antenna.");
+  } else {
+    Serial.printf("\n  Found %d network(s):\n", n);
+    Serial.println("  ──────────────────────────────────────────");
+    for (int i = 0; i < n; i++) {
+      String security = "OPEN";
+      switch (WiFi.encryptionType(i)) {
+        case WIFI_AUTH_WEP:           security = "WEP";    break;
+        case WIFI_AUTH_WPA_PSK:       security = "WPA";    break;
+        case WIFI_AUTH_WPA2_PSK:      security = "WPA2";   break;
+        case WIFI_AUTH_WPA_WPA2_PSK:  security = "WPA1/2"; break;
+        case WIFI_AUTH_WPA3_PSK:      security = "WPA3";   break;
+        default:                      security = "OTHER";  break;
+      }
+      // Signal strength indicator
+      int rssi = WiFi.RSSI(i);
+      String signal = rssi > -50 ? "████" : rssi > -65 ? "███░" : rssi > -75 ? "██░░" : "█░░░";
+      Serial.printf("  [%d] %s %s (%s, %ddBm)\n",
+                     i + 1, signal.c_str(), WiFi.SSID(i).c_str(),
+                     security.c_str(), rssi);
+    }
+    Serial.println("  ──────────────────────────────────────────");
+  }
+  return n;
+}
+
+/**
+ * Read a line from Serial with a visible prompt, blocking until input received.
+ */
+String serialReadLine(const String &prompt) {
+  Serial.print(prompt);
+  while (!Serial.available()) {
+    delay(50);
+  }
+  String line = Serial.readStringUntil('\n');
+  line.trim();
+  return line;
+}
+
+/**
+ * Interactive WiFi setup wizard — step-by-step guided flow.
+ * Scans networks, lets user pick by number or type manually, then asks for password.
+ */
+void runWiFiWizard() {
+  Serial.println("\n=============================================");
+  Serial.println("       WIFI SETUP WIZARD");
+  Serial.println("=============================================\n");
+
+  int networkCount = scanAndPrintNetworks();
+
+  String selectedSSID = "";
+
+  while (selectedSSID.length() == 0) {
+    if (networkCount > 0) {
+      Serial.println("\n  Type a NUMBER to select a network");
+      Serial.println("  Type 'M' to enter SSID manually");
+      Serial.println("  Type 'R' to re-scan");
+
+      String choice = serialReadLine("\n  > ");
+
+      if (choice.equalsIgnoreCase("R")) {
+        networkCount = scanAndPrintNetworks();
+        continue;
+      }
+
+      if (choice.equalsIgnoreCase("M")) {
+        selectedSSID = serialReadLine("  Enter SSID: ");
+        if (selectedSSID.length() == 0) {
+          Serial.println("  [!] SSID cannot be empty.");
+          continue;
+        }
+      } else {
+        int idx = choice.toInt();
+        if (idx >= 1 && idx <= networkCount) {
+          selectedSSID = WiFi.SSID(idx - 1);
+          Serial.printf("  Selected: %s\n", selectedSSID.c_str());
+        } else {
+          Serial.println("  [!] Invalid selection. Try again.");
+          continue;
+        }
+      }
+    } else {
+      // No networks found, must enter manually
+      selectedSSID = serialReadLine("  Enter SSID manually: ");
+      if (selectedSSID.length() == 0) {
+        Serial.println("  [!] SSID cannot be empty. Re-scanning...");
+        networkCount = scanAndPrintNetworks();
+        continue;
+      }
+    }
   }
 
-  Serial.println("\nWiFi connected!");
-  Serial.print("IP: ");
-  Serial.println(WiFi.localIP());
-  Serial.print("MAC: ");
-  Serial.println(WiFi.macAddress());
+  WiFi.scanDelete(); // Free scan memory
+
+  String password = serialReadLine("  Enter password (blank for open): ");
+
+  Serial.printf("\n  SSID: %s\n", selectedSSID.c_str());
+  Serial.printf("  Pass: %s\n", password.length() > 0 ? "********" : "(none)");
+
+  String confirm = serialReadLine("  Save and connect? (Y/n): ");
+  if (confirm.equalsIgnoreCase("N")) {
+    Serial.println("  Cancelled. Restarting wizard...\n");
+    runWiFiWizard(); // Restart wizard
+    return;
+  }
+
+  saveWiFiToNVS(selectedSSID, password);
+  Serial.println("\n  [OK] Credentials saved! Rebooting...");
+  delay(1000);
+  ESP.restart();
 }
+
+/**
+ * Connect to WiFi using NVS-stored credentials.
+ * If no credentials exist or connection fails, launches the interactive wizard.
+ */
+void connectWiFi() {
+  // Try loading from NVS if not already loaded
+  if (wifiSSID.length() == 0) {
+    loadWiFiFromNVS();
+  }
+
+  // If we have credentials, attempt connection
+  if (wifiSSID.length() > 0) {
+    Serial.printf("[WIFI] Connecting to '%s'", wifiSSID.c_str());
+    WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
+
+    unsigned long startAttempt = millis();
+    const unsigned long WIFI_TIMEOUT_MS = 15000; // 15 seconds
+
+    while (WiFi.status() != WL_CONNECTED && millis() - startAttempt < WIFI_TIMEOUT_MS) {
+      delay(500);
+      Serial.print(".");
+    }
+
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println(" Connected!");
+      Serial.printf("[WIFI] IP: %s | MAC: %s\n",
+                    WiFi.localIP().toString().c_str(),
+                    WiFi.macAddress().c_str());
+      return;
+    }
+
+    Serial.println(" FAILED!");
+    Serial.println("[WIFI] Could not connect. Launching WiFi Setup Wizard...");
+  }
+
+  // No credentials or connection failed — launch interactive wizard
+  runWiFiWizard();
+}
+
 
 #include <WiFiClient.h>
 
@@ -807,7 +977,7 @@ bool downloadCalibrationFromServer() {
       R0_VALUES[3] = doc["r0_mq9"].as<float>();
 
       Serial.println("[SERVER] Downloaded calibration data:");
-      Serial.printf("  MQ2: %.4f | MQ4: %.4f | MQ6: %.4f | MQ9: %.4f\n",
+      Serial.printf("  MQ2: %.4f | MQ4: %.4f | MQ6: %.4f | MQ9B: %.4f\n",
                     R0_VALUES[0], R0_VALUES[1], R0_VALUES[2], R0_VALUES[3]);
 
       saveCalibrationToNVS();
@@ -1002,13 +1172,13 @@ void loop() {
     values[4] = temp.temperature;
     values[5] = humidity.relative_humidity;
 
-    // Baca status api dari sensor Flame (Logika Biner)
-    values[6] = digitalRead(FLAME_PIN);
+    // Baca status api dari sensor Flame (Analog IR — lower value = fire)
+    values[6] = analogRead(FLAME_PIN);
 
     // ─── Serial Debug Output ───
     bool isWarmingUp = pendingAutoCalibration && (currentMillis < WARMUP_TIME_MS);
     if (isWarmingUp) {
-      const char* mqNames[] = {"MQ-2  (LPG)", "MQ-4  (CH4)", "MQ-6  (LPG)", "MQ-9  (CO) "};
+      const char* mqNames[] = {"MQ-2  (LPG)", "MQ-4  (CH4)", "MQ-6  (LPG)", "MQ-9B (CO) "};
       Serial.printf("=== SENSOR READINGS (⏳ WARMING UP: %.1f / 5.0 mins) ===\n", currentMillis / 60000.0);
       Serial.println("  [STABILIZING] MQ heaters are currently stabilizing.");
       for (int i = 0; i < NUM_MQ_SENSORS; i++) {
@@ -1018,7 +1188,7 @@ void loop() {
       }
     } else if (!burninDone) {
       Serial.printf("=== SENSOR READINGS (🔥 24H BURN-IN: %lu / 1440 mins) ===\n", cumulativeMins);
-      const char* mqNames[] = {"MQ-2  (LPG)", "MQ-4  (CH4)", "MQ-6  (LPG)", "MQ-9  (CO) "};
+      const char* mqNames[] = {"MQ-2  (LPG)", "MQ-4  (CH4)", "MQ-6  (LPG)", "MQ-9B (CO) "};
       for (int i = 0; i < NUM_MQ_SENSORS; i++) {
         int rawADC = analogRead(MQ_PINS[i]);
         Serial.printf("  %s: Raw ADC: %4d | Rs: %7.2f kOhm (Burning-in...)\n", mqNames[i], rawADC, values[i]);
@@ -1028,12 +1198,12 @@ void loop() {
       Serial.printf("  MQ-2  (LPG)  : %.2f ppm\n", values[0]);
       Serial.printf("  MQ-4  (CH4)  : %.2f ppm\n", values[1]);
       Serial.printf("  MQ-6  (LPG)  : %.2f ppm\n", values[2]);
-      Serial.printf("  MQ-9  (CO)   : %.2f ppm\n", values[3]);
+      Serial.printf("  MQ-9B (CO)   : %.2f ppm\n", values[3]);
     }
     Serial.printf("  Temp  (SHTC3): %.1f C\n", values[4]);
     Serial.printf("  Hum   (SHTC3): %.1f %%\n", values[5]);
     Serial.printf("  Flame (IR)   : %.0f %s\n", values[6],
-                  values[6] == LOW ? "[FIRE!]" : "[Safe]");
+                  values[6] < 500 ? "[FIRE!]" : "[Safe]");
     Serial.println("=======================");
 
     // ─── Local Alarm Logic ───

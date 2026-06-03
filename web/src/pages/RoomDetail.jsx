@@ -19,7 +19,7 @@ const SENSOR_CONFIG = {
   MQ5: { label: 'MQ-5 (Natural Gas)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ6: { label: 'MQ-6 (LPG)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ7: { label: 'MQ-7 (CO)', unit: 'ppm', type: 'gas', max: 4095 },
-  MQ9: { label: 'MQ-9 (CO/Methane)', unit: 'ppm', type: 'gas', max: 4095 },
+  MQ9B: { label: 'MQ-9B (CO)', unit: 'ppm', type: 'gas', max: 4095 },
   MQ135: { label: 'MQ-135 (Air Quality)', unit: 'ppm', type: 'gas', max: 4095 },
 };
 
