@@ -110,14 +110,21 @@ export default function CCTVMonitor() {
       {/* Expanded Camera Dialog - High-Tech Operator Deck */}
       <Dialog open={!!selectedCamera} onOpenChange={(open) => !open && setSelectedCamera(null)}>
         <DialogContent 
-          className="max-w-6xl w-[95vw] md:w-[90vw] p-0 border border-zinc-850 bg-zinc-950 overflow-hidden rounded-xl shadow-2xl"
+          className="w-[95vw] sm:max-w-none md:w-[90vw] md:max-w-6xl max-h-[90vh] lg:max-h-[80vh] flex flex-col p-0 border overflow-hidden rounded-xl shadow-2xl"
+          style={{
+            backgroundColor: 'var(--ifrit-bg-primary)',
+            borderColor: 'var(--ifrit-border)'
+          }}
         >
           <DialogTitle className="sr-only">Live Feed: {selectedCamera?.name}</DialogTitle>
           
           {selectedCamera && (
-            <div className="flex flex-col lg:flex-row h-full lg:h-[70vh] min-h-[500px]">
+            <div className="flex flex-col lg:flex-row h-full lg:h-[70vh] min-h-0 lg:min-h-[500px]">
               {/* Left Column: Live Feed */}
-              <div className="flex-1 bg-black flex items-center justify-center relative p-2 min-h-[300px] lg:min-h-0 border-b lg:border-b-0 lg:border-r border-zinc-900">
+              <div 
+                className="w-full h-[250px] sm:h-[350px] lg:h-auto lg:flex-1 bg-black flex items-center justify-center relative p-2 border-b lg:border-b-0 lg:border-r"
+                style={{ borderColor: 'var(--ifrit-border)' }}
+              >
                 {/* Live stream badge overlay */}
                 <div className="absolute top-4 left-4 z-30 flex items-center gap-2 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-full border border-zinc-800">
                   <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
@@ -130,67 +137,77 @@ export default function CCTVMonitor() {
               </div>
               
               {/* Right Column: Console Details & Action Panel */}
-              <div className="w-full lg:w-[350px] bg-zinc-950 p-5 flex flex-col justify-between overflow-y-auto">
+              <div 
+                className="flex-1 lg:flex-none lg:w-[350px] p-5 flex flex-col justify-between overflow-y-auto"
+                style={{ backgroundColor: 'var(--ifrit-bg-secondary)' }}
+              >
                 <div className="space-y-6">
                   {/* Title & Room */}
                   <div>
                     <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest font-mono">CCTV Operator Deck</span>
-                    <h2 className="text-lg font-bold mt-1 text-white tracking-tight">{selectedCamera.name}</h2>
+                    <h2 className="text-lg font-bold mt-1 tracking-tight" style={{ color: 'var(--ifrit-text-primary)' }}>{selectedCamera.name}</h2>
                     <div className="flex items-center gap-2 mt-2">
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 font-mono text-zinc-400">
+                      <span 
+                        className="text-[10px] px-2 py-0.5 rounded border font-mono"
+                        style={{
+                          backgroundColor: 'var(--ifrit-bg-tertiary)',
+                          borderColor: 'var(--ifrit-border)',
+                          color: 'var(--ifrit-text-secondary)'
+                        }}
+                      >
                         Room ID: {selectedCamera.room_id ? selectedCamera.room_id.slice(0, 8) : 'Unassigned'}
                       </span>
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded font-mono ${selectedCamera.status === 'online' ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-900' : 'bg-red-950/80 text-red-400 border border-red-900'}`}>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded border font-mono ${selectedCamera.status === 'online' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'}`}>
                         {selectedCamera.status.toUpperCase()}
                       </span>
                     </div>
                   </div>
                   
                   {/* Camera Telemetry Specs */}
-                  <div className="space-y-3 border-t border-zinc-900 pt-4">
-                    <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider font-mono">Telemetry Status</h3>
+                  <div className="space-y-3 border-t pt-4" style={{ borderColor: 'var(--ifrit-border)' }}>
+                    <h3 className="text-[10px] font-bold uppercase tracking-wider font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>Telemetry Status</h3>
                     <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                      <div className="bg-zinc-900/40 p-2.5 border border-zinc-900 rounded">
-                        <div className="text-[9px] text-zinc-500">FPS RATE</div>
-                        <div className="text-zinc-200 font-bold mt-0.5">25.4 FPS</div>
+                      <div className="p-2.5 border rounded" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
+                        <div className="text-[9px]" style={{ color: 'var(--ifrit-text-muted)' }}>FPS RATE</div>
+                        <div className="font-bold mt-0.5" style={{ color: 'var(--ifrit-text-primary)' }}>25.4 FPS</div>
                       </div>
-                      <div className="bg-zinc-900/40 p-2.5 border border-zinc-900 rounded">
-                        <div className="text-[9px] text-zinc-500">LATENCY</div>
-                        <div className="text-zinc-200 font-bold mt-0.5">42 ms</div>
+                      <div className="p-2.5 border rounded" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
+                        <div className="text-[9px]" style={{ color: 'var(--ifrit-text-muted)' }}>LATENCY</div>
+                        <div className="font-bold mt-0.5" style={{ color: 'var(--ifrit-text-primary)' }}>42 ms</div>
                       </div>
-                      <div className="bg-zinc-900/40 p-2.5 border border-zinc-900 rounded">
-                        <div className="text-[9px] text-zinc-500">RESOLUTION</div>
-                        <div className="text-zinc-200 font-bold mt-0.5">1280×720</div>
+                      <div className="p-2.5 border rounded" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
+                        <div className="text-[9px]" style={{ color: 'var(--ifrit-text-muted)' }}>RESOLUTION</div>
+                        <div className="font-bold mt-0.5" style={{ color: 'var(--ifrit-text-primary)' }}>1280×720</div>
                       </div>
-                      <div className="bg-zinc-900/40 p-2.5 border border-zinc-900 rounded">
-                        <div className="text-[9px] text-zinc-500">AI STREAM</div>
-                        <div className="text-red-400 font-bold mt-0.5">YOLOv8s</div>
+                      <div className="p-2.5 border rounded" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
+                        <div className="text-[9px]" style={{ color: 'var(--ifrit-text-muted)' }}>AI STREAM</div>
+                        <div className="text-red-500 font-bold mt-0.5">YOLOv8s</div>
                       </div>
                     </div>
                   </div>
 
                   {/* Trigger History Logs */}
-                  <div className="space-y-3 border-t border-zinc-900 pt-4">
-                    <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider font-mono">Trigger History</h3>
-                    <div className="space-y-1.5 font-mono text-[10px] text-zinc-400">
-                      <div className="flex justify-between items-center py-1 border-b border-zinc-900">
+                  <div className="space-y-3 border-t pt-4" style={{ borderColor: 'var(--ifrit-border)' }}>
+                    <h3 className="text-[10px] font-bold uppercase tracking-wider font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>Trigger History</h3>
+                    <div className="space-y-1.5 font-mono text-[10px]" style={{ color: 'var(--ifrit-text-secondary)' }}>
+                      <div className="flex justify-between items-center py-1 border-b" style={{ borderColor: 'var(--ifrit-border)' }}>
                         <span>[17:42:01] System Connected</span>
-                        <span className="text-emerald-500 font-semibold">OK</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">OK</span>
                       </div>
-                      <div className="flex justify-between items-center py-1 border-b border-zinc-900">
+                      <div className="flex justify-between items-center py-1 border-b" style={{ borderColor: 'var(--ifrit-border)' }}>
                         <span>[17:43:55] Heat Threshold Checked</span>
-                        <span className="text-zinc-500">NOMINAL</span>
+                        <span style={{ color: 'var(--ifrit-text-muted)' }}>NOMINAL</span>
                       </div>
-                      <div className="flex justify-between items-center py-1 border-b border-zinc-900">
+                      <div className="flex justify-between items-center py-1 border-b" style={{ borderColor: 'var(--ifrit-border)' }}>
                         <span>[17:45:10] AI Model Calibrated</span>
-                        <span className="text-emerald-500 font-semibold">READY</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">READY</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Operator Actions */}
-                <div className="space-y-2 pt-6 border-t border-zinc-900 mt-6">
+                <div className="space-y-2 pt-6 border-t mt-6" style={{ borderColor: 'var(--ifrit-border)' }}>
                   <Button 
                     className="w-full text-xs font-mono font-bold tracking-wider py-2.5 bg-red-600 hover:bg-red-700 text-white rounded border-0 transition-colors"
                     onClick={() => {
@@ -201,7 +218,11 @@ export default function CCTVMonitor() {
                   </Button>
                   <Button 
                     variant="outline" 
-                    className="w-full text-xs font-mono font-bold tracking-wider py-2.5 border-zinc-800 bg-transparent text-zinc-400 hover:text-white hover:bg-zinc-900 rounded transition-all"
+                    className="w-full text-xs font-mono font-bold tracking-wider py-2.5 border bg-transparent hover:bg-[var(--ifrit-bg-tertiary)] hover:text-[var(--ifrit-text-primary)] rounded transition-all"
+                    style={{
+                      borderColor: 'var(--ifrit-border)',
+                      color: 'var(--ifrit-text-secondary)'
+                    }}
                     onClick={() => setSelectedCamera(null)}
                   >
                     CLOSE MONITOR PANEL

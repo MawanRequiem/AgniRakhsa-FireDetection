@@ -37,8 +37,14 @@ export default function CameraFeed({ camera, onClick, hideBorder = false }) {
       {hasLiveFrame ? (
         // Inner aspect-locked wrapper for perfect bounding boxes alignment
         <div 
-          className="relative max-w-full max-h-full w-full h-full flex items-center justify-center"
-          style={{ aspectRatio: streamAspectRatio }}
+          className="relative flex items-center justify-center"
+          style={{ 
+            aspectRatio: streamAspectRatio,
+            width: '100%',
+            height: 'auto',
+            maxWidth: '100%',
+            maxHeight: '100%'
+          }}
         >
           <img 
             src={`data:image/jpeg;base64,${latestFrame.frame_b64}`} 
