@@ -11,7 +11,7 @@ const getBaseUrl = () => {
   const { hostname } = globalThis.location;
   if (hostname === 'localhost' || hostname === '127.0.0.1') return 'http://localhost:8000';
 
-  // Same-origin — Caddy proxies /api/* to backend
+  // Same-origin - Caddy proxies /api/* to backend
   return '';
 };
 

@@ -130,7 +130,7 @@ function DeviceCalibrationItem({ device }) {
     }
   };
 
-  const formatNumber = (val) => val != null ? Number(val).toFixed(2) : '—';
+  const formatNumber = (val) => val != null ? Number(val).toFixed(2) : '-';
   
   // Calculate burn-in progress percentage
   const createdTime = localDevice?.created_at ? new Date(localDevice.created_at).getTime() : Date.now();
@@ -161,7 +161,7 @@ function DeviceCalibrationItem({ device }) {
             </span>
           </div>
           <p className="text-[10px] font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>
-            MAC: {localDevice.mac_address || '—'}
+            MAC: {localDevice.mac_address || '-'}
           </p>
         </div>
         <div className="text-right">

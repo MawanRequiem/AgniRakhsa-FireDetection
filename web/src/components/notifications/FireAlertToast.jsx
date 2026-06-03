@@ -3,7 +3,7 @@ import { X, AlertTriangle, Flame, MapPin, Volume2, VolumeX } from 'lucide-react'
 import { useEffect, useState } from 'react';
 
 /**
- * FireAlertToast — Full-screen overlay toast for critical fire detections.
+ * FireAlertToast - Full-screen overlay toast for critical fire detections.
  * 
  * Renders as a stack of animated toast cards at the top-right corner.
  * Critical alerts get a pulsing red border; high alerts get orange.

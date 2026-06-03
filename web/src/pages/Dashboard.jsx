@@ -87,13 +87,21 @@ export default function Dashboard() {
   });
 
   let statusValue = "All Systems Safe";
-  let statusSubtext = "Monitoring active — no threats";
+  let statusSubtext = "Monitoring active - no threats";
   let statusColor = "green";
   let StatusIcon = Activity;
+
+  const roomStatus = summary.room_status_counts || {};
+  const criticalRooms = roomStatus.critical || 0;
 
   if (summary.activeAlerts > 0) {
     statusValue = "Critical Alerts";
     statusSubtext = `${summary.activeAlerts} alerts need attention`;
+    statusColor = "red";
+    StatusIcon = BellRing;
+  } else if (criticalRooms > 0) {
+    statusValue = "Critical Status";
+    statusSubtext = `${criticalRooms} zones in critical status`;
     statusColor = "red";
     StatusIcon = BellRing;
   } else if (summary.highRiskRooms > 0) {
@@ -139,14 +147,14 @@ export default function Dashboard() {
         />
         <MetricCard 
           title="Highest Temperature" 
-          value={maxTemp > -Infinity ? `${maxTemp.toFixed(1)}°C` : '—'} 
+          value={maxTemp > -Infinity ? `${maxTemp.toFixed(1)}°C` : '-'} 
           subtext={maxTempNodeId ? `Zone: ${getNodeRoomName(maxTempNodeId)}` : 'Awaiting Data'}
           icon={Thermometer} 
           color={maxTemp > 35 ? "red" : "default"} 
         />
         <MetricCard 
           title="Highest Gas Level" 
-          value={maxGas > -Infinity ? `${maxGas.toFixed(0)} ppm` : '—'} 
+          value={maxGas > -Infinity ? `${maxGas.toFixed(0)} ppm` : '-'} 
           subtext={maxGasNodeId ? `Zone: ${getNodeRoomName(maxGasNodeId)}` : 'Awaiting Data'}
           icon={Wind} 
           color={maxGas > 800 ? "red" : "default"}

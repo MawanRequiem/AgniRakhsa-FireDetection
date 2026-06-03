@@ -112,7 +112,7 @@ export default function DeviceCalibrationDialog({ open, onOpenChange, device }) 
     }
   };
 
-  const formatNumber = (val) => val != null ? Number(val).toFixed(2) : '—';
+  const formatNumber = (val) => val != null ? Number(val).toFixed(2) : '-';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

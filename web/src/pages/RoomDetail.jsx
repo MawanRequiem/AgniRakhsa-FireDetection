@@ -186,7 +186,7 @@ export default function RoomDetail() {
             <h1 className="text-3xl font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>{room.name}</h1>
             
             <span className="text-xs px-2 py-1 rounded font-mono mt-1" style={{ backgroundColor: 'var(--ifrit-bg-secondary)', color: 'var(--ifrit-text-secondary)' }}>
-              Location: {room.floor || room.building_name || '—'}
+              Location: {room.floor || room.building_name || '-'}
             </span>
           </div>
         </div>

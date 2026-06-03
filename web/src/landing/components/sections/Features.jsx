@@ -3,7 +3,7 @@ import ScrollReveal from '@landing/components/ui/ScrollReveal';
 import SectionHeading from '@landing/components/ui/SectionHeading';
 
 const featureVisuals = [
-  // AI Vision — large hero-style visual
+  // AI Vision - large hero-style visual
   (feature) => (
     <div className="relative rounded-[var(--radius-lg)] overflow-hidden bg-dark-surface aspect-video flex items-center justify-center group">
       {/* Simulated CCTV overlay */}
@@ -34,7 +34,7 @@ const featureVisuals = [
     </div>
   ),
 
-  // Sensor Fusion — data readout style
+  // Sensor Fusion - data readout style
   (feature) => (
     <div className="relative rounded-[var(--radius-lg)] overflow-hidden bg-dark-surface p-6 flex flex-col gap-4">
       <span className="font-display text-xs font-semibold tracking-[0.15em] text-ifrit-amber uppercase">
@@ -72,7 +72,7 @@ const featureVisuals = [
     </div>
   ),
 
-  // Real-time Alerting — notification mockup
+  // Real-time Alerting - notification mockup
   (feature) => (
     <div className="relative rounded-[var(--radius-lg)] overflow-hidden bg-dark-surface p-6 flex flex-col gap-3">
       <span className="font-display text-xs font-semibold tracking-[0.15em] text-green-400 uppercase">
@@ -80,10 +80,10 @@ const featureVisuals = [
       </span>
       {/* Alert notifications */}
       {[
-        { time: '14:32:01', msg: '⚠️ Smoke detected — Zone B3', type: 'alert' },
+        { time: '14:32:01', msg: '⚠️ Smoke detected - Zone B3', type: 'alert' },
         { time: '14:32:03', msg: '📱 WhatsApp alert sent to 3 contacts', type: 'sent' },
-        { time: '14:32:05', msg: '🖥️ Dashboard updated — live cam active', type: 'info' },
-        { time: '14:32:08', msg: '✅ Security team notified — ETA 90s', type: 'success' },
+        { time: '14:32:05', msg: '🖥️ Dashboard updated - live cam active', type: 'info' },
+        { time: '14:32:08', msg: '✅ Security team notified - ETA 90s', type: 'success' },
       ].map((notif, i) => (
         <div
           key={i}

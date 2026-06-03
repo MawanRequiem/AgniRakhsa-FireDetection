@@ -122,7 +122,7 @@ export default function DeviceManagement() {
   };
 
   const formatTime = (isoStr) => {
-    if (!isoStr) return '—';
+    if (!isoStr) return '-';
     return new Date(isoStr).toLocaleString('en-US', {
       day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
     });
@@ -135,12 +135,12 @@ export default function DeviceManagement() {
         style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}
       >
         <SelectValue>
-          {currentRoomId ? (getRoomName(currentRoomId) || 'Unknown Room') : '— Unassigned —'}
+          {currentRoomId ? (getRoomName(currentRoomId) || 'Unknown Room') : '- Unassigned -'}
         </SelectValue>
       </SelectTrigger>
       <SelectContent style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)' }}>
         <SelectItem value="none">
-          <span style={{ color: 'var(--ifrit-text-muted)' }}>— Unassigned —</span>
+          <span style={{ color: 'var(--ifrit-text-muted)' }}>- Unassigned -</span>
         </SelectItem>
         {rooms.map((room) => (
           <SelectItem key={room.id} value={room.id}>
@@ -314,11 +314,11 @@ export default function DeviceManagement() {
                       <TableCell><span className="font-medium text-sm" style={{ color: 'var(--ifrit-text-primary)' }}>{dev.name}</span></TableCell>
                       <TableCell>
                         <span className="text-xs font-mono px-2 py-1 rounded" style={{ backgroundColor: 'var(--ifrit-bg-primary)', color: 'var(--ifrit-text-secondary)' }}>
-                          {dev.mac_address || '—'}
+                          {dev.mac_address || '-'}
                         </span>
                       </TableCell>
                       <TableCell><RoomSelector currentRoomId={dev.room_id} onChange={(val) => handleDeviceRoomChange(dev.id, val)} /></TableCell>
-                      <TableCell><span className="text-xs font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>{dev.firmware_version || '—'}</span></TableCell>
+                      <TableCell><span className="text-xs font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>{dev.firmware_version || '-'}</span></TableCell>
                       <TableCell><span className="text-xs font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>{formatTime(dev.last_seen)}</span></TableCell>
                       <TableCell className="text-right">
                         <Button 

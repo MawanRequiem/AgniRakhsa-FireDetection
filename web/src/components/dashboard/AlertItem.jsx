@@ -59,7 +59,7 @@ export default function AlertItem({ alert, compact = false }) {
             ? new Date(alert.created_at).toLocaleString('en-US', {
                 day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
               })
-            : '—'
+            : '-'
           }
         </span>
       </div>

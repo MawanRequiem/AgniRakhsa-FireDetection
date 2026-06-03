@@ -2,12 +2,12 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 
 // Extended color palette for all possible sensor types
 const SENSOR_COLORS = {
-  MQ2: '#F59E0B',    // amber  — Smoke / LPG
-  MQ4: '#3b82f6',    // blue   — Methane
-  MQ5: '#8b5cf6',    // violet — Natural Gas / LPG
-  MQ7: '#ef4444',    // red    — Carbon Monoxide
-  MQ9B: '#06b6d4',   // cyan   — CO + Methane
-  MQ135: '#ec4899',  // pink   — Air Quality
+  MQ2: '#F59E0B',    // amber  - Smoke / LPG
+  MQ4: '#3b82f6',    // blue   - Methane
+  MQ5: '#8b5cf6',    // violet - Natural Gas / LPG
+  MQ7: '#ef4444',    // red    - Carbon Monoxide
+  MQ9B: '#06b6d4',   // cyan   - CO + Methane
+  MQ135: '#ec4899',  // pink   - Air Quality
   SHTC3_TEMP: '#f97316',     // orange
   SHTC3_HUMIDITY: '#10b981', // emerald
   // Legacy keys for backwards compat

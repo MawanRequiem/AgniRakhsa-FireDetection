@@ -2,16 +2,16 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* IFRIT — Plus Jakarta Sans + JetBrains Mono */
+/* IFRIT - Plus Jakarta Sans + JetBrains Mono */
 
 @custom-variant dark (&:is(.dark *));
 
 /* ==============================
-   IFRIT — Monitoring Dashboard Theme
+   IFRIT - Monitoring Dashboard Theme
    ============================== */
 
 :root {
-    /* Base Shadcn tokens — Light Mode */
+    /* Base Shadcn tokens - Light Mode */
     --background: oklch(1 0 0);
     --foreground: oklch(0.14 0.01 260);
     --card: oklch(1 0 0);
@@ -59,7 +59,7 @@
 }
 
 .dark {
-    /* Base Shadcn tokens — Dark Mode */
+    /* Base Shadcn tokens - Dark Mode */
     --background: oklch(0.14 0.01 260);
     --foreground: oklch(0.98 0 0);
     --card: oklch(0.14 0.01 260);

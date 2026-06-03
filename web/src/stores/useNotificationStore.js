@@ -134,7 +134,7 @@ function _playAlarmSound(severity) {
       }, 600);
     }
   } catch (e) {
-    // Web Audio API not available — silently ignore
+    // Web Audio API not available - silently ignore
     console.debug('Audio notification not available:', e.message);
   }
 }

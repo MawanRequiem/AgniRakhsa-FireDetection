@@ -152,7 +152,7 @@ export default function AddCameraDialog({ open, onOpenChange, rooms, onSuccess }
                   borderColor: 'var(--ifrit-border)',
                 }}
               >
-                <SelectItem value="none">— No Room —</SelectItem>
+                <SelectItem value="none">- No Room -</SelectItem>
                 {(rooms || []).map((room) => (
                   <SelectItem key={room.id} value={room.id}>
                     {room.name}

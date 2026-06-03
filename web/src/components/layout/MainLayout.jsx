@@ -23,10 +23,10 @@ export default function MainLayout() {
 
   return (
     <div className="min-h-screen text-[var(--ifrit-text-primary)]" style={{ backgroundColor: 'var(--ifrit-bg-secondary)' }}>
-      {/* Fire Alert Toast — renders above all content */}
+      {/* Fire Alert Toast - renders above all content */}
       <FireAlertToast />
 
-      {/* Mobile Overlay — solid dark, no blur */}
+      {/* Mobile Overlay - solid dark, no blur */}
       {!collapsed && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity"

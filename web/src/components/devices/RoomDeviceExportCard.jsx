@@ -125,7 +125,7 @@ export default function RoomDeviceExportCard({ roomId, devices }) {
           >
             <option value="all">All Devices (Room Total)</option>
             {devices.map(dev => (
-              <option key={dev.id} value={dev.id}>{dev.name} ({dev.mac_address || '—'})</option>
+              <option key={dev.id} value={dev.id}>{dev.name} ({dev.mac_address || '-'})</option>
             ))}
           </select>
         </div>

@@ -130,7 +130,7 @@ export default function Alerts() {
               </TableRow>
             ) : alerts.length > 0 ? (
               alerts.map(alert => {
-                const roomName = roomMap[alert.room_id] || alert.room_id || '—';
+                const roomName = roomMap[alert.room_id] || alert.room_id || '-';
                 const isCritical = alert.severity === 'critical' || alert.severity === 'high';
                 
                 return (
