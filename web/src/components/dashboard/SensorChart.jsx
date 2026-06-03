@@ -68,18 +68,36 @@ const parseDateStr = (timeStr) => {
   return isNaN(d.getTime()) ? null : d;
 };
 
-const mergeChartData = (rawData) => {
+const getBucketTime = (timeStr, timeRange) => {
+  const d = parseDateStr(timeStr);
+  if (!d) return timeStr;
+  
+  if (timeRange === '1H') {
+    // 1-minute bucket
+    d.setSeconds(0, 0);
+  } else if (timeRange === '24H') {
+    // 5-minute bucket
+    const mins = d.getMinutes();
+    d.setMinutes(Math.floor(mins / 5) * 5, 0, 0);
+  } else if (timeRange === '7D') {
+    // 1-hour bucket
+    d.setMinutes(0, 0, 0);
+  } else {
+    // '30D' -> 4-hour bucket
+    d.setMinutes(0, 0, 0);
+    const hours = d.getHours();
+    d.setHours(Math.floor(hours / 4) * 4);
+  }
+  return d.toISOString();
+};
+
+const mergeChartData = (rawData, timeRange = '1H') => {
   if (!rawData || rawData.length === 0) return [];
   const map = new Map();
   for (const point of rawData) {
     if (!point.time) continue;
     
-    let timeKey = point.time;
-    const twoDigitYearRegex = /^(\d{2})-(\d{2})-(\d{2})([T\s])/;
-    if (twoDigitYearRegex.test(timeKey)) {
-      timeKey = '20' + timeKey;
-    }
-    timeKey = timeKey.replace(' ', 'T');
+    const timeKey = getBucketTime(point.time, timeRange);
     
     if (!map.has(timeKey)) {
       map.set(timeKey, { ...point, time: timeKey });
@@ -145,7 +163,7 @@ const CustomTooltip = ({ active, payload, label, timeRange = '1H' }) => {
 };
 
 export default function SensorChart({ data, sensors = [], timeRange = '1H', height = 280 }) {
-  const mergedData = useMemo(() => mergeChartData(data), [data]);
+  const mergedData = useMemo(() => mergeChartData(data, timeRange), [data, timeRange]);
 
   const chartSensors = useMemo(() => {
     const keys = new Set(sensors);
@@ -216,15 +234,16 @@ export default function SensorChart({ data, sensors = [], timeRange = '1H', heig
           <Tooltip content={<CustomTooltip timeRange={timeRange} />} />
           <Legend 
             verticalAlign="top"
-            align="left"
+            align="right"
             iconType="circle"
-            iconSize={8}
-            formatter={(value) => (
-              <span className="text-[11px] font-medium tracking-wide" style={{ color: 'var(--ifrit-text-secondary)', fontFamily: "'Outfit', sans-serif" }}>
-                {getLabel(value)}
-              </span>
-            )}
-            wrapperStyle={{ paddingBottom: '16px', paddingLeft: '10px' }}
+            iconSize={6}
+            formatter={(value) => getLabel(value)}
+            wrapperStyle={{ 
+              fontSize: '10px', 
+              fontFamily: "'Outfit', sans-serif", 
+              color: 'var(--ifrit-text-secondary)',
+              paddingBottom: '12px'
+            }}
           />
           {chartSensors.map((key, index) => {
             const isRaw = key.toLowerCase().includes('flame');

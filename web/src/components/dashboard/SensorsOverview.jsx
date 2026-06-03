@@ -51,18 +51,36 @@ const parseDateStr = (timeStr) => {
   return isNaN(d.getTime()) ? null : d;
 };
 
-const mergeChartData = (rawData) => {
+const getBucketTime = (timeStr, timeRange) => {
+  const d = parseDateStr(timeStr);
+  if (!d) return timeStr;
+  
+  if (timeRange === '1H') {
+    // 1-minute bucket
+    d.setSeconds(0, 0);
+  } else if (timeRange === '24H') {
+    // 5-minute bucket
+    const mins = d.getMinutes();
+    d.setMinutes(Math.floor(mins / 5) * 5, 0, 0);
+  } else if (timeRange === '7D') {
+    // 1-hour bucket
+    d.setMinutes(0, 0, 0);
+  } else {
+    // '30D' -> 4-hour bucket
+    d.setMinutes(0, 0, 0);
+    const hours = d.getHours();
+    d.setHours(Math.floor(hours / 4) * 4);
+  }
+  return d.toISOString();
+};
+
+const mergeChartData = (rawData, timeRange = '1H') => {
   if (!rawData || rawData.length === 0) return [];
   const map = new Map();
   for (const point of rawData) {
     if (!point.time) continue;
     
-    let timeKey = point.time;
-    const twoDigitYearRegex = /^(\d{2})-(\d{2})-(\d{2})([T\s])/;
-    if (twoDigitYearRegex.test(timeKey)) {
-      timeKey = '20' + timeKey;
-    }
-    timeKey = timeKey.replace(' ', 'T');
+    const timeKey = getBucketTime(point.time, timeRange);
     
     if (!map.has(timeKey)) {
       map.set(timeKey, { ...point, time: timeKey });
@@ -100,7 +118,7 @@ function getLabel(key) {
 export default function SensorsOverview({ timeRange = '1H' }) {
   const sensorHistory = useDashboardStore((state) => state.sensorHistory);
 
-  const mergedHistory = useMemo(() => mergeChartData(sensorHistory), [sensorHistory]);
+  const mergedHistory = useMemo(() => mergeChartData(sensorHistory, timeRange), [sensorHistory, timeRange]);
 
   const sensorKeys = useMemo(() => {
     if (!mergedHistory || mergedHistory.length === 0) return [];
@@ -211,15 +229,16 @@ export default function SensorsOverview({ timeRange = '1H' }) {
           />
           <Legend 
             verticalAlign="top"
-            align="left"
+            align="right"
             iconType="circle"
-            iconSize={8}
-            formatter={(value) => (
-              <span className="text-[11px] font-medium tracking-wide" style={{ color: 'var(--ifrit-text-secondary)', fontFamily: "'Outfit', sans-serif" }}>
-                {getLabel(value)}
-              </span>
-            )}
-            wrapperStyle={{ paddingBottom: '16px', paddingLeft: '10px' }}
+            iconSize={6}
+            formatter={(value) => getLabel(value)}
+            wrapperStyle={{ 
+              fontSize: '10px', 
+              fontFamily: "'Outfit', sans-serif", 
+              color: 'var(--ifrit-text-secondary)',
+              paddingBottom: '12px'
+            }}
           />
           {sensorKeys.map((key) => {
             const isRaw = key.toLowerCase().includes('flame');
