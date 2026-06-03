@@ -629,7 +629,6 @@ void connectWiFi() {
 void beginHttp(HTTPClient &http, WiFiClientSecure &secureClient, WiFiClient &plainClient, const String &url) {
   if (url.startsWith("https://")) {
     secureClient.setInsecure();
-    secureClient.setBufferSizes(4096, 2048); // Set SSL buffers to 4KB RX / 2KB TX to save heap
     http.begin(secureClient, url);
   } else {
     http.begin(plainClient, url);
@@ -1104,7 +1103,6 @@ void setup() {
   Serial.println("\n[BOOT] Step 2.5: Syncing device's time");
   syncTime();
   secureClient.setInsecure();
-  secureClient.setBufferSizes(4096, 2048); // Set SSL buffers to 4KB RX / 2KB TX to save heap
 
   // ─── Provision with backend ───
   Serial.println("\n[BOOT] Step 3: Provisioning device...");
