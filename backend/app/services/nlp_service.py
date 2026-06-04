@@ -3,8 +3,30 @@ import numpy as np
 import os
 import re
 import string
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.sequence import pad_sequences
+try:
+    # pyrefly: ignore [missing-import]
+    from tensorflow.keras.models import load_model
+except ImportError:
+    try:
+        from keras.models import load_model
+    except ImportError:
+        import tensorflow as tf
+        load_model = tf.keras.models.load_model
+
+try:
+    # pyrefly: ignore [missing-import]
+    from tensorflow.keras.preprocessing.sequence import pad_sequences
+except ImportError:
+    try:
+        from keras.preprocessing.sequence import pad_sequences
+    except ImportError:
+        try:
+            # pyrefly: ignore [missing-import]
+            from tensorflow.keras.utils import pad_sequences
+        except ImportError:
+            import tensorflow as tf
+            pad_sequences = tf.keras.preprocessing.sequence.pad_sequences
+
 from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
 
 class NLPService:

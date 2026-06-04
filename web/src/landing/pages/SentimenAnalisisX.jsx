@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Flame, Send, BarChart3, Activity,
@@ -20,13 +20,33 @@ const THEME = {
   konflik: { color: '#a855f7', label: 'VIRAL/ENGAGEMENT', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
 };
 
+const formatTweetDate = (dateStr) => {
+  if (!dateStr) return '';
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+      return dateStr;
+    }
+    return new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(date) + ' WIB';
+  } catch (e) {
+    return dateStr;
+  }
+};
+
 export default function SentimenAnalisisX() {
   const [reportText, setReportText] = useState('');
   const [loading, setLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [stats, setStats] = useState({ negative: 0, positive: 0, netral: 0, konflik: 0 });
   const [activeFilter, setActiveFilter] = useState('all');
-  const [activeMode, setActiveMode] = useState('manual'); // 'manual' or 'x'
+  const [activeMode, setActiveMode] = useState('x'); // 'x' or 'manual' default to X
   const [searchQuery, setSearchQuery] = useState('kebakaran');
   const [xResults, setXResults] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -39,11 +59,50 @@ export default function SentimenAnalisisX() {
   const [historyResults, setHistoryResults] = useState([]);
   const [fetchingHistory, setFetchingHistory] = useState(false);
 
+  // Dropdown States and Ref
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+  
+  const modes = [
+    { id: 'x', label: 'SENTIMEN DATA TWITTER/X', icon: Activity },
+    { id: 'manual', label: 'LAPORAN MANUAL', icon: Send }
+  ];
+
+  const currentMode = useMemo(() => {
+    return modes.find(m => m.id === activeMode) || modes[0];
+  }, [activeMode]);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   const displayResults = useMemo(() => {
-    const source = xResults.length > 0 ? xResults : historyResults;
-    if (activeFilter === 'all') return source;
-    return source.filter(item => item.finalKey === activeFilter);
-  }, [xResults, historyResults, activeFilter]);
+    // If we have live X crawling results and are in X mode, show them
+    if (activeMode === 'x' && xResults.length > 0) {
+      if (activeFilter === 'all') return xResults;
+      return xResults.filter(item => item.finalKey === activeFilter);
+    }
+    
+    // Otherwise, show historical results filtered by active mode
+    const filteredHistory = historyResults.filter(item => {
+      if (activeMode === 'manual') {
+        return item.source === 'manual';
+      } else {
+        return item.source === 'x_crawl';
+      }
+    });
+
+    if (activeFilter === 'all') return filteredHistory;
+    return filteredHistory.filter(item => item.finalKey === activeFilter);
+  }, [xResults, historyResults, activeFilter, activeMode]);
 
   const chartData = useMemo(() => [
     { name: 'Negative', value: stats.negative || 1, color: THEME.negative.color },
@@ -87,6 +146,7 @@ export default function SentimenAnalisisX() {
       });
       setStats(prev => ({ ...prev, [finalKey]: prev[finalKey] + 1 }));
       setReportText('');
+      fetchHistory(); // Refresh the list of recent reports immediately
     } catch (error) {
       console.error("Error:", error);
       alert(`Analisis Gagal: ${error.message}`);
@@ -170,6 +230,7 @@ export default function SentimenAnalisisX() {
           likes: item.tweet_likes || 0,
           retweets: item.tweet_retweets || 0,
           views: item.tweet_views || 0,
+          created_at: item.tweet_created_at || item.created_at || "",
           finalKey: uiKey,
           theme: THEME[uiKey] || THEME.konflik,
           source: item.source,
@@ -197,7 +258,7 @@ export default function SentimenAnalisisX() {
   return (
     <div className="section-dark min-h-screen pt-32 pb-20">
       <div className="container-wide">
-        <ScrollReveal>
+        <ScrollReveal className="relative z-30">
           <div className="text-center mb-16 space-y-6">
             <h1 className="text-5xl md:text-7xl font-display font-bold text-white leading-tight">
               SENTIMEN <span className="text-ifrit-red">ANALISIS X</span>
@@ -206,34 +267,52 @@ export default function SentimenAnalisisX() {
               Validasi laporan kebakaran secara instan menggunakan arsitektur Bi-LSTM.
             </p>
 
-            <div className="flex justify-center gap-4 mt-8">
-              {[
-                { id: 'manual', label: 'LAPORAN MANUAL', icon: Send },
-                { id: 'x', label: 'CRAWL DATA X', icon: Activity }
-              ].map(mode => (
-                <button
-                  key={mode.id}
-                  onClick={() => {
-                    setActiveMode(mode.id);
-                    setAnalysisResult(null);
-                    setXResults([]);
-                  }}
-                  className={`px-8 py-3 rounded-full flex items-center gap-3 font-bold text-xs tracking-widest transition-all cursor-pointer border ${activeMode === mode.id
-                      ? 'bg-ifrit-red border-ifrit-red text-white shadow-[0_0_20px_rgba(239,68,68,0.3)]'
-                      : 'bg-transparent border-white/10 text-text-on-dark-muted hover:border-white/30'
-                    }`}
-                >
-                  <mode.icon size={16} />
-                  {mode.label}
-                </button>
-              ))}
+            <div className="relative inline-block text-left mt-8 z-[60] w-full max-w-[340px]" ref={dropdownRef}>
+              <button
+                type="button"
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="w-full px-6 py-4 bg-dark-surface/80 backdrop-blur-md border border-white/10 rounded-full flex items-center justify-between gap-3 font-bold text-xs tracking-widest text-white shadow-2xl transition-all cursor-pointer hover:border-ifrit-red/50 hover:shadow-[0_0_25px_rgba(239,68,68,0.2)]"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <currentMode.icon size={16} className="text-ifrit-red animate-pulse shrink-0" />
+                  <span className="truncate">{currentMode.label}</span>
+                </div>
+                <ChevronDown size={16} className={`transition-transform duration-300 shrink-0 ${dropdownOpen ? 'rotate-180 text-ifrit-red' : 'text-text-on-dark-muted'}`} />
+              </button>
+
+              {dropdownOpen && (
+                <div className="absolute left-0 mt-3 w-full bg-dark-surface/95 backdrop-blur-lg border border-white/10 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.6)] p-2 space-y-1.5 z-[70]">
+                  {modes.map(mode => {
+                    const isSelected = activeMode === mode.id;
+                    return (
+                      <button
+                        key={mode.id}
+                        onClick={() => {
+                          setActiveMode(mode.id);
+                          setAnalysisResult(null);
+                          setXResults([]);
+                          setDropdownOpen(false);
+                        }}
+                        className={`w-full px-5 py-3.5 rounded-xl flex items-center gap-3 font-bold text-xs tracking-widest transition-all cursor-pointer text-left border ${
+                          isSelected
+                            ? 'bg-ifrit-red border-ifrit-red text-white shadow-[0_0_15px_rgba(239,68,68,0.3)]'
+                            : 'bg-transparent border-transparent text-text-on-dark-muted hover:bg-white/5 hover:text-white hover:border-white/10'
+                        }`}
+                      >
+                        <mode.icon size={14} className={isSelected ? 'text-white' : 'opacity-60'} />
+                        <span>{mode.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </ScrollReveal>
 
         <div className="grid lg:grid-cols-12 gap-12 items-start">
           <div className="lg:col-span-7 space-y-10">
-            <ScrollReveal delay={100}>
+            <ScrollReveal delay={100} className="relative z-10">
               {activeMode === 'manual' ? (
                 <form onSubmit={handleAnalyze} className="bg-dark-surface border border-dark-border p-8 rounded-2xl shadow-2xl space-y-6">
                   <div className="flex items-center gap-2 text-text-on-dark-muted">
@@ -403,6 +482,14 @@ export default function SentimenAnalisisX() {
                         "{tweet.text}"
                       </p>
 
+                      {/* Date/Time */}
+                      {tweet.created_at && (
+                        <div className="flex items-center gap-1 text-[10px] text-white/40 font-medium relative z-10 mt-0.5">
+                          <Calendar size={10} className="opacity-60" />
+                          <span>{formatTweetDate(tweet.created_at)}</span>
+                        </div>
+                      )}
+
                       {/* Engagement metrics */}
                       <div className="flex items-center gap-4 text-white/20 text-[10px] font-bold relative z-10 mt-1">
                         {tweet.likes > 0 && <span className="flex items-center gap-1"><Heart size={10} /> {tweet.likes}</span>}
@@ -425,7 +512,7 @@ export default function SentimenAnalisisX() {
           </div>
 
           <div className="lg:col-span-5 space-y-6">
-            <ScrollReveal delay={200}>
+            <ScrollReveal delay={200} className="relative z-10">
               <div className="bg-dark-surface border border-dark-border p-8 rounded-2xl shadow-2xl">
                 <div className="h-[280px] w-full mb-10">
                   <ResponsiveContainer width="100%" height="100%">
@@ -479,14 +566,14 @@ export default function SentimenAnalisisX() {
                 </div>
                 <h2 className="text-4xl font-display font-bold text-white italic">LAPORAN <span className="opacity-30">TERKINI</span></h2>
               </div>
-              <div className="flex flex-wrap gap-2 p-1.5 bg-white/5 rounded-xl border border-white/10">
+              <div className="flex items-center gap-2 p-1.5 bg-white/5 rounded-xl border border-white/10 overflow-x-auto scrollbar-none w-full md:w-auto max-w-full flex-nowrap md:flex-wrap">
                 {['all', 'negative', 'positive', 'netral', 'konflik'].map((f) => (
                   <button
                     key={f}
                     onClick={() => setActiveFilter(f)}
-                    className={`px-5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${activeFilter === f
-                        ? 'bg-ifrit-red text-white'
-                        : 'text-text-on-dark-muted hover:text-white'
+                    className={`px-5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer whitespace-nowrap ${activeFilter === f
+                        ? 'bg-ifrit-red text-white shadow-[0_0_12px_rgba(239,68,68,0.2)]'
+                        : 'text-text-on-dark-muted hover:text-white hover:bg-white/5'
                       }`}
                   >
                     {f === 'all' ? 'SEMUA' : THEME[f]?.label || f}
@@ -526,6 +613,14 @@ export default function SentimenAnalisisX() {
                       <p className="text-text-on-dark-muted text-sm italic leading-relaxed group-hover:text-white transition-colors mb-4 line-clamp-3">
                         "{item.text}"
                       </p>
+
+                      {/* Date/Time */}
+                      {item.created_at && (
+                        <div className="flex items-center gap-1 text-[9px] text-white/40 font-medium mb-3">
+                          <Calendar size={10} className="opacity-50" />
+                          <span>{formatTweetDate(item.created_at)}</span>
+                        </div>
+                      )}
 
                       {/* Engagement stats for X results */}
                       {(item.likes > 0 || item.retweets > 0 || item.views > 0) && (
@@ -572,6 +667,16 @@ const scrollbarStyles = `
   }
   .overflow-y-auto::-webkit-scrollbar-thumb:hover {
     background: rgba(239, 68, 68, 0.4);
+  }
+  
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .scrollbar-none {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
   }
 `;
 

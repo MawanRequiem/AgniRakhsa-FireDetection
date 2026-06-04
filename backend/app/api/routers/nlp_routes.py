@@ -4,6 +4,7 @@ from app.core.db import supabase
 from typing import Optional
 from datetime import datetime
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +54,61 @@ def _save_sentiment(record: dict):
         logging.getLogger(__name__).error(f"Gagal menyimpan sentimen: {e}")
 
 
+def _parse_tweet_date(raw_date) -> Optional[str]:
+    """Parse format tanggal tweet dari berbagai variasi format GetXAPI ke ISO format."""
+    if not raw_date:
+        return None
+    
+    if isinstance(raw_date, (int, float)):
+        try:
+            if raw_date > 9999999999:
+                raw_date = raw_date / 1000.0
+            return datetime.fromtimestamp(raw_date).isoformat()
+        except:
+            return None
+
+    raw_date_str = str(raw_date).strip()
+    if not raw_date_str:
+        return None
+
+    raw_date_str = re.sub(r'\s+', ' ', raw_date_str)
+
+    # 1. Standard Twitter format: "Sun Jan 25 13:05:46 +0000 2026"
+    try:
+        return datetime.strptime(raw_date_str, "%a %b %d %H:%M:%S %z %Y").isoformat()
+    except Exception:
+        pass
+
+    # 2. Alternative Twitter format without timezone offset
+    try:
+        clean_tz = re.sub(r'[\+\-]\d{4}\s', '', raw_date_str)
+        return datetime.strptime(clean_tz, "%a %b %d %H:%M:%S %Y").isoformat()
+    except Exception:
+        pass
+
+    # 3. ISO 8601 format
+    try:
+        iso_str = raw_date_str.replace("Z", "+00:00")
+        return datetime.fromisoformat(iso_str).isoformat()
+    except Exception:
+        pass
+
+    # 4. YYYY-MM-DD HH:MM:SS format
+    try:
+        return datetime.strptime(raw_date_str, "%Y-%m-%d %H:%M:%S").isoformat()
+    except Exception:
+        pass
+
+    return None
+
+
+from pydantic import BaseModel
+
+class AnalyzePayload(BaseModel):
+    text: str
+
 @router.post("/analyze")
-async def analyze_report(payload: dict):
+async def analyze_report(payload: AnalyzePayload):
     """
     Endpoint untuk menganalisis teks laporan manual dari user.
     Hasilnya disimpan ke database.
@@ -65,7 +119,7 @@ async def analyze_report(payload: dict):
             detail="NLP service belum tersedia di server."
         )
 
-    text = payload.get("text")
+    text = payload.text
     if not text:
         raise HTTPException(status_code=400, detail="Teks laporan tidak boleh kosong")
     
@@ -194,14 +248,9 @@ async def analyze_x_reports(
             tweet_id_str = t.get("id") or t.get("tweet_id") or str(i)
             tweet_lang = t.get("lang") or ""
             
-            # Parse created_at dari GetXAPI (format: "Sun Jan 25 13:05:46 +0000 2026")
+            # Parse created_at dari GetXAPI dengan parser tangguh
             tweet_created = t.get("createdAt") or t.get("created_at")
-            tweet_created_at = None
-            if tweet_created:
-                try:
-                    tweet_created_at = datetime.strptime(tweet_created, "%a %b %d %H:%M:%S %z %Y").isoformat()
-                except:
-                    tweet_created_at = None
+            tweet_created_at = _parse_tweet_date(tweet_created)
 
             # Simpan ke database
             _save_sentiment({

@@ -103,10 +103,10 @@ export default function Header() {
       {/* Mobile Menu */}
       <div
         className={`
-          md:hidden overflow-hidden
+          md:hidden overflow-y-auto
           transition-all duration-[var(--duration-normal)] ease-[var(--ease-out-quart)]
-          bg-dark-bg/98 backdrop-blur-lg border-t border-dark-border/30
-          ${mobileOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}
+          bg-dark-bg/98 backdrop-blur-lg border-b border-dark-border/30
+          ${mobileOpen ? 'max-h-[85vh] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}
         `.replace(/\s+/g, ' ').trim()}
       >
         <div className="container-wide py-6 flex flex-col gap-4">
