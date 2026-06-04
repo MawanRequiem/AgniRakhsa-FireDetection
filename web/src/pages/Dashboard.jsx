@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Building2, Activity, BellRing, Route, HardDrive, Thermometer, Wind } from 'lucide-react';
@@ -31,11 +31,20 @@ export default function Dashboard() {
 
   const { rooms, fetchRooms } = useRoomsStore();
 
+  const [selectedDevice, setSelectedDevice] = useState('ALL');
+  const [timeRange, setTimeRange] = useState('1H');
+
+  const minutesMap = { '1H': 60, '24H': 1440, '7D': 10080, '30D': 43200 };
+
+  useEffect(() => {
+    const mins = minutesMap[timeRange] || 60;
+    fetchSensorHistory(selectedDevice, mins);
+  }, [selectedDevice, timeRange, fetchSensorHistory]);
+
   useEffect(() => {
     fetchSummary();
     fetchRecentAlerts();
     fetchDevices();
-    fetchSensorHistory();
     fetchSensorHealth();
     fetchRooms();
     connectWebSocket();
@@ -52,7 +61,7 @@ export default function Dashboard() {
       disconnectWebSocket();
       clearInterval(statusPoll);
     };
-  }, [fetchSummary, fetchRecentAlerts, fetchDevices, fetchSensorHistory, fetchSensorHealth, fetchRooms, connectWebSocket, disconnectWebSocket]);
+  }, [fetchSummary, fetchRecentAlerts, fetchDevices, fetchSensorHealth, fetchRooms, connectWebSocket, disconnectWebSocket]);
 
   const getRoomName = (roomId) => {
     if (!roomId) return 'Unassigned';
@@ -87,13 +96,21 @@ export default function Dashboard() {
   });
 
   let statusValue = "All Systems Safe";
-  let statusSubtext = "Monitoring active — no threats";
+  let statusSubtext = "Monitoring active - no threats";
   let statusColor = "green";
   let StatusIcon = Activity;
+
+  const roomStatus = summary.room_status_counts || {};
+  const criticalRooms = roomStatus.critical || 0;
 
   if (summary.activeAlerts > 0) {
     statusValue = "Critical Alerts";
     statusSubtext = `${summary.activeAlerts} alerts need attention`;
+    statusColor = "red";
+    StatusIcon = BellRing;
+  } else if (criticalRooms > 0) {
+    statusValue = "Critical Status";
+    statusSubtext = `${criticalRooms} zones in critical status`;
     statusColor = "red";
     StatusIcon = BellRing;
   } else if (summary.highRiskRooms > 0) {
@@ -139,14 +156,14 @@ export default function Dashboard() {
         />
         <MetricCard 
           title="Highest Temperature" 
-          value={maxTemp > -Infinity ? `${maxTemp.toFixed(1)}°C` : '—'} 
+          value={maxTemp > -Infinity ? `${maxTemp.toFixed(1)}°C` : '-'} 
           subtext={maxTempNodeId ? `Zone: ${getNodeRoomName(maxTempNodeId)}` : 'Awaiting Data'}
           icon={Thermometer} 
           color={maxTemp > 35 ? "red" : "default"} 
         />
         <MetricCard 
           title="Highest Gas Level" 
-          value={maxGas > -Infinity ? `${maxGas.toFixed(0)} ppm` : '—'} 
+          value={maxGas > -Infinity ? `${maxGas.toFixed(0)} ppm` : '-'} 
           subtext={maxGasNodeId ? `Zone: ${getNodeRoomName(maxGasNodeId)}` : 'Awaiting Data'}
           icon={Wind} 
           color={maxGas > 800 ? "red" : "default"}
@@ -171,13 +188,15 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="lg:col-span-2 border rounded-lg overflow-hidden"
+          className="lg:col-span-2 lg:h-[360px] flex flex-col border rounded-lg overflow-hidden"
           style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-primary)' }}
         >
-          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
+          <div className="flex items-center justify-between p-4 border-b flex-shrink-0" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
             <div className="flex items-center gap-3">
               <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Real-time Activity</h3>
               <select 
+                value={selectedDevice}
+                onChange={(e) => setSelectedDevice(e.target.value)}
                 className="text-xs p-1.5 pr-6 rounded-md border outline-none cursor-pointer"
                 style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-secondary)' }}
               >
@@ -187,10 +206,31 @@ export default function Dashboard() {
                 ))}
               </select>
             </div>
-            {/* Dynamic Legend rendered inside SensorsOverview */}
+            
+            {/* Time Range Filter */}
+            <div className="flex items-center rounded-md p-0.5 border" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
+              {['1H', '24H', '7D', '30D'].map(range => (
+                <button
+                  key={range}
+                  onClick={() => setTimeRange(range)}
+                  className={`px-2 py-1 text-[10px] font-semibold rounded transition-colors cursor-pointer ${
+                    timeRange === range 
+                      ? 'shadow border font-bold'
+                      : 'hover:text-[var(--ifrit-text-primary)]'
+                  }`}
+                  style={timeRange === range ? { 
+                    backgroundColor: 'var(--ifrit-bg-primary)', 
+                    borderColor: 'var(--ifrit-border)', 
+                    color: 'var(--ifrit-text-primary)' 
+                  } : { color: 'var(--ifrit-text-muted)' }}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="p-4">
-            <SensorsOverview />
+          <div className="p-4 flex-1 min-h-0 relative flex flex-col justify-center">
+            <SensorsOverview timeRange={timeRange} />
           </div>
         </motion.div>
         
@@ -198,10 +238,10 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="lg:col-span-1 flex flex-col h-full border rounded-lg overflow-hidden"
+          className="lg:col-span-1 lg:h-[360px] flex flex-col border rounded-lg overflow-hidden"
           style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-primary)' }}
         >
-          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
+          <div className="flex items-center justify-between p-4 border-b flex-shrink-0" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
             <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Recent Activity</h3>
             <button 
               onClick={() => navigate('/alerts')}
@@ -212,7 +252,7 @@ export default function Dashboard() {
             </button>
           </div>
           
-          <div className="p-4 flex-1 overflow-y-auto custom-scrollbar" style={{ backgroundColor: 'var(--ifrit-bg-primary)' }}>
+          <div className="p-4 flex-1 overflow-y-auto custom-scrollbar min-h-0" style={{ backgroundColor: 'var(--ifrit-bg-primary)' }}>
             {isLoading && recentAlerts.length === 0 ? (
               <div className="animate-pulse space-y-2">
                 {[1,2,3].map(i => (

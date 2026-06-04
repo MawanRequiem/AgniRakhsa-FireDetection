@@ -137,6 +137,55 @@ async def ingest_readings(device_id: UUID, readings: list[dict]) -> int:
             }
         })
 
+    # 6.5 Auto-complete active/pending commands and update device status if we receive telemetry
+    try:
+        active_commands_res = (
+            supabase.table("device_commands")
+            .select("id, command, status")
+            .eq("device_id", str(device_id))
+            .in_("status", ["pending", "in_progress"])
+            .execute()
+        )
+        if active_commands_res.data:
+            for cmd in active_commands_res.data:
+                cmd_id = cmd["id"]
+                cmd_name = cmd["command"]
+                logger.info(
+                    f"Auto-completing stuck/active command '{cmd_name}' (ID: {cmd_id}) "
+                    f"for device {device_id} due to new telemetry ingestion."
+                )
+                # 1. Update command status to completed
+                supabase.table("device_commands").update({
+                    "status": "completed",
+                    "completed_at": datetime.now(timezone.utc).isoformat()
+                }).eq("id", cmd_id).execute()
+
+                # 2. Update device status according to command type
+                target_status = "online"
+                if cmd_name == "REBURNIN":
+                    target_status = "burn_in"
+                else:
+                    dev_res = supabase.table("devices").select("created_at").eq("id", str(device_id)).execute()
+                    if dev_res.data:
+                        created_at_str = dev_res.data[0]["created_at"].replace("Z", "+00:00")
+                        created_at = datetime.fromisoformat(created_at_str)
+                        if (datetime.now(timezone.utc) - created_at).total_seconds() < 86400:
+                            target_status = "burn_in"
+
+                supabase.table("devices").update({"status": target_status}).eq("id", str(device_id)).execute()
+                
+                # 3. Broadcast status update via WebSocket
+                await manager.broadcast({
+                    "type": "DEVICE_STATUS_CHANGE",
+                    "data": {
+                        "device_id": str(device_id),
+                        "status": target_status,
+                        "name": device_name,
+                    }
+                })
+    except Exception as e:
+        logger.error(f"Error auto-completing stuck device commands: {e}")
+
     # 7. Feed sensor anomaly detector buffer (for Isolation Forest ML model)
     try:
         from app.ai import registry
@@ -292,8 +341,49 @@ async def get_chart_history(
 
     Returns a flat list of {time, sensor_type, value} rows.
     The frontend pivots these into Recharts-friendly format:
-      [{time: "10:05", MQ2: 200, SHTC3_TEMP: 25}, ...]
+      [{time: "2026-06-03T19:22:10Z", MQ2: 200, SHTC3_TEMP: 25}, ...]
     """
+    # 1. Determine bucket size in seconds dynamically based on history window
+    if minutes <= 60:
+        bucket_seconds = 30       # 30-second buckets
+    elif minutes <= 1440:
+        bucket_seconds = 300      # 5-minute buckets
+    elif minutes <= 10080:
+        bucket_seconds = 3600     # 1-hour buckets
+    else:
+        bucket_seconds = 14400    # 4-hour buckets
+
+    # 2. Try querying via RPC for database-side aggregation
+    try:
+        rpc_params = {
+            "p_minutes": minutes,
+            "p_bucket_seconds": bucket_seconds
+        }
+        if device_id:
+            rpc_params["p_device_id"] = str(device_id)
+        if room_id:
+            rpc_params["p_room_id"] = str(room_id)
+
+        rpc_res = supabase.rpc("get_sensor_history_bucketed_rpc", rpc_params).execute()
+        if rpc_res.data:
+            from collections import defaultdict
+            time_buckets = defaultdict(dict)
+            for r in rpc_res.data:
+                b_time = r["bucket_time"]
+                s_type = r["sensor_type"]
+                val = r["avg_value"]
+                
+                time_buckets[b_time][s_type] = float(val) if val is not None else 0.0
+                time_buckets[b_time]["_time"] = b_time
+
+            result = sorted(time_buckets.values(), key=lambda x: x.get("_time", ""))
+            for entry in result:
+                entry["time"] = entry.pop("_time", "")
+            return result
+    except Exception as e:
+        logger.warning(f"Failed to use get_sensor_history_bucketed_rpc, falling back: {e}")
+
+    # 3. Fallback logic: Client-side downsampling/bucketing
     since = datetime.now(timezone.utc) - timedelta(minutes=minutes)
 
     # Get sensor IDs scoped to device or room
@@ -312,50 +402,66 @@ async def get_chart_history(
     sensor_ids = [s["id"] for s in sensors]
     sensor_type_map = {s["id"]: s["sensor_type"] for s in sensors}
     
-    # Fetch readings in the time window
+    # Scale query limit dynamically (larger window = fetch more rows to span the interval)
+    fetch_limit = 5000 if minutes <= 1440 else 10000
+
+    # Fetch readings in the time window, ordered newest first so we get recent data if limit is hit
     readings_res = (
         supabase.table("sensor_readings")
         .select("sensor_id, value, reading_at")
         .in_("sensor_id", sensor_ids)
         .gte("reading_at", since.isoformat())
-        .order("reading_at", desc=False)
-        .limit(2000)
+        .order("reading_at", desc=True)
+        .limit(fetch_limit)
         .execute()
     )
     
     readings = readings_res.data or []
     
-    # Group by truncated timestamp (to nearest 10 seconds for smoothing)
+    # Group by dynamically sized timestamp bucket (nearest N seconds for smoothing)
     from collections import defaultdict
     time_buckets = defaultdict(dict)
     
     for r in readings:
-        # Truncate to 10-second bucket
         raw_time = r["reading_at"]
         try:
             dt = datetime.fromisoformat(raw_time.replace("Z", "+00:00"))
         except (ValueError, AttributeError):
             continue
         
-        # Round to 10-second bucket
-        bucket_second = (dt.second // 10) * 10
-        bucket_dt = dt.replace(second=bucket_second, microsecond=0)
+        # Round epoch timestamp down to the nearest bucket_seconds interval
+        epoch = int(dt.timestamp())
+        rounded_epoch = (epoch // bucket_seconds) * bucket_seconds
+        bucket_dt = datetime.fromtimestamp(rounded_epoch, tz=timezone.utc)
         bucket_key = bucket_dt.isoformat()
         
         sensor_type = sensor_type_map.get(r["sensor_id"], "UNKNOWN")
         
-        # Use the latest value in each bucket
-        time_buckets[bucket_key][sensor_type] = round(r["value"], 2)
+        # In case of duplicates in the same bucket, average them (or take newest)
+        if sensor_type not in time_buckets[bucket_key]:
+            time_buckets[bucket_key][sensor_type] = []
+        time_buckets[bucket_key][sensor_type].append(r["value"])
         time_buckets[bucket_key]["_time"] = bucket_key
     
-    # Convert to sorted list
-    result = sorted(time_buckets.values(), key=lambda x: x.get("_time", ""))
+    # Calculate average value per bucket
+    pivoted_result = []
+    for bucket_key, readings_dict in time_buckets.items():
+        entry = {"_time": bucket_key}
+        for k, v in readings_dict.items():
+            if k == "_time":
+                continue
+            entry[k] = round(sum(v) / len(v), 2)
+        pivoted_result.append(entry)
+
+    # Convert to sorted list (chronological)
+    result = sorted(pivoted_result, key=lambda x: x.get("_time", ""))
     
     # Rename _time to time for frontend
     for entry in result:
         entry["time"] = entry.pop("_time", "")
     
     return result
+
 
 
 # ─── Sensor Health Diagnostics ────────────────────────────────────────────────
@@ -494,8 +600,9 @@ async def diagnose_sensor_health(
             results.append(diagnosis)
             continue
 
-        # 5. Stuck check: near-zero standard deviation
-        if np.std(values) < STUCK_STD_THRESHOLD:
+        # 5. Stuck check: near-zero standard deviation (bypassed for digital SHTC3 sensors)
+        is_digital_sht = "SHTC3" in stype.upper()
+        if not is_digital_sht and np.std(values) < STUCK_STD_THRESHOLD:
             diagnosis["status"] = "stuck"
             diagnosis["details"]["reason"] = (
                 f"Constant value {values[-1]:.1f} across {len(values)} readings "
@@ -551,5 +658,85 @@ async def diagnose_sensor_health(
         results.append(diagnosis)
 
     return results
+
+
+async def export_sensor_readings_to_csv(
+    room_id: Optional[UUID] = None,
+    device_id: Optional[UUID] = None,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+) -> str:
+    """
+    Query historical sensor readings for a room or specific device,
+    align them into 1-minute time buckets, pivot the metrics, and
+    return a cleanly formatted tabular CSV string.
+    """
+    # 1. Resolve active sensors
+    sensor_query = supabase.table("sensors").select("id, sensor_type, device_id")
+    if device_id:
+        sensor_query = sensor_query.eq("device_id", str(device_id))
+    elif room_id:
+        sensor_query = sensor_query.eq("room_id", str(room_id))
+    
+    sensor_res = sensor_query.execute()
+    sensors = sensor_res.data or []
+    if not sensors:
+        return "Timestamp,Device Name,Device MAC,Sensor Type,Value\n# No sensors found for target scope"
+
+    sensor_ids = [s["id"] for s in sensors]
+
+    # 2. Query device names and MAC addresses
+    device_ids = list(set(s["device_id"] for s in sensors if s.get("device_id")))
+    if device_ids:
+        device_res = supabase.table("devices").select("id, name, mac_address").in_("id", device_ids).execute()
+        device_map = {d["id"]: d for d in (device_res.data or [])}
+    else:
+        device_map = {}
+
+    # 3. Fetch readings in the specified range
+    readings_query = supabase.table("sensor_readings").select("sensor_id, value, reading_at").in_("sensor_id", sensor_ids)
+    if start_time:
+        readings_query = readings_query.gte("reading_at", start_time.isoformat())
+    if end_time:
+        readings_query = readings_query.lte("reading_at", end_time.isoformat())
+    
+    readings_res = readings_query.order("reading_at", desc=False).limit(20000).execute()
+    readings = readings_res.data or []
+    if not readings:
+        return "Timestamp,Device Name,Device MAC\n# No historical records found in this time range"
+
+    # 4. Process with Pandas
+    import pandas as pd
+    
+    sensor_rows = []
+    for s in sensors:
+        d = device_map.get(s["device_id"], {})
+        sensor_rows.append({
+            "sensor_id": s["id"],
+            "sensor_type": s["sensor_type"],
+            "device_name": d.get("name", "Unknown Node"),
+            "device_mac": d.get("mac_address", "—")
+        })
+    df_sensors = pd.DataFrame(sensor_rows)
+    df_readings = pd.DataFrame(readings)
+    
+    df_merged = pd.merge(df_readings, df_sensors, on="sensor_id")
+    if df_merged.empty:
+        return "Timestamp,Device Name,Device MAC\n# No combined logs match sensor configuration"
+
+    df_merged["reading_at_dt"] = pd.to_datetime(df_merged["reading_at"])
+    df_merged["Timestamp"] = df_merged["reading_at_dt"].dt.floor("1min").dt.strftime("%Y-%m-%d %H:%M:%S")
+
+    df_pivoted = df_merged.pivot_table(
+        index=["Timestamp", "device_name", "device_mac"],
+        columns="sensor_type",
+        values="value",
+        aggfunc="mean"
+    ).reset_index()
+
+    df_pivoted = df_pivoted.sort_values(by=["Timestamp", "device_name"])
+    
+    return df_pivoted.to_csv(index=False)
+
 
 

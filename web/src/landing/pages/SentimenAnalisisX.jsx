@@ -148,7 +148,7 @@ export default function SentimenAnalisisX() {
     try {
       const response = await customFetch('/api/v1/nlp/history?limit=100');
       if (!response.ok) {
-        // Tabel belum dibuat atau server error — skip saja
+        // Tabel belum dibuat atau server error - skip saja
         console.warn("History endpoint tidak tersedia, skip.");
         return;
       }

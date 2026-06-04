@@ -10,6 +10,7 @@ from app.core.db import supabase
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
 
+@router.get("", response_model=AlertsResponse)
 @router.get("/", response_model=AlertsResponse)
 async def list_alerts(
     page: int = 1,
@@ -65,4 +66,20 @@ async def acknowledge_alert(alert_id: UUID, body: AlertAcknowledge):
     if not result.data:
         raise HTTPException(404, "Alert not found")
 
-    return result.data[0]
+    alert_data = result.data[0]
+    room_id = alert_data.get("room_id")
+    
+    if room_id:
+        # Check if there are any other unacknowledged alerts for this room
+        active_res = (
+            supabase.table("alerts")
+            .select("id")
+            .eq("room_id", str(room_id))
+            .eq("is_acknowledged", False)
+            .execute()
+        )
+        if not active_res.data:
+            # No more active alerts for this room, update status to safe
+            supabase.table("rooms").update({"status": "safe"}).eq("id", str(room_id)).execute()
+
+    return alert_data

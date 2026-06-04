@@ -1,16 +1,21 @@
 """Device management API endpoints."""
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from uuid import UUID
 from datetime import datetime, timezone
 
+from app.core.config import settings
+from app.core.device_auth import normalize_mac, require_valid_device_signature
 from app.schemas.device import DeviceCreate, DeviceUpdate, DeviceOut, DeviceHeartbeat, DeviceProvisionRequest, DeviceProvisionResponse
 from app.api.deps import CurrentUser
 from app.core.db import supabase
 
 router = APIRouter(prefix="/devices", tags=["devices"])
+logger = logging.getLogger(__name__)
 
-
+@router.get("", response_model=list[DeviceOut])
 @router.get("/", response_model=list[DeviceOut])
 async def list_devices(room_id: UUID | None = None):
     """List all IoT devices."""
@@ -31,6 +36,7 @@ async def get_device(device_id: UUID):
     return res.data[0]
 
 
+@router.post("", response_model=DeviceOut)
 @router.post("/", response_model=DeviceOut)
 async def register_device(device: DeviceCreate):
     """Register a new IoT device."""
@@ -55,6 +61,43 @@ async def provision_device(req: DeviceProvisionRequest):
     Self-register a device and its sensors by MAC address.
     Returns the mapped sensor UUIDs so the firmware can send batch readings.
     """
+    # ─────────────────────────────────────────────
+    # Device Authentication
+    # ─────────────────────────────────────────────
+
+    try:
+        normalized_mac = normalize_mac(req.mac_address)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid MAC address format",
+        ) # Potential refactor to check MAC format as a schema validator
+
+    has_signature = (
+        req.timestamp is not None and
+        req.signature is not None
+    )
+
+    if has_signature:
+        require_valid_device_signature(
+            mac_address=normalized_mac,
+            timestamp=req.timestamp,
+            signature=req.signature,
+        )
+
+    elif settings.ALLOW_UNSIGNED_PROVISION:
+        logger.warning(
+            "Unsigned provision accepted for MAC %s. "
+            "Disable ALLOW_UNSIGNED_PROVISION in production.",
+            normalized_mac,
+        )
+
+    else:
+        raise HTTPException(
+            status_code=401,
+            detail="Device signature required",
+        )
+
     # 1. Resolve room if name provided
     room_id = None
     if req.room_name:
@@ -66,7 +109,7 @@ async def provision_device(req: DeviceProvisionRequest):
             room_id = res.data[0]["id"]
             
     # 2. Resolve or create device
-    res = supabase.table("devices").select("id").eq("mac_address", req.mac_address).execute()
+    res = supabase.table("devices").select("id").eq("mac_address", normalized_mac).execute()
     if res.data:
         device_id = res.data[0]["id"]
         # Update room if changed
@@ -77,7 +120,7 @@ async def provision_device(req: DeviceProvisionRequest):
     else:
         res = supabase.table("devices").insert({
             "name": req.name,
-            "mac_address": req.mac_address,
+            "mac_address": normalized_mac,
             "room_id": room_id,
             "status": "online"
         }).execute()

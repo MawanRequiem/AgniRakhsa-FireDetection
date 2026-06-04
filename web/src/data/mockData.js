@@ -1,5 +1,5 @@
 // ============================================
-// ifrit — Mock Data for Dashboard
+// ifrit - Mock Data for Dashboard
 // ============================================
 
 export const ROOMS = [
@@ -63,7 +63,7 @@ ROOMS.forEach(room => {
 
 // Alert history
 export const ALERTS = [
-  { id: 'A001', roomId: 'R006', severity: 'fire', message: 'Flame detected — IR level exceeds 400', timestamp: '2026-03-08T15:32:00', acknowledged: false },
+  { id: 'A001', roomId: 'R006', severity: 'fire', message: 'Flame detected - IR level exceeds 400', timestamp: '2026-03-08T15:32:00', acknowledged: false },
   { id: 'A002', roomId: 'R006', severity: 'fire', message: 'Smoke concentration critical at 55%', timestamp: '2026-03-08T15:31:45', acknowledged: false },
   { id: 'A003', roomId: 'R003', severity: 'warning', message: 'CO level elevated to 45 ppm', timestamp: '2026-03-08T15:29:00', acknowledged: true },
   { id: 'A004', roomId: 'R006', severity: 'fire', message: 'LPG concentration exceeds safe limit', timestamp: '2026-03-08T15:31:30', acknowledged: false },

@@ -1,233 +1,109 @@
-# 🔥 AgniRakhsa — Fire Detection & Monitoring System
+# 🔥 Ifrit — Fire Detection & Monitoring System
 
-> **Agni** (Sanskrit: Api) + **Rakhsa** (Sanskrit: Penjaga) — Penjaga Api.
+> **Ifrit** — An advanced AI-powered fire detection platform that combines Computer Vision with IoT Sensor Fusion for highly accurate, early-warning alerts.
 
-Sistem deteksi dan monitoring kebakaran berbasis AI yang mengintegrasikan Computer Vision (CCTV), sensor IoT, dan komunikasi WhatsApp untuk peringatan dini secara real-time.
+## 🏗 System Architecture
+
+```mermaid
+graph TD
+    %% Define Styles
+    classDef hardware fill:#475569,stroke:#94a3b8,stroke-width:2px,color:#fff;
+    classDef backend fill:#0ea5e9,stroke:#38bdf8,stroke-width:2px,color:#fff;
+    classDef web fill:#10b981,stroke:#34d399,stroke-width:2px,color:#fff;
+    classDef bot fill:#22c55e,stroke:#4ade80,stroke-width:2px,color:#fff;
+    classDef db fill:#f59e0b,stroke:#fbbf24,stroke-width:2px,color:#fff;
+    classDef external fill:#8b5cf6,stroke:#a78bfa,stroke-width:2px,color:#fff;
+    
+    subgraph Edge ["Edge Devices"]
+        S[IFRIT IoT Sensors]:::hardware
+        C[CCTV Cameras]:::hardware
+    end
+
+    subgraph Ext ["External Data"]
+        X((X / Twitter API)):::external
+    end
+
+    subgraph Core ["Core Intelligence"]
+        B((FastAPI Backend)):::backend
+        F{Late Fusion Engine}:::backend
+        NLP{Bi-LSTM Sentiment\nAnalysis Engine}:::backend
+    end
+
+    subgraph Infra ["Infrastructure"]
+        DB[(Supabase DB)]:::db
+        R[(Redis Cache)]:::db
+    end
+
+    subgraph Present ["Presentation Layer"]
+        W[React Web Dashboard]:::web
+        WA[WhatsApp Gateway]:::bot
+    end
+
+    %% Data Flow
+    S -->|Sensor Telemetry| B
+    C -->|Video Frames| B
+    X -->|Fetch Tweets| NLP
+    NLP -->|Sentiment Logs| DB
+    B --> F
+    F -->|Risk State| DB
+    B <-->|Rate Limit & PubSub| R
+    F -->|Real-time Events| W
+    F -->|Critical Alerts| WA
+    WA -->|Broadcasts| Users([Security Officers])
+```
+
+This repository is a **monorepo** containing all the microservices, frontend applications, and hardware firmware required to run the Ifrit platform.
 
 ---
 
-## 📐 Arsitektur Sistem
+## 📚 Documentation Hub
 
-```
-┌─────────────────┐     WebSocket/REST      ┌──────────────────────┐
-│   Web Dashboard  │◄──────────────────────► │   Backend & AI Core  │
-│   (React.js)     │                         │   (Python + FastAPI)  │
-└─────────────────┘                         └──────────┬───────────┘
-                                                       │
-                                            ┌──────────┼───────────┐
-                                            │          │           │
-                                       ┌────▼───┐ ┌───▼────┐ ┌───▼────────┐
-                                       │ Sensor │ │  CCTV  │ │  Supabase  │
-                                       │  IoT   │ │ Stream │ │    (DB)    │
-                                       └────────┘ └────────┘ └────────────┘
-                                                       │
-                                            REST API   │
-                                                       ▼
-                                            ┌──────────────────────┐
-                                            │  WhatsApp Gateway    │
-                                            │  (Node.js + Express) │
-                                            └──────────────────────┘
-                                                       │
-                                                       ▼
-                                                 📱 WhatsApp
-                                            (Alert & Chatbot)
-```
+To make navigation easier, the documentation has been split into dedicated guides for each component of the system. 
 
----
+### 🌟 1. General Guides
+Start here to understand the big picture and how to get everything running.
+- [System Overview](docs/Overview.md) — High-level architecture and data flow.
+- [Getting Started / Run Guide](docs/Getting_Started.md) — How to spin up the entire system via Docker or locally.
 
-## 🧩 Komponen Utama
+### 🧠 2. Backend & AI Core (`/backend`)
+The intelligence hub powered by Python, FastAPI, and Supabase.
+- [API Reference](backend/docs/API_Reference.md) — Complete REST and WebSocket endpoints.
+- [System Logic & Late Fusion](backend/docs/System_Logic.md) — How YOLOv8 and Isolation Forest ML combine to prevent false positives.
 
-### 1. Web Dashboard — `web/`
+### 💻 3. Web Dashboard (`/web`)
+The real-time monitoring interface for security personnel.
+- [Dashboard Architecture](web/docs/Dashboard_Architecture.md) — Details on the React 19, Vite, and WebSocket implementation.
 
-| Item          | Detail                                                                                      |
-| ------------- | ------------------------------------------------------------------------------------------- |
-| **Teknologi** | React.js (JavaScript) + Vite                                                                |
-| **Styling**   | Tailwind CSS v4 + shadcn/ui                                                                 |
-| **Fungsi**    | Dashboard monitoring real-time: grafik sensor, visual CCTV, status ruangan, card notifikasi |
-| **Port**      | `5173` (dev)                                                                                |
+### 📱 4. WhatsApp Gateway (`/whatsapp-gateway`)
+The automated alert dispatcher and NLP chatbot.
+- [Gateway Service Guide](whatsapp-gateway/docs/Gateway_Service.md) — How the Node.js + Baileys WhatsApp bot works.
 
-### 2. Backend & AI Core — `backend/`
-
-| Item                | Detail                           |
-| ------------------- | -------------------------------- |
-| **Teknologi**       | Python 3.11+ + FastAPI           |
-| **Package Manager** | uv                               |
-| **Database**        | Supabase (PostgreSQL)            |
-| **Fungsi**          | Pusat logika & kecerdasan sistem |
-
-**Fungsi Web & API:**
-
-- Menerima data metrik dari sensor IoT (via MQTT/HTTP)
-- Menyimpan data ke Supabase
-- Menyajikan data ke dashboard React (WebSocket untuk real-time update)
-
-**Fungsi AI/ML:**
-
-- Computer Vision: YOLO & Semantic Segmentation untuk video CCTV
-- Data Mining: Random Forest / XGBoost untuk analisis data sensor
-- NLP: Text generation untuk chatbot dan laporan otomatis
-
-### 3. WhatsApp Gateway — `whatsapp-gateway/`
-
-| Item          | Detail                                   |
-| ------------- | ---------------------------------------- |
-| **Teknologi** | Node.js + Express.js + Baileys           |
-| **Fungsi**    | Bot WhatsApp untuk komunikasi interaktif |
-| **Port**      | `3001` (dev)                             |
-
-**Capabilities:**
-
-- Menerima perintah dari backend via REST API (kirim alert, notifikasi)
-- Menangkap pesan dari pengguna (satpam) → forward ke backend untuk dijawab AI NLP
-- Mengirim alert otomatis saat ada deteksi bahaya
+### 🔌 5. IoT Sensors (`/IFRIT`)
+The edge hardware measuring smoke, gas, and temperature.
+- [Firmware Guide](IFRIT/docs/Firmware_Guide.md) — ESP32 PlatformIO C++ firmware details and sensor calibration.
 
 ---
 
-## 🗂️ Struktur Folder
+## 🚀 Quick Start (Docker)
 
-```
-AgniRakhsa-FireDetection/
-├── web/                        # Frontend Dashboard
-│   ├── src/
-│   │   ├── components/         # UI components
-│   │   ├── pages/              # Page components
-│   │   ├── lib/                # Utilities
-│   │   ├── App.jsx
-│   │   ├── main.jsx
-│   │   └── index.css
-│   ├── package.json
-│   ├── vite.config.js
-│   └── .env.example
-│
-├── backend/                    # Backend & AI Core
-│   ├── app/
-│   │   ├── api/                # API routers
-│   │   ├── core/               # Config, settings
-│   │   ├── models/             # Pydantic schemas
-│   │   ├── services/           # Business logic
-│   │   └── main.py             # FastAPI entry
-│   ├── pyproject.toml
-│   └── .env.example
-│
-├── whatsapp-gateway/           # WhatsApp Bot Service
-│   ├── src/
-│   │   ├── routes/             # Express routes
-│   │   ├── handlers/           # Baileys event handlers
-│   │   ├── config.js
-│   │   └── index.js
-│   ├── package.json
-│   └── .env.example
-│
-├── docker-compose.yml
-└── README.md
-```
-
----
-
-## 🔄 Alur Data (Data Flow)
-
-```
-1. SENSOR IoT ──► HTTP/MQTT ──► Backend (FastAPI)
-                                  │
-                                  ├──► Simpan ke Supabase
-                                  ├──► Analisis AI/ML
-                                  │     ├── Sensor data → Random Forest/XGBoost
-                                  │     ├── CCTV stream → YOLO + Segmentation
-                                  │     └── NLP → Chatbot response & laporan
-                                  │
-                                  ├──► WebSocket ──► Web Dashboard (React)
-                                  │
-                                  └──► REST API ──► WhatsApp Gateway (Express)
-                                                      │
-                                                      └──► Baileys ──► WhatsApp User
-```
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- **Node.js** ≥ 18
-- **Python** ≥ 3.11
-- **uv** (`pip install uv` atau `curl -LsSf https://astral.sh/uv/install.sh | sh`)
-
-### 1. Frontend
+The fastest way to get the software stack running is via Docker Compose:
 
 ```bash
-cd web
-npm install
-npm run dev
-# → http://localhost:5173
+git clone https://github.com/your-org/ifrit-fire-detection.git
+cd ifrit-fire-detection
+
+# Configure your environment variables first!
+cp backend/.env.example backend/.env
+cp web/.env.example web/.env
+cp whatsapp-gateway/.env.example whatsapp-gateway/.env
+
+# Spin up the containers
+docker compose up --build -d
 ```
 
-### 2. Backend
-
-```bash
-cd backend
-cp .env.example c.env        # isi credential Supabase
-uv sync
-uv run uvicorn app.main:app --reload
-# → http://localhost:8000
-```
-
-### 3. WhatsApp Gateway
-
-```bash
-cd whatsapp-gateway
-npm install
-cp .env.example .env
-npm run dev
-# → http://localhost:3001
-```
-
----
-
-## 🔐 Environment Variables
-
-Setiap service punya `.env.example` masing-masing. Copy ke `.env` dan isi sesuai kebutuhan:
-
-| Service    | File                            | Key Variables                                |
-| ---------- | ------------------------------- | -------------------------------------------- |
-| Web        | `web/.env.example`              | `VITE_API_URL`                               |
-| Backend    | `backend/.env.example`          | `SUPABASE_URL`, `SUPABASE_KEY`, `SECRET_KEY` |
-| WA Gateway | `whatsapp-gateway/.env.example` | `PORT`, `BACKEND_API_URL`                    |
-
----
-
-## 🐳 Docker (Optional)
-
-```bash
-docker compose up --build
-```
-
----
-
-## 📝 Approach & Methodology
-
-### Tahap Pengerjaan
-
-| Fase                           | Deskripsi                                              | Status         |
-| ------------------------------ | ------------------------------------------------------ | -------------- |
-| **1. Setup**                   | Scaffolding project, struktur folder, konfigurasi awal | 🔄 In Progress |
-| **2. Requirement Engineering** | Analisis kebutuhan, use case, user story               | ⏳ Pending     |
-| **3. Database Design**         | Schema Supabase, tabel, relasi, RLS policies           | ⏳ Pending     |
-| **4. Backend API**             | Endpoint CRUD, auth, WebSocket, integrasi Supabase     | ⏳ Pending     |
-| **5. AI/ML Integration**       | YOLO, segmentation, data mining, NLP chatbot           | ⏳ Pending     |
-| **6. Frontend Dashboard**      | UI monitoring, grafik real-time, notifikasi            | ⏳ Pending     |
-| **7. WhatsApp Bot**            | Integrasi Baileys, alert otomatis, chatbot             | ⏳ Pending     |
-| **8. Testing & QA**            | Unit test, integration test, UAT                       | ⏳ Pending     |
-| **9. Deployment**              | Docker, cloud deployment, CI/CD                        | ⏳ Pending     |
-
-### Prinsip Development
-
-- **Iterative**: Develop per-fitur, bukan big-bang
-- **API-First**: Backend API didefinisikan dulu, frontend dan WA gateway consume
-- **Separation of Concerns**: Setiap service punya tanggung jawab jelas
-- **Environment-based Config**: Semua secret via `.env`, tidak hardcode
+For manual local development instructions, see the [Getting Started Guide](docs/Getting_Started.md).
 
 ---
 
 ## 📄 License
-
 Private — All rights reserved.

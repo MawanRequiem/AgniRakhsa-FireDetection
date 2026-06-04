@@ -51,7 +51,7 @@ export default function Hero() {
       {/* Ember particles */}
       <EmberCanvas />
 
-      {/* Radial gradient — ember glow from bottom */}
+      {/* Radial gradient - ember glow from bottom */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{

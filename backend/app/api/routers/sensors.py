@@ -1,9 +1,11 @@
 """Sensor and IoT data ingestion API endpoints."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
+import io
 from typing import Optional
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from app.schemas.sensor import (
     SensorReadingBatch, SensorReadingsResponse, SensorOut, SensorLatest
@@ -81,6 +83,73 @@ async def get_sensor_history(
     )
 
 
+@router.get("/export")
+async def export_gas_records(
+    current_user: CurrentUser,
+    room_id: Optional[UUID] = Query(None),
+    device_id: Optional[UUID] = Query(None),
+    preset: Optional[str] = Query("24h"),
+    start_time: Optional[datetime] = Query(None),
+    end_time: Optional[datetime] = Query(None),
+):
+    """
+    Export historical gas records as a downloadable Excel-compatible CSV file.
+    Supports customizable presets (1h, 6h, 24h, 7d, 30d) or dynamic start_time and end_time.
+    """
+    now = datetime.now(timezone.utc)
+    
+    if preset == "1h":
+        start_time = now - timedelta(hours=1)
+        end_time = now
+    elif preset == "6h":
+        start_time = now - timedelta(hours=6)
+        end_time = now
+    elif preset == "24h":
+        start_time = now - timedelta(hours=24)
+        end_time = now
+    elif preset == "7d":
+        start_time = now - timedelta(days=7)
+        end_time = now
+    elif preset == "30d":
+        start_time = now - timedelta(days=30)
+        end_time = now
+    elif preset == "custom":
+        if not start_time or not end_time:
+            raise HTTPException(
+                status_code=400,
+                detail="Custom range requires both start_time and end_time parameters."
+            )
+    else:
+        # Default to 24h
+        start_time = now - timedelta(hours=24)
+        end_time = now
+
+    csv_data = await sensor_service.export_sensor_readings_to_csv(
+        room_id=room_id,
+        device_id=device_id,
+        start_time=start_time,
+        end_time=end_time,
+    )
+
+    stream = io.StringIO(csv_data)
+    
+    filename = f"gas_records_{preset}"
+    if room_id:
+        filename += f"_room_{str(room_id)[:8]}"
+    elif device_id:
+        filename += f"_device_{str(device_id)[:8]}"
+    filename += f"_{now.strftime('%Y%m%d_%H%M%S')}.csv"
+
+    return StreamingResponse(
+        iter([stream.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+            "Cache-Control": "no-cache",
+        }
+    )
+
+
 @router.get("/health")
 async def check_sensor_health(
     sensor_id: Optional[UUID] = None,
@@ -115,6 +184,7 @@ async def check_sensor_health(
     }
 
 
+@router.get("", response_model=list[SensorOut])
 @router.get("/", response_model=list[SensorOut])
 async def list_sensors(room_id: Optional[UUID] = None):
     """List all registered sensors."""

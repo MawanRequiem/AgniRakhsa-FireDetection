@@ -1,3 +1,6 @@
+import logging
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -10,6 +13,8 @@ from app.services.fusion_worker import run_fusion_worker
 
 from app.core.redis import redis_manager
 
+logger = logging.getLogger(__name__)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle events for FastAPI application."""
@@ -17,8 +22,39 @@ async def lifespan(app: FastAPI):
     try:
         redis_manager.connect()
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).error(f"Redis initialization failed: {e}")
+        logger.error(f"Redis initialization failed: {e}")
+
+    # ─── Security Guard: Reject default SECRET_KEY in production ──────────
+    _env = os.getenv("ENVIRONMENT", "development").lower()
+    _DEFAULT_SECRET = "ag-super-secret-key-pls-change-in-prod-2026"
+    if settings.SECRET_KEY == _DEFAULT_SECRET:
+        if _env == "production":
+            raise RuntimeError(
+                "FATAL: SECRET_KEY must be changed in production! "
+                "Set a strong random key in your .env file."
+            )
+        else:
+            logger.warning(
+                "⚠️ Using default SECRET_KEY — NOT SAFE FOR PRODUCTION. "
+                "Set ENVIRONMENT=production and a real SECRET_KEY before deploying."
+            )
+    
+    # ─── Security Guard: Reject default DEVICE_PROVISIONING_KEY ───────
+    _DEFAULT_DEVICE_KEY = "CHANGE-ME-factory-provisioning-master-key"
+
+    if settings.DEVICE_PROVISIONING_KEY == _DEFAULT_DEVICE_KEY:
+
+        if _env == "production":
+            raise RuntimeError(
+                "FATAL: DEVICE_PROVISIONING_KEY must be changed "
+                "in production! Set a strong random key in your .env file."
+            )
+
+        else:
+            logger.warning(
+                "⚠️ Using default DEVICE_PROVISIONING_KEY — "
+                "NOT SAFE FOR PRODUCTION."
+            )
 
     # Load AI model into memory on startup
     try:
@@ -29,15 +65,13 @@ async def lifespan(app: FastAPI):
             input_size=settings.MODEL_INPUT_SIZE
         )
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).error(f"AI Model failed to load: {e}")
+        logger.error(f"AI Model failed to load: {e}")
     
     # Load sensor anomaly detection model (Isolation Forest)
     try:
         registry.load_sensor_detector(model_dir=settings.SENSOR_MODEL_DIR)
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).error(f"Sensor ML model failed to load: {e}")
+        logger.error(f"Sensor ML model failed to load: {e}")
     
     # Start the device watchdog as a background task
     import asyncio

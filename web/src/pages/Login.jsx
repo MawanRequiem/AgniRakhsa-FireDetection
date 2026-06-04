@@ -60,10 +60,10 @@ export default function Login() {
     <section
       className="relative section-dark min-h-screen flex items-center justify-center overflow-hidden"
     >
-      {/* Shared EmberCanvas from landing — visual continuity */}
+      {/* Shared EmberCanvas from landing - visual continuity */}
       <EmberCanvas />
 
-      {/* Radial glow — same approach as Hero */}
+      {/* Radial glow - same approach as Hero */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{

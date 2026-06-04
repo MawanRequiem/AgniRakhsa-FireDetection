@@ -11,7 +11,7 @@ export default function ContactCta() {
 
   function handleSubmit(e) {
     e.preventDefault();
-    // Placeholder — would connect to backend
+    // Placeholder - would connect to backend
     setSubmitted(true);
   }
 

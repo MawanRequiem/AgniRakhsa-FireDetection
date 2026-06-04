@@ -8,7 +8,12 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "ag-super-secret-key-pls-change-in-prod-2026"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
-    
+
+    # Device Provisioning Security
+    DEVICE_PROVISIONING_KEY: str = "CHANGE-ME-factory-provisioning-master-key"
+    DEVICE_AUTH_TIMESTAMP_TOLERANCE: int = 300  # seconds (5 min window)
+    ALLOW_UNSIGNED_PROVISION: bool = True  # Grace period for migration
+
     # Supabase Connection
     SUPABASE_URL: str
     SUPABASE_KEY: str

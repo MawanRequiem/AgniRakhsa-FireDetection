@@ -84,7 +84,8 @@ class ConnectionManager:
             logger.info("Throttled WebSocket telemetry broadcast loop cancelled.")
         except Exception as e:
             logger.error(f"Error in throttled WebSocket broadcast loop: {e}", exc_info=True)
-            # Restart loop if it crashed unexpectedly
+            # Backoff delay to prevent rapid crash-restart loop if the error is persistent
+            await asyncio.sleep(2)
             self._broadcast_task = asyncio.create_task(self._throttled_broadcast_loop())
 
 manager = ConnectionManager()

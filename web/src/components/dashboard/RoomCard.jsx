@@ -39,7 +39,7 @@ export default function RoomCard({ room }) {
           </h3>
         </div>
 
-        {/* Status badge — prominent inline */}
+        {/* Status badge - prominent inline */}
         <span 
           className="text-[10px] font-bold px-2 py-0.5 rounded-full"
           style={{ 
@@ -83,7 +83,7 @@ export default function RoomCard({ room }) {
         <span className="text-[10px] font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>
           {room.created_at 
             ? new Date(room.created_at).toLocaleString('en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-            : '—'
+            : '-'
           }
         </span>
       </div>

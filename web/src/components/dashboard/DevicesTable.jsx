@@ -76,7 +76,7 @@ export default function DevicesTable({ devices, isLoading }) {
                   </span>
                 </td>
                 <td className="px-4 py-3" style={{ color: 'var(--ifrit-text-secondary)' }}>
-                  {device.mac_address || '—'}
+                  {device.mac_address || '-'}
                 </td>
                 <td className="px-4 py-3">
                   {isCalibrating ? (
