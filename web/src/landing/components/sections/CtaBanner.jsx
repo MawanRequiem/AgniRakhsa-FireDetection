@@ -32,8 +32,8 @@ export default function CtaBanner() {
           </ScrollReveal>
 
           <ScrollReveal delay={150}>
-            <div className="flex lg:justify-end">
-              <Button as={Link} to="/contact" size="lg">
+            <div className="flex justify-center lg:justify-end">
+              <Button as={Link} to="/contact" size="lg" className="w-full sm:w-auto">
                 {t('ctaBanner.cta')}
               </Button>
             </div>

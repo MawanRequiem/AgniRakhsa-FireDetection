@@ -1,8 +1,6 @@
 import { useLanguage } from '@landing/hooks/useLanguage';
 import ScrollReveal from '@landing/components/ui/ScrollReveal';
 
-const TREND_ARROWS = ['Meningkat', 'Kritis', 'Tertinggal'];
-
 export default function Problem() {
   const { t } = useLanguage();
   const stats = t('problem.stats');

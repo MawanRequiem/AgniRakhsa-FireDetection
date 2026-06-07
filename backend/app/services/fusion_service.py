@@ -699,11 +699,11 @@ async def _create_alert(
         detect_desc_en = "System detects unusual temperature or air quality conditions"
 
     if risk_level == "critical":
-        message_id = f"🚨 BAHAYA KEBAKARAN di {room_name}! {detect_desc_id}. Segera amankan area dan evakuasi!"
-        message_en = f"🚨 FIRE RISK in {room_name_en}! {detect_desc_en}. Secure the area and evacuate immediately!"
+        message_id = f"[BAHAYA KEBAKARAN] di {room_name}! {detect_desc_id}. Segera amankan area dan evakuasi!"
+        message_en = f"[FIRE RISK] in {room_name_en}! {detect_desc_en}. Secure the area and evacuate immediately!"
     else:
-        message_id = f"⚠️ PERINGATAN BAHAYA di {room_name}! {detect_desc_id}. Harap segera periksa lokasi."
-        message_en = f"⚠️ HAZARD WARNING in {room_name_en}! {detect_desc_en}. Please check the location."
+        message_id = f"[PERINGATAN BAHAYA] di {room_name}! {detect_desc_id}. Harap segera periksa lokasi."
+        message_en = f"[HAZARD WARNING] in {room_name_en}! {detect_desc_en}. Please check the location."
     
     explanation_id, explanation_en = _generate_explainable_narrative(
         image_score=image_score,
@@ -777,12 +777,12 @@ async def _create_alert(
             
             # Risk level in Indonesian and English
             risk_labels_id = {
-                "critical": "🔴 KRITIS",
-                "high": "🟠 TINGGI",
+                "critical": "KRITIS",
+                "high": "TINGGI",
             }
             risk_labels_en = {
-                "critical": "🔴 CRITICAL",
-                "high": "🟠 HIGH",
+                "critical": "CRITICAL",
+                "high": "HIGH",
             }
             risk_display_id = risk_labels_id.get(risk_level, risk_level.upper())
             risk_display_en = risk_labels_en.get(risk_level, risk_level.upper())
@@ -796,8 +796,8 @@ async def _create_alert(
                 if flame_val is not None:
                     fv = flame_val if isinstance(flame_val, (int, float)) else flame_val.get("value", 9999)
                     if fv < 1500:
-                        detection_sources_id.append("🔥 Api terdeteksi oleh sensor inframerah")
-                        detection_sources_en.append("🔥 Fire detected by infrared sensor")
+                        detection_sources_id.append("Api terdeteksi oleh sensor inframerah")
+                        detection_sources_en.append("Fire detected by infrared sensor")
                 
                 # Check for high gas
                 for gas_key in ("MQ2", "mq2"):
@@ -805,8 +805,8 @@ async def _create_alert(
                     if gas_val is not None:
                         gv = gas_val if isinstance(gas_val, (int, float)) else gas_val.get("value", 0)
                         if gv > 500:
-                            detection_sources_id.append("💨 Kadar asap tinggi terdeteksi")
-                            detection_sources_en.append("💨 High smoke level detected")
+                            detection_sources_id.append("Kadar asap tinggi terdeteksi")
+                            detection_sources_en.append("High smoke level detected")
                             break
                 
                 # Check for high temp
@@ -815,33 +815,33 @@ async def _create_alert(
                     if temp_val is not None:
                         tv = temp_val if isinstance(temp_val, (int, float)) else temp_val.get("value", 0)
                         if tv > 55:
-                            detection_sources_id.append(f"🌡️ Suhu ruangan sangat tinggi ({tv:.0f}°C)")
-                            detection_sources_en.append(f"🌡️ Room temperature very high ({tv:.0f}°C)")
+                            detection_sources_id.append(f"Suhu ruangan sangat tinggi ({tv:.0f}°C)")
+                            detection_sources_en.append(f"Room temperature very high ({tv:.0f}°C)")
                             break
 
             if detection_sources_id:
                 detection_text_id = "\n".join(detection_sources_id)
                 detection_text_en = "\n".join(detection_sources_en)
             elif image_url:
-                detection_text_id = "📷 Kamera mendeteksi potensi api"
-                detection_text_en = "📷 Camera detected potential fire"
+                detection_text_id = "Kamera mendeteksi potensi api"
+                detection_text_en = "Camera detected potential fire"
             else:
-                detection_text_id = "🤖 Sensor mendeteksi anomali lingkungan"
-                detection_text_en = "🤖 Sensors detected environmental anomaly"
+                detection_text_id = "Sensor mendeteksi anomali lingkungan"
+                detection_text_en = "Sensors detected environmental anomaly"
 
             wa_message = (
-                f"🚨 *FIRE ALERT / PERINGATAN KEBAKARAN*\n\n"
-                f"📍 *Lokasi / Location:* {room_name}\n"
-                f"⚠️ *Tingkat Bahaya / Risk Level:* {risk_display_en} / {risk_display_id} ({fusion_score*100:.0f}%)\n\n"
-                f"📝 *Analisis Sistem / System Analysis:*\n"
-                f"🇮🇩 {explanation_id}\n"
-                f"🇬🇧 {explanation_en}\n\n"
-                f"🔍 *Terdeteksi / Detections:*\n"
+                f"*FIRE ALERT / PERINGATAN KEBAKARAN*\n\n"
+                f"*Lokasi / Location:* {room_name}\n"
+                f"*Tingkat Bahaya / Risk Level:* {risk_display_en} / {risk_display_id} ({fusion_score*100:.0f}%)\n\n"
+                f"*Analisis Sistem / System Analysis:*\n"
+                f"ID: {explanation_id}\n"
+                f"EN: {explanation_en}\n\n"
+                f"*Terdeteksi / Detections:*\n"
                 f"• {detection_text_en}\n"
                 f"• {detection_text_id}\n\n"
-                f"📊 *Data Sensor / Sensor Readings:*\n"
+                f"*Data Sensor / Sensor Readings:*\n"
                 f"{sensor_details}\n\n"
-                f"🛡️ *Tindakan / Actions:*\n"
+                f"*Tindakan / Actions:*\n"
                 f"1. Cek lokasi secara visual / Visually inspect the room\n"
                 f"2. Siapkan APAR / Prepare fire extinguisher\n"
                 f"3. Hubungi petugas / Contact building security\n"
@@ -850,7 +850,7 @@ async def _create_alert(
             )
 
             if image_url:
-                wa_message += f"\n📸 Photo attached from security camera / Foto terlampir dari kamera pengawas."
+                wa_message += f"\nPhoto attached from security camera / Foto terlampir dari kamera pengawas."
             
             wa_message += f"\n_Pesan otomatis dari Sistem AgniRaksha_"
             

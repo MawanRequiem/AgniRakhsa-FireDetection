@@ -63,8 +63,8 @@ export default function FireAlertToast() {
             <div className="fire-toast-title-wrap">
               <span className="fire-toast-title">
                 {toast.severity === 'critical' 
-                  ? (language === 'en' ? '🚨 CRITICAL FIRE ALERT' : '🚨 BAHAYA KEBAKARAN (SANGAT TINGGI)') 
-                  : (language === 'en' ? '⚠️ HIGH FIRE WARNING' : '⚠️ PERINGATAN BAHAYA KEBAKARAN')
+                  ? (language === 'en' ? 'CRITICAL FIRE ALERT' : 'BAHAYA KEBAKARAN (SANGAT TINGGI)') 
+                  : (language === 'en' ? 'HIGH FIRE WARNING' : 'PERINGATAN BAHAYA KEBAKARAN')
                 }
               </span>
               <span className="fire-toast-score">

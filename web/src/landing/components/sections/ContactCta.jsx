@@ -147,7 +147,7 @@ export default function ContactCta() {
                 </div>
 
                 <Button type="submit" size="lg" className="mt-2 w-full justify-center" disabled={sending}>
-                  {sending ? 'Mengirim...' : form.submit}
+                  {sending ? form.sending : form.submit}
                 </Button>
               </form>
             )}
