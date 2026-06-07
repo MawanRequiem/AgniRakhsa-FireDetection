@@ -2,7 +2,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { AlertCircle, Flame, Info, ShieldCheck } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useUIStore } from '@/store/store';
-import { getLocalizedMessage } from '@/lib/translations';
+import { getLocalizedMessage, getLocalizedExplanation } from '@/lib/translations';
 
 export default function AlertFeed({ alerts }) {
   const shouldReduceMotion = useReducedMotion();
@@ -59,7 +59,12 @@ export default function AlertFeed({ alerts }) {
               <p className="text-sm font-medium leading-tight" style={{ color: 'var(--ifrit-text-primary)' }}>
                 {getLocalizedMessage(alert.message, language) || `Alert: ${alert.severity}`}
               </p>
-              <div className="flex items-center text-[11px] font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>
+              {getLocalizedExplanation(alert.message, language) && (
+                <p className="text-xs italic leading-normal" style={{ color: 'var(--ifrit-text-muted)' }}>
+                  {getLocalizedExplanation(alert.message, language)}
+                </p>
+              )}
+              <div className="flex items-center text-[10px] font-mono pt-1" style={{ color: 'var(--ifrit-text-muted)' }}>
                 <span>{new Date(alert.created_at).toLocaleString(locale, { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             </div>

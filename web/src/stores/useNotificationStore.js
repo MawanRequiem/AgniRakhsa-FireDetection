@@ -24,6 +24,8 @@ export const useNotificationStore = create((set, get) => ({
       fusionScore: alertData.fusion_score || 0,
       imageUrl: alertData.image_url || null,
       sensorSummary: alertData.sensor_summary || '',
+      explanationEn: alertData.explanation_en || '',
+      explanationId: alertData.explanation_id || '',
       timestamp: alertData.timestamp || new Date().toISOString(),
       isRead: false,
       showToast: true,

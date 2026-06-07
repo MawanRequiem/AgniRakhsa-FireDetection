@@ -8,7 +8,7 @@ import { useRoomsStore } from '@/stores/useRoomsStore';
 import { useUIStore } from '@/store/store';
 import { CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { translations, getLocalizedMessage } from '@/lib/translations';
+import { translations, getLocalizedMessage, getLocalizedExplanation } from '@/lib/translations';
 
 export default function Alerts() {
   const navigate = useNavigate();
@@ -163,8 +163,15 @@ export default function Alerts() {
                     <TableCell className="font-medium whitespace-nowrap" style={{ color: 'var(--ifrit-text-primary)' }}>
                       {roomName}
                     </TableCell>
-                    <TableCell className="max-w-[300px] truncate" style={{ color: 'var(--ifrit-text-primary)' }}>
-                      {getLocalizedMessage(alert.message, language)}
+                    <TableCell className="max-w-[400px]">
+                      <div className="font-medium text-sm" style={{ color: 'var(--ifrit-text-primary)' }}>
+                        {getLocalizedMessage(alert.message, language)}
+                      </div>
+                      {getLocalizedExplanation(alert.message, language) && (
+                        <div className="text-[11px] mt-1 italic leading-relaxed" style={{ color: 'var(--ifrit-text-muted)' }}>
+                          {getLocalizedExplanation(alert.message, language)}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       {alert.is_acknowledged ? (

@@ -264,3 +264,16 @@ export const getLocalizedMessage = (message, lang) => {
 
   return message;
 };
+
+export const getLocalizedExplanation = (message, lang) => {
+  if (!message) return '';
+  if (message.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(message);
+      return parsed[`explanation_${lang}`] || parsed[`explanation_en`] || '';
+    } catch (e) {
+      return '';
+    }
+  }
+  return '';
+};

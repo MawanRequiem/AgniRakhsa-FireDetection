@@ -83,6 +83,15 @@ export default function FireAlertToast() {
             <span>{toast.roomName}</span>
           </div>
 
+          {/* Explanation narrative */}
+          {(toast.explanationId || toast.explanationEn) && (
+            <div className="text-[11px] mt-2 p-2 rounded" style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)', color: 'rgba(255, 255, 255, 0.9)' }}>
+              <p className="leading-relaxed font-medium">
+                {language === 'en' ? toast.explanationEn : toast.explanationId}
+              </p>
+            </div>
+          )}
+
           {/* Detection image if available */}
           {toast.imageUrl && (
             <div className="fire-toast-image-wrap">

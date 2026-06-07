@@ -362,6 +362,8 @@ async def run_fusion(
             fusion_result_id=fusion_record.get("id"),
             risk_level=risk_level,
             fusion_score=fusion_score,
+            image_score=image_score,
+            sensor_score=sensor_score,
             sensor_snapshot=sensor_snapshot,
             image_url=image_url,
         )
@@ -398,11 +400,131 @@ async def run_fusion(
     }
 
 
+def _generate_explainable_narrative(
+    image_score: float,
+    sensor_score: float,
+    sensor_snapshot: Optional[dict] = None,
+    image_url: Optional[str] = None
+) -> tuple[str, str]:
+    """
+    Generates layman-friendly narrative explaining the fusion model's fire decision.
+    Returns a tuple of (narrative_id, narrative_en).
+    """
+    has_image = bool(image_url) or image_score > 0.3
+    
+    has_flame = False
+    has_smoke = False
+    has_heat = False
+    
+    if sensor_snapshot:
+        # Check flame sensor (active low, value < 1500 indicates fire)
+        flame_val = sensor_snapshot.get("FLAME") or sensor_snapshot.get("flame")
+        if flame_val is not None:
+            fv = flame_val if isinstance(flame_val, (int, float)) else flame_val.get("value", 9999)
+            if fv < 1500:
+                has_flame = True
+                
+        # Check smoke sensor
+        for gas_key in ("MQ2", "mq2"):
+            gas_val = sensor_snapshot.get(gas_key)
+            if gas_val is not None:
+                gv = gas_val if isinstance(gas_val, (int, float)) else gas_val.get("value", 0)
+                if gv > 500:
+                    has_smoke = True
+                    break
+                    
+        # Check heat/temp sensor
+        for temp_key in ("SHTC3_TEMP", "shtc3_temp"):
+            temp_val = sensor_snapshot.get(temp_key)
+            if temp_val is not None:
+                tv = temp_val if isinstance(temp_val, (int, float)) else temp_val.get("value", 0)
+                if tv > 55:
+                    has_heat = True
+                    break
+
+    has_sensors = has_flame or has_smoke or has_heat
+
+    if has_image and has_sensors:
+        reasons_id = []
+        reasons_en = []
+        if has_flame:
+            reasons_id.append("deteksi api langsung oleh sensor inframerah")
+            reasons_en.append("direct fire detection from infrared sensor")
+        if has_smoke:
+            reasons_id.append("kepulan asap tebal")
+            reasons_en.append("thick smoke accumulation")
+        if has_heat:
+            reasons_id.append("kenaikan suhu ekstrim")
+            reasons_en.append("extreme temperature rise")
+            
+        desc_id = " dan ".join(reasons_id)
+        desc_en = " and ".join(reasons_en)
+        
+        narrative_id = (
+            f"Kombinasi analisis visual kamera (AI mendeteksi objek menyerupai api) "
+            f"dan data sensor fisik ({desc_id}) mengonfirmasi adanya kebakaran aktif. "
+            f"Sistem mendeteksi tingkat bahaya yang sangat tinggi."
+        )
+        narrative_en = (
+            f"Visual analysis from the camera (AI detected fire-like objects) "
+            f"combined with physical sensor readings ({desc_en}) confirms active fire. "
+            f"The system has detected a very high level of danger."
+        )
+    elif has_image:
+        narrative_id = (
+            "Peringatan dipicu oleh sistem analisis visual AI pada kamera pengawas yang mendeteksi "
+            "adanya kobaran api atau asap tebal secara visual. Sensor fisik ruangan belum menunjukkan indikasi bahaya."
+        )
+        narrative_en = (
+            "This warning is triggered by the camera AI visual analysis detecting fire or thick smoke. "
+            "Ambient physical sensors have not registered significant anomalies yet."
+        )
+    elif has_sensors:
+        reasons_id = []
+        reasons_en = []
+        if has_flame:
+            reasons_id.append("sensor inframerah menangkap radiasi api")
+            reasons_en.append("infrared sensor captured fire radiation")
+        if has_smoke:
+            reasons_id.append("sensor gas mendeteksi asap tebal")
+            reasons_en.append("gas sensor detected thick smoke")
+        if has_heat:
+            reasons_id.append("sensor suhu mendeteksi panas ekstrim")
+            reasons_en.append("temperature sensor detected extreme heat")
+            
+        desc_id = " serta ".join(reasons_id)
+        desc_en = " and ".join(reasons_en)
+        
+        narrative_id = (
+            f"Peringatan dipicu oleh anomali sensor fisik ruangan: {desc_id}. "
+            f"Kamera pengawas belum/tidak mendeteksi visual api secara langsung, "
+            f"namun kondisi ruangan terkonfirmasi tidak aman."
+        )
+        narrative_en = (
+            f"This warning is triggered by room sensor anomalies: {desc_en}. "
+            f"Although the camera does not show active visual fire/smoke, "
+            f"environmental conditions are confirmed unsafe."
+        )
+    else:
+        narrative_id = (
+            "Peringatan dipicu oleh anomali lingkungan (udara sangat kering/kelembaban rendah) "
+            "atau pola pembacaan sensor yang tidak wajar dari kondisi normal harian ruangan."
+        )
+        narrative_en = (
+            "This warning is triggered by environmental anomalies (extremely dry air/low humidity) "
+            "or sensor patterns deviating significantly from normal daily room conditions."
+        )
+        
+    return narrative_id, narrative_en
+
+
 async def _create_alert(
     room_id: Optional[UUID],
     fusion_result_id: Optional[str],
     risk_level: str,
     fusion_score: float,
+    image_score: float = 0.0,
+    sensor_score: float = 0.0,
     sensor_snapshot: Optional[dict] = None,
     image_url: Optional[str] = None,
 ) -> None:
@@ -575,8 +697,20 @@ async def _create_alert(
         message_id = f"⚠️ PERINGATAN BAHAYA di {room_name}! {detect_desc_id}. Harap segera periksa lokasi."
         message_en = f"⚠️ HAZARD WARNING in {room_name_en}! {detect_desc_en}. Please check the location."
     
+    explanation_id, explanation_en = _generate_explainable_narrative(
+        image_score=image_score,
+        sensor_score=sensor_score,
+        sensor_snapshot=sensor_snapshot,
+        image_url=image_url,
+    )
+    
     import json
-    message = json.dumps({"en": message_en, "id": message_id})
+    message = json.dumps({
+        "en": message_en,
+        "id": message_id,
+        "explanation_en": explanation_en,
+        "explanation_id": explanation_id
+    })
 
     insert_data = {
         "severity": severity,
@@ -602,7 +736,6 @@ async def _create_alert(
         if image_url and "image_url" not in alert_data:
             alert_data["image_url"] = image_url
 
-
         # Broadcast NEW_ALERT for the existing alert panel in header
         asyncio.create_task(manager.broadcast({
             "type": "NEW_ALERT",
@@ -621,6 +754,8 @@ async def _create_alert(
                 "image_url": image_url,
                 "sensor_summary": _format_sensor_details_for_wa(sensor_snapshot),
                 "timestamp": alert_data.get("created_at"),
+                "explanation_en": explanation_en,
+                "explanation_id": explanation_id,
             }
         }))
 
@@ -690,6 +825,9 @@ async def _create_alert(
                 f"🚨 *FIRE ALERT / PERINGATAN KEBAKARAN*\n\n"
                 f"📍 *Lokasi / Location:* {room_name}\n"
                 f"⚠️ *Tingkat Bahaya / Risk Level:* {risk_display_en} / {risk_display_id} ({fusion_score*100:.0f}%)\n\n"
+                f"📝 *Analisis Sistem / System Analysis:*\n"
+                f"🇮🇩 {explanation_id}\n"
+                f"🇬🇧 {explanation_en}\n\n"
                 f"🔍 *Terdeteksi / Detections:*\n"
                 f"• {detection_text_en}\n"
                 f"• {detection_text_id}\n\n"
