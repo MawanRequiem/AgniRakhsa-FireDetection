@@ -78,6 +78,7 @@
       "email": "Email",
       "company": "Perusahaan",
       "message": "Pesan",
+      "sending": "Mengirim...",
       "submit": "Kirim Permintaan",
       "interest": "Saya tertarik untuk",
       "options": ["Demo Produk", "Konsultasi", "Harga & Paket", "Partnership"]

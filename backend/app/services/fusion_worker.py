@@ -17,8 +17,9 @@ import asyncio
 import logging
 import json
 import time
-from typing import Dict, List
+from typing import Dict, List, Optional
 from collections import defaultdict
+from datetime import datetime, timezone
 
 from app.core.redis import redis_manager
 from app.core.config import settings
@@ -142,12 +143,15 @@ async def process_buffers():
                     _sensor_score_buffer[room_id] = []
 
                     try:
+                        # Try to grab latest camera frame as visual evidence
+                        image_url = _get_latest_camera_frame(room_id)
+
                         await fusion_service.run_fusion(
                             image_score=0.0,
                             room_id=room_id,
                             detection_event_id=None,
                             sensor_snapshot=snapshot,
-                            image_url=None,
+                            image_url=image_url,
                         )
                     except Exception as e:
                         logger.error(f"Error running sensor-only fusion (path 3): {e}")
@@ -189,6 +193,50 @@ def _evaluate_sensor_risk(snapshot: dict, room_id: str) -> float:
     score, algorithm = fusion_service.score_sensors(room_id, snapshot)
     logger.debug(f"Sensor-only eval for room {room_id}: score={score:.4f}, algorithm={algorithm}")
     return score
+
+
+def _get_latest_camera_frame(room_id: str) -> Optional[str]:
+    """
+    Grab the most recent image_url from detection_events for this room.
+    Only returns frames captured within the last 30 seconds — stale frames
+    are useless as evidence.
+    
+    Returns:
+        image_url string or None.
+    """
+    try:
+        result = (
+            supabase.table("detection_events")
+            .select("image_url, created_at")
+            .eq("room_id", str(room_id))
+            .not_.is_("image_url", "null")
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if result.data:
+            det = result.data[0]
+            det_time_str = det.get("created_at")
+            image_url = det.get("image_url")
+            if det_time_str and image_url:
+                det_time = datetime.fromisoformat(det_time_str.replace("Z", "+00:00"))
+                age = (datetime.now(timezone.utc) - det_time).total_seconds()
+                if age < 30:
+                    logger.info(
+                        f"Grabbed camera frame for room {room_id}: "
+                        f"age={age:.1f}s, url={image_url[:60]}..."
+                    )
+                    return image_url
+                else:
+                    logger.debug(
+                        f"Latest camera frame for room {room_id} is too old: "
+                        f"{age:.1f}s > 30s"
+                    )
+    except Exception as e:
+        logger.warning(
+            f"Could not fetch latest detection image for room {room_id}: {e}"
+        )
+    return None
 
 
 async def run_fusion_worker():

@@ -78,6 +78,7 @@
       "email": "Email",
       "company": "Company",
       "message": "Message",
+      "sending": "Sending...",
       "submit": "Submit Request",
       "interest": "I'm interested in",
       "options": ["Product Demo", "Consultation", "Pricing & Packages", "Partnership"]
