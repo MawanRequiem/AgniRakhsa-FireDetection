@@ -29,7 +29,7 @@ export default function RoomDeviceExportCard({ roomId, devices }) {
 
       if (preset === 'custom') {
         if (!startTime || !endTime) {
-          throw new Error('Please select both start and end date/time for custom export.');
+          throw new Error('Silakan pilih tanggal dan waktu mulai serta selesai untuk ekspor kustom.');
         }
         
         // Convert to ISO string in UTC or exact local
@@ -37,7 +37,7 @@ export default function RoomDeviceExportCard({ roomId, devices }) {
         const endISO = new Date(endTime).toISOString();
 
         if (new Date(startTime) > new Date(endTime)) {
-          throw new Error('Start date/time cannot be later than end date/time.');
+          throw new Error('Tanggal/waktu mulai tidak boleh melebihi tanggal/waktu selesai.');
         }
 
         queryParams.append('start_time', startISO);
@@ -47,7 +47,7 @@ export default function RoomDeviceExportCard({ roomId, devices }) {
       const res = await customFetch(`/api/v1/sensors/export?${queryParams.toString()}`);
       
       if (!res.ok) {
-        let errMsg = 'Failed to generate export file.';
+        let errMsg = 'Gagal membuat file ekspor data.';
         try {
           const errData = await res.json();
           errMsg = errData.detail || errMsg;
@@ -62,7 +62,7 @@ export default function RoomDeviceExportCard({ roomId, devices }) {
 
       // Extract filename from headers
       const disposition = res.headers.get('content-disposition');
-      let filename = `gas_records_${preset}_export.csv`;
+      let filename = `laporan_sensor_${preset}_ekspor.csv`;
       if (disposition && disposition.indexOf('attachment') !== -1) {
         const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
         const matches = filenameRegex.exec(disposition);
@@ -80,19 +80,19 @@ export default function RoomDeviceExportCard({ roomId, devices }) {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      setError(err.message || 'An error occurred during export.');
+      setError(err.message || 'Terjadi kesalahan saat mengekspor data.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const presets = [
-    { value: '1h', label: '1 Hour' },
-    { value: '6h', label: '6 Hours' },
-    { value: '24h', label: '24 Hours' },
-    { value: '7d', label: '7 Days' },
-    { value: '30d', label: '30 Days' },
-    { value: 'custom', label: 'Custom' },
+    { value: '1h', label: '1 Jam' },
+    { value: '6h', label: '6 Jam' },
+    { value: '24h', label: '24 Jam' },
+    { value: '7d', label: '7 Hari' },
+    { value: '30d', label: '30 Hari' },
+    { value: 'custom', label: 'Kustom' },
   ];
 
   return (
@@ -100,18 +100,18 @@ export default function RoomDeviceExportCard({ roomId, devices }) {
       {/* Title */}
       <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: 'var(--ifrit-border)' }}>
         <Database className="w-4 h-4 text-[var(--ifrit-brand)]" />
-        <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>Gas Data Mining & Export</h3>
+        <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>Ekspor & Unduh Data Gas</h3>
       </div>
 
       <p className="text-[11px] leading-relaxed" style={{ color: 'var(--ifrit-text-secondary)' }}>
-        Extract aggregated historical MQ sensor resistances and environmental metrics side-by-side pivoted by minute into a clean spreadsheet structure.
+        Unduh riwayat data hambatan sensor MQ dan parameter lingkungan per menit ke dalam format tabel spreadsheet (CSV) yang rapi.
       </p>
 
       {/* Target Node Selector */}
       {devices && devices.length > 0 && (
         <div className="space-y-1">
           <label className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: 'var(--ifrit-text-muted)' }}>
-            Target IoT Node
+            Target Perangkat IoT
           </label>
           <select
             value={selectedDevice}
@@ -123,7 +123,7 @@ export default function RoomDeviceExportCard({ roomId, devices }) {
               color: 'var(--ifrit-text-primary)'
             }}
           >
-            <option value="all">All Devices (Room Total)</option>
+            <option value="all">Semua Perangkat (Total Ruangan)</option>
             {devices.map(dev => (
               <option key={dev.id} value={dev.id}>{dev.name} ({dev.mac_address || '-'})</option>
             ))}
@@ -134,7 +134,7 @@ export default function RoomDeviceExportCard({ roomId, devices }) {
       {/* Preset Picker */}
       <div className="space-y-1.5">
         <label className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: 'var(--ifrit-text-muted)' }}>
-          Timeframe Range
+          Rentang Waktu
         </label>
         <div className="grid grid-cols-3 gap-1.5">
           {presets.map((p) => (
@@ -162,7 +162,7 @@ export default function RoomDeviceExportCard({ roomId, devices }) {
       {preset === 'custom' && (
         <div className="grid grid-cols-2 gap-2 p-3 rounded-lg border text-xs animate-fadeIn" style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)' }}>
           <div className="space-y-1">
-            <span className="text-[9px] font-bold uppercase tracking-wider opacity-80" style={{ color: 'var(--ifrit-text-muted)' }}>Start Time</span>
+            <span className="text-[9px] font-bold uppercase tracking-wider opacity-80" style={{ color: 'var(--ifrit-text-muted)' }}>Waktu Mulai</span>
             <input
               type="datetime-local"
               value={startTime}
@@ -175,7 +175,7 @@ export default function RoomDeviceExportCard({ roomId, devices }) {
             />
           </div>
           <div className="space-y-1 border-l pl-2" style={{ borderColor: 'var(--ifrit-border)' }}>
-            <span className="text-[9px] font-bold uppercase tracking-wider opacity-80" style={{ color: 'var(--ifrit-text-muted)' }}>End Time</span>
+            <span className="text-[9px] font-bold uppercase tracking-wider opacity-80" style={{ color: 'var(--ifrit-text-muted)' }}>Waktu Selesai</span>
             <input
               type="datetime-local"
               value={endTime}
@@ -194,7 +194,7 @@ export default function RoomDeviceExportCard({ roomId, devices }) {
       {preset === '30d' && (
         <div className="flex gap-2 p-2.5 rounded-lg border text-[10px] leading-relaxed" style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-secondary)' }}>
           <Info className="w-4 h-4 text-[var(--ifrit-brand)] shrink-0 mt-0.5" />
-          <span>Large datasets can take up to 10 seconds to compile and align in the background.</span>
+          <span>Kumpulan data besar mungkin memerlukan waktu hingga 10 detik untuk diproses di latar belakang.</span>
         </div>
       )}
 
@@ -209,7 +209,7 @@ export default function RoomDeviceExportCard({ roomId, devices }) {
       {success && (
         <div className="flex items-center gap-1.5 text-emerald-400 p-2.5 rounded border border-emerald-500/20 bg-emerald-500/10 text-[11px]">
           <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-          <span>Export generated and download started!</span>
+          <span>Ekspor data berhasil dibuat dan unduhan dimulai!</span>
         </div>
       )}
 
@@ -223,12 +223,12 @@ export default function RoomDeviceExportCard({ roomId, devices }) {
         {isLoading ? (
           <>
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            <span>Aligning Data...</span>
+            <span>Memproses Data...</span>
           </>
         ) : (
           <>
             <Download className="w-3.5 h-3.5" />
-            <span>Export Gas Table</span>
+            <span>Ekspor Tabel Data</span>
           </>
         )}
       </Button>

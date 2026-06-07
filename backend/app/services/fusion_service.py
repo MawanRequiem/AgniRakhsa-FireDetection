@@ -431,10 +431,68 @@ async def _create_alert(
     severity_map = {"high": "high", "critical": "critical"}
     severity = severity_map.get(risk_level, "medium")
     
-    message = (
-        f"Fire risk detected — Level: {risk_level.upper()}, "
-        f"Fusion score: {fusion_score:.2f}"
-    )
+    # Fetch room name first so we can include it in the layperson message
+    room_name = "Ruangan Tidak Diketahui"
+    if room_id:
+        try:
+            room_res = supabase.table("rooms").select("name, floor, building_name").eq("id", str(room_id)).execute()
+            if room_res.data:
+                room_data = room_res.data[0]
+                r_name = room_data.get("name", "")
+                floor = room_data.get("floor", "")
+                building = room_data.get("building_name", "")
+                
+                parts = []
+                if r_name:
+                    parts.append(r_name)
+                if floor:
+                    parts.append(floor)
+                if building:
+                    parts.append(building)
+                
+                if parts:
+                    room_name = " — ".join(parts)
+        except Exception as e:
+            logger.error(f"Error fetching room details: {e}")
+
+    # Build layperson detection description
+    reasons = []
+    if sensor_snapshot:
+        flame_val = sensor_snapshot.get("FLAME") or sensor_snapshot.get("flame")
+        if flame_val is not None:
+            fv = flame_val if isinstance(flame_val, (int, float)) else flame_val.get("value", 9999)
+            if fv < 1500:
+                reasons.append("sensor mendeteksi adanya api")
+        
+        for gas_key in ("MQ2", "mq2"):
+            gas_val = sensor_snapshot.get(gas_key)
+            if gas_val is not None:
+                gv = gas_val if isinstance(gas_val, (int, float)) else gas_val.get("value", 0)
+                if gv > 500:
+                    reasons.append("asap tebal terdeteksi")
+                    break
+        
+        for temp_key in ("SHTC3_TEMP", "shtc3_temp"):
+            temp_val = sensor_snapshot.get(temp_key)
+            if temp_val is not None:
+                tv = temp_val if isinstance(temp_val, (int, float)) else temp_val.get("value", 0)
+                if tv > 55:
+                    reasons.append(f"suhu ruangan sangat panas ({tv:.1f}°C)")
+                    break
+
+    if reasons and image_url:
+        detect_desc = "Kamera pengawas dan sensor mendeteksi " + " serta ".join(reasons)
+    elif image_url:
+        detect_desc = "Kamera pengawas mendeteksi adanya potensi kobaran api"
+    elif reasons:
+        detect_desc = "Sensor ruangan mendeteksi " + " serta ".join(reasons)
+    else:
+        detect_desc = "Sistem mendeteksi adanya kejanggalan suhu atau kondisi udara"
+
+    if risk_level == "critical":
+        message = f"🚨 BAHAYA KEBAKARAN di {room_name}! {detect_desc}. Segera amankan area dan evakuasi!"
+    else:
+        message = f"⚠️ PERINGATAN BAHAYA di {room_name}! {detect_desc}. Harap segera periksa lokasi."
     
     insert_data = {
         "severity": severity,
@@ -460,19 +518,6 @@ async def _create_alert(
         if image_url and "image_url" not in alert_data:
             alert_data["image_url"] = image_url
 
-        # Fetch room name for enriched frontend data
-        room_name = "Ruangan Tidak Diketahui"
-        if room_id:
-            room_res = supabase.table("rooms").select("name, floor, building_name").eq("id", str(room_id)).execute()
-            if room_res.data:
-                room_data = room_res.data[0]
-                room_name = room_data.get("name", room_name)
-                floor = room_data.get("floor", "")
-                building = room_data.get("building_name", "")
-                if floor:
-                    room_name = f"{room_name}, {floor}"
-                if building:
-                    room_name = f"{room_name} — {building}"
 
         # Broadcast NEW_ALERT for the existing alert panel in header
         asyncio.create_task(manager.broadcast({

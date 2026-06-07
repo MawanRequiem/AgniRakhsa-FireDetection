@@ -171,9 +171,9 @@ function DeviceCalibrationItem({ device }) {
                    localDevice.status === 'warming_up' ? 'var(--ifrit-warning)' :
                    localDevice.status === 'burn_in' ? 'var(--color-ifrit-warning)' : 'var(--ifrit-text-muted)'
           }}>
-            {localDevice.status === 'calibrating' && 'Calibrating'}
-            {localDevice.status === 'warming_up' && 'Warming Up'}
-            {localDevice.status === 'burn_in' && 'Burn-In (24h)'}
+            {localDevice.status === 'calibrating' && 'Mengalibrasi'}
+            {localDevice.status === 'warming_up' && 'Pemanasan'}
+            {localDevice.status === 'burn_in' && 'Penstabilan (24 jam)'}
             {localDevice.status === 'online' && 'Online'}
             {localDevice.status === 'offline' && 'Offline'}
           </span>
@@ -185,10 +185,10 @@ function DeviceCalibrationItem({ device }) {
         <div className="flex flex-col gap-1 p-3 rounded-lg border bg-blue-500/10 text-blue-400 border-blue-500/20 text-[11px] animate-pulse">
           <div className="flex items-center gap-1.5 font-bold">
             <RefreshCw className="w-3.5 h-3.5 text-blue-500 animate-spin" />
-            <span>Recalibration In Progress</span>
+            <span>Kalibrasi Ulang Sedang Berjalan</span>
           </div>
           <p className="opacity-80 leading-normal">
-            The device is recalculating MQ sensor baseline R0 values. Keep the device in clean air. (takes ~15 minutes).
+            Alat sedang menghitung ulang nilai dasar sensor gas MQ. Letakkan alat di udara bersih. (Butuh waktu ~15 menit).
           </p>
         </div>
       )}
@@ -197,10 +197,10 @@ function DeviceCalibrationItem({ device }) {
         <div className="flex flex-col gap-1 p-3 rounded-lg border bg-orange-500/10 text-orange-400 border-orange-500/20 text-[11px] animate-pulse">
           <div className="flex items-center gap-1.5 font-bold">
             <AlertCircle className="w-3.5 h-3.5 text-orange-500" />
-            <span>Heater Warm-up Active</span>
+            <span>Pemanasan Sensor Aktif</span>
           </div>
           <p className="opacity-80 leading-normal">
-            Sensors are pre-heating to stabilize. Remote commands will activate when warm-up completes.
+            Sensor sedang dipanaskan agar stabil. Tombol perintah akan aktif setelah pemanasan selesai.
           </p>
         </div>
       )}
@@ -209,15 +209,15 @@ function DeviceCalibrationItem({ device }) {
         <div className="flex flex-col gap-1.5 p-3 rounded-lg border bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-[11px]">
           <div className="flex items-center gap-1.5 font-bold">
             <Cpu className="w-3.5 h-3.5 text-yellow-500" />
-            <span>Physical Sensor Burn-In</span>
+            <span>Proses Penstabilan Sensor (Burn-in)</span>
           </div>
           <p className="opacity-80 leading-normal">
-            Device chemical elements are stabilizing for optimal high-precision fire and gas baseline detection.
+            Kandungan kimiawi sensor sedang distabilkan agar deteksi kebakaran & kebocoran gas lebih akurat.
           </p>
           <div className="mt-1 space-y-1">
             <div className="flex justify-between text-[9px] font-mono opacity-90">
-              <span>Progress: {burnInPercent.toFixed(1)}%</span>
-              <span>{elapsedHours}h {remainingMins}m / 24h</span>
+              <span>Kemajuan: {burnInPercent.toFixed(1)}%</span>
+              <span>{elapsedHours}j {remainingMins}m / 24j</span>
             </div>
             <div className="w-full h-1 bg-yellow-500/20 rounded-full overflow-hidden">
               <div className="h-full bg-yellow-500 rounded-full transition-all duration-1000" style={{ width: `${burnInPercent}%` }} />
@@ -236,28 +236,28 @@ function DeviceCalibrationItem({ device }) {
       {/* Baseline R0 values */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-[11px] font-bold" style={{ color: 'var(--ifrit-text-secondary)' }}>
-          <span>BASELINE RESISTANCE (R0)</span>
+          <span>NILAI HAMBATAN DASAR SENSOR (R0)</span>
           {calibration?.calibrated_at && (
             <span className="text-[9px] font-normal" style={{ color: 'var(--ifrit-text-muted)' }}>
-              Last: {new Date(calibration.calibrated_at).toLocaleDateString()}
+              Terakhir: {new Date(calibration.calibrated_at).toLocaleDateString()}
             </span>
           )}
         </div>
 
         {!calibration ? (
           <div className="text-center py-4 border border-dashed rounded-lg" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
-            <p className="text-[11px]" style={{ color: 'var(--ifrit-text-muted)' }}>No baseline resistance data loaded.</p>
+            <p className="text-[11px]" style={{ color: 'var(--ifrit-text-muted)' }}>Tidak ada data nilai dasar sensor.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
             <div className="p-2 rounded-lg border flex flex-col justify-center" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
-              <span className="text-[9px]" style={{ color: 'var(--ifrit-text-muted)' }}>MQ-2 (Smoke)</span>
+              <span className="text-[9px]" style={{ color: 'var(--ifrit-text-muted)' }}>MQ-2 (Asap)</span>
               <span className="font-mono text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>
                 {formatNumber(calibration.r0_mq2)} <span className="text-[10px]" style={{ color: 'var(--ifrit-text-muted)' }}>kΩ</span>
               </span>
             </div>
             <div className="p-2 rounded-lg border flex flex-col justify-center" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
-              <span className="text-[9px]" style={{ color: 'var(--ifrit-text-muted)' }}>MQ-4 (CH4)</span>
+              <span className="text-[9px]" style={{ color: 'var(--ifrit-text-muted)' }}>MQ-4 (Metana)</span>
               <span className="font-mono text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>
                 {formatNumber(calibration.r0_mq4)} <span className="text-[10px]" style={{ color: 'var(--ifrit-text-muted)' }}>kΩ</span>
               </span>
@@ -269,7 +269,7 @@ function DeviceCalibrationItem({ device }) {
               </span>
             </div>
             <div className="p-2 rounded-lg border flex flex-col justify-center" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
-              <span className="text-[9px]" style={{ color: 'var(--ifrit-text-muted)' }}>MQ-9B (CO)</span>
+              <span className="text-[9px]" style={{ color: 'var(--ifrit-text-muted)' }}>MQ-9B (Karbon Monoksida)</span>
               <span className="font-mono text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>
                 {formatNumber(calibration.r0_mq9)} <span className="text-[10px]" style={{ color: 'var(--ifrit-text-muted)' }}>kΩ</span>
               </span>
@@ -287,11 +287,11 @@ function DeviceCalibrationItem({ device }) {
           style={{ backgroundColor: 'var(--ifrit-brand)', hover: { backgroundColor: 'var(--ifrit-brand-hover)' } }}
         >
           {commandStatus === 'pending' ? (
-            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Pending...</>
+            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Menunggu...</>
           ) : commandStatus === 'in_progress' ? (
-            <><RefreshCw className="w-3.5 h-3.5 animate-spin text-orange-400" /> Calibrating...</>
+            <><RefreshCw className="w-3.5 h-3.5 animate-spin text-orange-400" /> Mengalibrasi...</>
           ) : (
-            <><RefreshCw className="w-3.5 h-3.5" /> Recalibrate</>
+            <><RefreshCw className="w-3.5 h-3.5" /> Kalibrasi Ulang</>
           )}
         </Button>
 
@@ -300,7 +300,7 @@ function DeviceCalibrationItem({ device }) {
           disabled={commandStatus !== 'idle' || (localDevice.status !== 'online' && localDevice.status !== 'burn_in')}
           className="flex items-center justify-center gap-1 text-[11px] font-bold h-8 text-white cursor-pointer bg-yellow-600 hover:bg-yellow-700 transition-colors shadow-sm"
         >
-          <Cpu className="w-3.5 h-3.5" /> Re-Burn In
+          <Cpu className="w-3.5 h-3.5" /> Stabilkan Ulang
         </Button>
       </div>
     </div>
@@ -314,7 +314,7 @@ export default function RoomDeviceCalibration({ devices }) {
     <div className="border rounded-xl p-4 space-y-4" style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)' }}>
       <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: 'var(--ifrit-border)' }}>
         <Cpu className="w-4 h-4 text-[var(--ifrit-brand)]" />
-        <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>IoT Node Calibration</h3>
+        <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>Kalibrasi Sensor IoT</h3>
       </div>
       <div className="space-y-4 divide-y divide-[var(--ifrit-border)]">
         {devices.map(device => (

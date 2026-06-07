@@ -1,15 +1,15 @@
 import { cn } from '@/lib/utils';
 
 const variants = {
-  safe: { color: 'var(--ifrit-safe)', label: 'Safe' },
-  warning: { color: 'var(--ifrit-warning)', label: 'Warning' },
-  fire: { color: 'var(--ifrit-fire)', label: 'Critical' },
+  safe: { color: 'var(--ifrit-safe)', label: 'Aman' },
+  warning: { color: 'var(--ifrit-warning)', label: 'Peringatan' },
+  fire: { color: 'var(--ifrit-fire)', label: 'Kritis' },
   info: { color: 'var(--ifrit-info)', label: 'Info' },
-  calibrating: { color: 'var(--ifrit-info)', label: 'Calibrating' },
-  warming_up: { color: '#f97316', label: 'Warming Up' },
-  burn_in: { color: '#eab308', label: 'Burn-In (24h)' },
-  online: { color: 'var(--ifrit-safe)', label: 'Online' },
-  offline: { color: 'var(--ifrit-text-muted)', label: 'Offline' },
+  calibrating: { color: 'var(--ifrit-info)', label: 'Kalibrasi' },
+  warming_up: { color: '#f97316', label: 'Pemanasan' },
+  burn_in: { color: '#eab308', label: 'Uji Coba (24j)' },
+  online: { color: 'var(--ifrit-safe)', label: 'Aktif' },
+  offline: { color: 'var(--ifrit-text-muted)', label: 'Mati' },
 };
 
 export default function StatusIndicator({ status, showLabel = false, size = 'md', className }) {

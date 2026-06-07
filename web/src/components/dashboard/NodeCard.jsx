@@ -56,7 +56,7 @@ export default function NodeCard({ device, roomName, latestReadings }) {
           <StatusIndicator status={isCalibrating ? 'calibrating' : isWarmingUp ? 'warming_up' : isBurnIn ? 'burn_in' : isOnline ? (isFire ? 'fire' : 'online') : 'offline'} size="sm" />
           <div>
             <h3 className="text-sm font-semibold text-[var(--ifrit-text-primary)]">
-              {roomName || 'Unassigned Node'}
+              {roomName || 'Sensor Belum Diatur'}
             </h3>
             <p className="text-[10px] text-[var(--ifrit-text-muted)] font-mono">{device.id.split('-')[0]}</p>
           </div>
@@ -73,7 +73,7 @@ export default function NodeCard({ device, roomName, latestReadings }) {
               <Thermometer className={`w-3 h-3 ${isTempUnhealthy ? 'text-red-500' : 'text-[var(--ifrit-brand)]'}`} />
               <div className="flex flex-col">
                 <span className="text-[10px] text-[var(--ifrit-text-muted)]">
-                  TEMP {isTempUnhealthy && <AlertTriangle className="inline w-2.5 h-2.5 text-red-500" />}
+                  SUHU {isTempUnhealthy && <AlertTriangle className="inline w-2.5 h-2.5 text-red-500" />}
                 </span>
                 <span className={`text-xs font-mono ${isTempUnhealthy ? 'text-red-500 line-through opacity-70' : 'text-[var(--ifrit-text-primary)]'}`}>{temp}°C</span>
               </div>
@@ -89,7 +89,7 @@ export default function NodeCard({ device, roomName, latestReadings }) {
               <Droplets className={`w-3 h-3 ${isHumUnhealthy ? 'text-red-500' : 'text-blue-400'}`} />
               <div className="flex flex-col">
                 <span className="text-[10px] text-[var(--ifrit-text-muted)]">
-                  HUM {isHumUnhealthy && <AlertTriangle className="inline w-2.5 h-2.5 text-red-500" />}
+                  KELEMBABAN {isHumUnhealthy && <AlertTriangle className="inline w-2.5 h-2.5 text-red-500" />}
                 </span>
                 <span className={`text-xs font-mono ${isHumUnhealthy ? 'text-red-500 line-through opacity-70' : 'text-[var(--ifrit-text-primary)]'}`}>{hum}%</span>
               </div>
@@ -108,11 +108,11 @@ export default function NodeCard({ device, roomName, latestReadings }) {
             <div className="flex items-center gap-2">
               <Flame className={`w-3.5 h-3.5 ${isFlameUnhealthy ? 'text-red-500' : isFire ? 'text-[var(--ifrit-fire)] animate-pulse' : 'text-[var(--ifrit-text-muted)]'}`} />
               <span className="text-xs font-medium text-[var(--ifrit-text-primary)]">
-                IR FLAME {isFlameUnhealthy && <AlertTriangle className="inline w-2.5 h-2.5 text-red-500 ml-1" />}
+                SENSOR API {isFlameUnhealthy && <AlertTriangle className="inline w-2.5 h-2.5 text-red-500 ml-1" />}
               </span>
             </div>
             <span className={`text-xs font-mono ${isFlameUnhealthy ? 'text-red-500 line-through opacity-70' : isFire ? 'text-[var(--ifrit-fire)] font-bold' : 'text-[var(--ifrit-text-secondary)]'}`}>
-              {isFire ? 'DETECTED' : 'CLEAR'} ({Math.round(flameRaw)})
+              {isFire ? 'TERDETEKSI' : 'AMAN'} ({Math.round(flameRaw)})
             </span>
           </div>
         );
@@ -120,7 +120,7 @@ export default function NodeCard({ device, roomName, latestReadings }) {
 
       {/* Gas Sensors (MQ Series) */}
       <div className="flex-1 flex flex-col gap-1.5">
-        <h4 className="text-[10px] uppercase font-semibold text-[var(--ifrit-text-muted)] mb-1">Gas Array (PPM)</h4>
+        <h4 className="text-[10px] uppercase font-semibold text-[var(--ifrit-text-muted)] mb-1">Kadar Gas (PPM)</h4>
         {gasLevels.length > 0 ? (
           <div className="grid grid-cols-2 gap-1.5">
             {gasLevels.map((gas) => {
@@ -142,7 +142,7 @@ export default function NodeCard({ device, roomName, latestReadings }) {
             })}
           </div>
         ) : (
-           <p className="text-[10px] text-[var(--ifrit-text-muted)] italic">Awaiting telemetry...</p>
+           <p className="text-[10px] text-[var(--ifrit-text-muted)] italic">Menunggu telemetry...</p>
         )}
       </div>
     </div>

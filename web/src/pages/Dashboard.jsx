@@ -95,8 +95,8 @@ export default function Dashboard() {
     });
   });
 
-  let statusValue = "All Systems Safe";
-  let statusSubtext = "Monitoring active - no threats";
+  let statusValue = "Semua Area Aman";
+  let statusSubtext = "Pemantauan aktif - tidak ada ancaman";
   let statusColor = "green";
   let StatusIcon = Activity;
 
@@ -104,18 +104,18 @@ export default function Dashboard() {
   const criticalRooms = roomStatus.critical || 0;
 
   if (summary.activeAlerts > 0) {
-    statusValue = "Critical Alerts";
-    statusSubtext = `${summary.activeAlerts} alerts need attention`;
+    statusValue = "Bahaya Kebakaran!";
+    statusSubtext = `${summary.activeAlerts} peringatan aktif memerlukan tindakan segera`;
     statusColor = "red";
     StatusIcon = BellRing;
   } else if (criticalRooms > 0) {
-    statusValue = "Critical Status";
-    statusSubtext = `${criticalRooms} zones in critical status`;
+    statusValue = "Status Kritis";
+    statusSubtext = `${criticalRooms} ruangan dalam kondisi bahaya`;
     statusColor = "red";
     StatusIcon = BellRing;
   } else if (summary.highRiskRooms > 0) {
-    statusValue = "Hazard Detected";
-    statusSubtext = `${summary.highRiskRooms} zones at high risk`;
+    statusValue = "Ancaman Terdeteksi";
+    statusSubtext = `${summary.highRiskRooms} ruangan berisiko tinggi`;
     statusColor = "red";
     StatusIcon = Route;
   }
@@ -127,55 +127,55 @@ export default function Dashboard() {
         <div>
            <div className="flex items-center gap-3">
              <h2 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--ifrit-text-primary)' }}>
-               Facility Dashboard
+               Pemantauan Fasilitas
              </h2>
              {isConnected ? (
                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md" style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                 <span className="text-[10px] font-semibold tracking-wider text-emerald-600 dark:text-emerald-400">Connected</span>
+                 <span className="text-[10px] font-semibold tracking-wider text-emerald-600 dark:text-emerald-400">Terhubung</span>
                </div>
              ) : (
                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md" style={{ backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
                  <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                 <span className="text-[10px] font-semibold tracking-wider text-red-600 dark:text-red-400">Disconnected</span>
+                 <span className="text-[10px] font-semibold tracking-wider text-red-600 dark:text-red-400">Terputus</span>
                </div>
              )}
            </div>
-           <p className="text-xs mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>Monitoring all areas for fire and gas threats</p>
-        </div>
+           <p className="text-xs mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>Memantau semua area dari bahaya kebakaran dan asap</p>
+         </div>
       </div>
       
       {/* Top Stats Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard 
-          title="Facility Status" 
+          title="Status Fasilitas" 
           value={isLoading ? '-' : statusValue} 
           subtext={statusSubtext}
           icon={StatusIcon} 
           color={statusColor}
         />
         <MetricCard 
-          title="Highest Temperature" 
+          title="Suhu Tertinggi" 
           value={maxTemp > -Infinity ? `${maxTemp.toFixed(1)}°C` : '-'} 
-          subtext={maxTempNodeId ? `Zone: ${getNodeRoomName(maxTempNodeId)}` : 'Awaiting Data'}
+          subtext={maxTempNodeId ? `Ruangan: ${getNodeRoomName(maxTempNodeId)}` : 'Menunggu Data'}
           icon={Thermometer} 
           color={maxTemp > 35 ? "red" : "default"} 
         />
         <MetricCard 
-          title="Highest Gas Level" 
+          title="Kadar Gas Tertinggi" 
           value={maxGas > -Infinity ? `${maxGas.toFixed(0)} ppm` : '-'} 
-          subtext={maxGasNodeId ? `Zone: ${getNodeRoomName(maxGasNodeId)}` : 'Awaiting Data'}
+          subtext={maxGasNodeId ? `Ruangan: ${getNodeRoomName(maxGasNodeId)}` : 'Menunggu Data'}
           icon={Wind} 
           color={maxGas > 800 ? "red" : "default"}
         />
         <MetricCard 
-          title="Network Health" 
-          value={isLoading ? '-' : `${summary.onlineDevices} / ${devices.length} Online`} 
+          title="Kesehatan Perangkat" 
+          value={isLoading ? '-' : `${summary.onlineDevices} / ${devices.length} Aktif`} 
           subtext={(() => {
             const unhealthyCount = sensorHealth?.sensors?.filter(s => s.status !== 'healthy')?.length || 0;
             return unhealthyCount > 0 
-              ? <span className="text-red-500 font-medium">{unhealthyCount} sensors require attention</span>
-              : "All devices and sensors operational";
+              ? <span className="text-red-500 font-medium">{unhealthyCount} sensor perlu diperiksa</span>
+              : "Semua perangkat dan sensor normal";
           })()}
           icon={HardDrive} 
           color={summary.onlineDevices < devices.length || (sensorHealth?.sensors?.filter(s => s.status !== 'healthy')?.length > 0) ? "red" : "blue"} 
@@ -193,16 +193,16 @@ export default function Dashboard() {
         >
           <div className="flex items-center justify-between p-4 border-b flex-shrink-0" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
             <div className="flex items-center gap-3">
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Real-time Activity</h3>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Grafik Pemantauan</h3>
               <select 
                 value={selectedDevice}
                 onChange={(e) => setSelectedDevice(e.target.value)}
                 className="text-xs p-1.5 pr-6 rounded-md border outline-none cursor-pointer"
                 style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-secondary)' }}
               >
-                <option value="ALL">Average (All Areas)</option>
+                <option value="ALL">Rata-rata Semua Area</option>
                 {devices?.map((d) => (
-                  <option key={d.id} value={d.id}>Node: {getRoomName(d.room_id)}</option>
+                  <option key={d.id} value={d.id}>Sensor: {getRoomName(d.room_id)}</option>
                 ))}
               </select>
             </div>
@@ -242,13 +242,13 @@ export default function Dashboard() {
           style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-primary)' }}
         >
           <div className="flex items-center justify-between p-4 border-b flex-shrink-0" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Recent Activity</h3>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Aktivitas Terkini</h3>
             <button 
-              onClick={() => navigate('/alerts')}
+              onClick={() => navigate('/dashboard/alerts')}
               className="text-xs font-medium transition-opacity hover:opacity-80 cursor-pointer"
               style={{ color: 'var(--ifrit-brand)' }}
             >
-              View all →
+              Lihat semua →
             </button>
           </div>
           
@@ -266,15 +266,14 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      {/* Bottom Section: Active Devices Table */}
       {/* Bottom Section: Active Nodes Grid */}
       <div className="w-full">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <HardDrive className="w-4 h-4" style={{ color: 'var(--ifrit-text-muted)' }} />
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Live Device Status</h3>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Status Sensor Aktif</h3>
           </div>
-          <span className="text-xs" style={{ color: 'var(--ifrit-text-muted)' }}>{devices.length} nodes registered</span>
+          <span className="text-xs" style={{ color: 'var(--ifrit-text-muted)' }}>{devices.length} sensor terdaftar</span>
         </div>
         
         {isLoading && devices.length === 0 ? (
@@ -296,7 +295,7 @@ export default function Dashboard() {
             {devices.length === 0 && (
               <div className="col-span-full py-12 text-center border rounded-lg" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-primary)' }}>
                 <HardDrive className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                <p className="text-sm" style={{ color: 'var(--ifrit-text-muted)' }}>No sensor nodes provisioned.</p>
+                <p className="text-sm" style={{ color: 'var(--ifrit-text-muted)' }}>Belum ada sensor terdaftar.</p>
               </div>
             )}
           </div>

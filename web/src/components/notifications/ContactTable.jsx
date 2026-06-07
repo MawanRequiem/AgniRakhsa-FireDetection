@@ -11,11 +11,11 @@ export default function ContactTable({ contacts, onEdit, onDelete, onTest }) {
       <Table>
         <TableHeader style={{ backgroundColor: 'var(--ifrit-bg-secondary)' }}>
           <TableRow style={{ borderColor: 'var(--ifrit-border)', borderBottomWidth: '1px' }}>
-            <TableHead style={{ color: 'var(--ifrit-text-muted)' }}>Name</TableHead>
-            <TableHead style={{ color: 'var(--ifrit-text-muted)' }}>Phone Number</TableHead>
-            <TableHead style={{ color: 'var(--ifrit-text-muted)' }}>Role</TableHead>
+            <TableHead style={{ color: 'var(--ifrit-text-muted)' }}>Nama</TableHead>
+            <TableHead style={{ color: 'var(--ifrit-text-muted)' }}>Nomor Telepon</TableHead>
+            <TableHead style={{ color: 'var(--ifrit-text-muted)' }}>Peran</TableHead>
             <TableHead style={{ color: 'var(--ifrit-text-muted)' }}>Status</TableHead>
-            <TableHead className="text-right" style={{ color: 'var(--ifrit-text-muted)' }}>Actions</TableHead>
+            <TableHead className="text-right" style={{ color: 'var(--ifrit-text-muted)' }}>Tindakan</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -33,14 +33,14 @@ export default function ContactTable({ contacts, onEdit, onDelete, onTest }) {
                   borderColor: 'var(--ifrit-border)',
                   backgroundColor: 'var(--ifrit-bg-tertiary)'
                 }}>
-                  {contact.role}
+                  {contact.role === 'admin' ? 'Admin' : 'Petugas'}
                 </Badge>
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${contact.is_active ? 'bg-[var(--ifrit-safe)]' : 'bg-[var(--ifrit-text-muted)]'}`} />
                   <span className="text-xs" style={{ color: contact.is_active ? 'var(--ifrit-safe)' : 'var(--ifrit-text-muted)' }}>
-                    {contact.is_active ? 'Active' : 'Inactive'}
+                    {contact.is_active ? 'Aktif' : 'Nonaktif'}
                   </span>
                 </div>
               </TableCell>
@@ -51,7 +51,7 @@ export default function ContactTable({ contacts, onEdit, onDelete, onTest }) {
                     size="icon" 
                     className="h-8 w-8 text-[var(--ifrit-text-secondary)] hover:text-white hover:bg-[var(--ifrit-bg-tertiary)]"
                     onClick={() => onTest(contact)}
-                    title="Send Test WA"
+                    title="Kirim Tes WA"
                   >
                     <Send className="w-4 h-4" />
                   </Button>
@@ -78,7 +78,7 @@ export default function ContactTable({ contacts, onEdit, onDelete, onTest }) {
           {contacts.length === 0 && (
             <TableRow>
               <TableCell colSpan={5} className="h-24 text-center" style={{ color: 'var(--ifrit-text-muted)' }}>
-                No notification contacts found. Add one above.
+                Belum ada kontak terdaftar. Tambahkan kontak di atas.
               </TableCell>
             </TableRow>
           )}

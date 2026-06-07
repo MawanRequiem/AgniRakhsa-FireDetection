@@ -17,12 +17,12 @@ import { cn } from '../../lib/utils';
 
 // Update key agar sesuai dengan rute /dashboard/... di App.jsx
 const pageTitles = {
-  '/dashboard': 'Overview',
-  '/dashboard/rooms': 'Facility Map',
-  '/dashboard/cctv': 'Live Video',
-  '/dashboard/devices': 'Device Settings',
-  '/dashboard/alerts': 'Safety Alerts',
-  '/dashboard/settings/notifications': 'Alert Contacts',
+  '/dashboard': 'Ringkasan',
+  '/dashboard/rooms': 'Peta Gedung',
+  '/dashboard/cctv': 'Kamera Pengawas (CCTV)',
+  '/dashboard/devices': 'Pengaturan Sensor',
+  '/dashboard/alerts': 'Laporan Peringatan',
+  '/dashboard/settings/notifications': 'Penerima Notifikasi',
 };
 
 const StatusDot = ({ severity }) => {
@@ -49,12 +49,12 @@ export default function Header() {
 
   // Sesuaikan pengecekan path detail ruangan
   const title = location.pathname.startsWith('/dashboard/rooms/')
-    ? 'Facility Detail'
+    ? 'Detail Ruangan'
     : pageTitles[location.pathname] || 'IFRIT';
 
   const now = new Date();
-  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-  const dateStr = now.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
+  const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const dateStr = now.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
 
   // Fungsi Logout yang baru
   const handleLogout = async () => {
@@ -88,7 +88,7 @@ export default function Header() {
           size="icon" 
           className="md:hidden text-[var(--ifrit-text-primary)]"
           onClick={toggleSidebar}
-          aria-label="Toggle navigation menu"
+          aria-label="Buka menu navigasi"
         >
           <Menu className="w-5 h-5" />
         </Button>
@@ -121,8 +121,8 @@ export default function Header() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden" style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)' }}>
             <div className="p-3 border-b flex justify-between items-center" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
-              <span className="font-semibold text-sm">Recent Alerts</span>
-              <span className="text-xs text-[var(--ifrit-text-muted)]">{alertCount} requires action</span>
+              <span className="font-semibold text-sm">Peringatan Terbaru</span>
+              <span className="text-xs text-[var(--ifrit-text-muted)]">{alertCount} perlu tindakan</span>
             </div>
             <div className="max-h-80 overflow-y-auto">
               {activeAlerts.length > 0 ? (
@@ -130,10 +130,10 @@ export default function Header() {
                   <div key={alert.id} className="p-3 border-b hover:bg-[var(--ifrit-bg-secondary)] transition-colors break-words flex gap-3 cursor-pointer" style={{ borderColor: 'var(--ifrit-border)' }}>
                     <div className="mt-1"><StatusDot severity={alert.severity} /></div>
                     <div className="flex-1 min-w-0">
-                       <p className="text-xs font-medium text-[var(--ifrit-text-primary)] line-clamp-1">{alert.alert_type || 'Alert'}</p>
+                       <p className="text-xs font-medium text-[var(--ifrit-text-primary)] line-clamp-1">{alert.alert_type === 'fire' ? 'Kebakaran' : alert.alert_type || 'Peringatan'}</p>
                        <p className="text-xs text-[var(--ifrit-text-secondary)] line-clamp-2 mt-0.5">{alert.message}</p>
                        <span className="text-[10px] text-[var(--ifrit-text-muted)] block mt-1">
-                         {alert.created_at ? new Date(alert.created_at).toLocaleString('en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                         {alert.created_at ? new Date(alert.created_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Baru saja'}
                        </span>
                     </div>
                   </div>
@@ -141,14 +141,14 @@ export default function Header() {
               ) : (
                 <div className="p-6 text-center flex flex-col items-center gap-2">
                   <ShieldCheck className="w-8 h-8 text-[var(--ifrit-safe)] opacity-80" />
-                  <p className="text-sm font-medium text-[var(--ifrit-text-secondary)]">All clear</p>
-                  <p className="text-xs text-[var(--ifrit-text-muted)]">No active alerts at this time.</p>
+                  <p className="text-sm font-medium text-[var(--ifrit-text-secondary)]">Semua Aman</p>
+                  <p className="text-xs text-[var(--ifrit-text-muted)]">Tidak ada peringatan aktif saat ini.</p>
                 </div>
               )}
             </div>
             <div className="p-2 border-t text-center" style={{ borderColor: 'var(--ifrit-border)' }}>
               <Link to="/dashboard/alerts" className="text-xs font-medium text-[var(--ifrit-brand)] hover:text-[var(--ifrit-brand-hover)]">
-                View all alerts
+                Lihat semua peringatan
               </Link>
             </div>
           </DropdownMenuContent>
@@ -163,13 +163,13 @@ export default function Header() {
           <DropdownMenuContent align="end" className="w-56" style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)' }}>
             <div className="px-2 py-1.5 mb-1 flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none text-[var(--ifrit-text-primary)]">Administrator</p>
-              <p className="text-xs leading-none text-[var(--ifrit-text-muted)]">IFRIT Fire Detection</p>
+              <p className="text-xs leading-none text-[var(--ifrit-text-muted)]">Sistem AgniRaksha / IFRIT</p>
             </div>
             <DropdownMenuSeparator style={{ backgroundColor: 'var(--ifrit-border)' }} />
             <DropdownMenuItem asChild>
               <Link to="/dashboard/settings/notifications" className="cursor-pointer flex items-center p-2 text-sm text-[var(--ifrit-text-secondary)] hover:text-[var(--ifrit-text-primary)]">
                 <Settings className="mr-2 w-4 h-4" />
-                <span>Notification Settings</span>
+                <span>Pengaturan Notifikasi</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator style={{ backgroundColor: 'var(--ifrit-border)' }} />
@@ -178,7 +178,7 @@ export default function Header() {
               className="text-[var(--ifrit-fire)] flex items-center p-2 text-sm cursor-pointer hover:bg-[rgba(239,68,68,0.1)]"
             >
               <LogOut className="mr-2 w-4 h-4" />
-              <span>Log out</span>
+              <span>Keluar</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

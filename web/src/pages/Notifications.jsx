@@ -37,7 +37,7 @@ export default function Notifications() {
       }
     } catch (err) {
       console.error('Failed to fetch contacts:', err);
-      toast.error('Failed to load contact list');
+      toast.error('Gagal memuat daftar kontak');
     } finally {
       setIsLoading(false);
     }
@@ -109,12 +109,12 @@ export default function Notifications() {
         
         if (res.status === 204) {
           setContacts(contacts.filter(c => c.id !== deletingId));
-          toast.success('Contact removed successfully');
+          toast.success('Kontak berhasil dihapus');
         } else {
-          toast.error('Failed to remove contact');
+          toast.error('Gagal menghapus kontak');
         }
       } catch (err) {
-        toast.error('Network error while deleting');
+        toast.error('Kesalahan jaringan saat menghapus');
       } finally {
         setDeletingId(null);
       }
@@ -132,14 +132,14 @@ export default function Notifications() {
       });
 
       if (res.ok) {
-        toast.success(editingContact ? 'Contact updated' : 'New contact added');
+        toast.success(editingContact ? 'Kontak berhasil diperbarui' : 'Kontak baru berhasil ditambahkan');
         fetchContacts(); // Refresh list
       } else {
         const errData = await res.json();
-        toast.error(errData.detail || 'Failed to save contact');
+        toast.error(errData.detail || 'Gagal menyimpan kontak');
       }
     } catch (err) {
-      toast.error('Network error while saving');
+      toast.error('Kesalahan jaringan saat menyimpan');
     }
   };
 
@@ -154,20 +154,18 @@ export default function Notifications() {
       });
 
       if (res.ok) {
-        toast.success(`Test message sent to ${contact.name}`);
+        toast.success(`Pesan uji coba terkirim ke ${contact.name}`);
       } else {
-        toast.error('Failed to send test message');
+        toast.error('Gagal mengirim pesan uji coba');
       }
     } catch (err) {
-      toast.error('Network error while testing');
+      toast.error('Kesalahan jaringan saat uji coba');
     }
-  };
-
-  return (
+  };  return (
     <div className="space-y-8 max-w-5xl mx-auto">
       <div>
-        <h1 className="text-2xl font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Alert Recipients</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>Add people who should receive automatic emergency messages on WhatsApp.</p>
+        <h1 className="text-2xl font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Penerima Notifikasi Bahaya</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>Tambahkan kontak yang akan menerima pesan darurat otomatis via WhatsApp.</p>
       </div>
 
       <style>{`
@@ -206,8 +204,8 @@ export default function Notifications() {
       {/* Gateway Status Card */}
       <div className="flex items-center justify-between p-4 rounded-md border" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
         <div>
-          <h2 className="text-sm font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>Messaging System Status</h2>
-          <p className="text-xs mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>This system sends automatic WhatsApp alerts during emergencies.</p>
+          <h2 className="text-sm font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>Status Sistem Notifikasi</h2>
+          <p className="text-xs mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>Sistem ini mengirimkan pesan WhatsApp secara otomatis saat kondisi darurat terdeteksi.</p>
         </div>
         <div className="flex items-center gap-2">
           {whatsappConnected ? (
@@ -216,16 +214,16 @@ export default function Notifications() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: 'var(--ifrit-safe)' }}></span>
                   <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: 'var(--ifrit-safe)' }}></span>
                 </span>
-                <CheckCircle2 className="w-4 h-4 ml-1" /> Connected
+                <CheckCircle2 className="w-4 h-4 ml-1" /> Tersambung
              </span>
           ) : whatsappStatus === 'connecting' ? (
              <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--ifrit-amber)' }}>
                 <span className="w-2 h-2 rounded-full animate-pulse bg-[var(--ifrit-amber)]" />
-                Connecting
+                Menghubungkan...
              </span>
           ) : (
              <span className="flex items-center gap-1.5 text-sm font-medium text-red-500">
-                <AlertCircle className="w-4 h-4" /> Scan Required
+                <AlertCircle className="w-4 h-4" /> Perlu Pindai QR
              </span>
           )}
         </div>
@@ -288,14 +286,14 @@ export default function Notifications() {
       {/* Contacts List */}
       <div>
         <div className="flex items-center justify-between mb-4">
-           <h2 className="text-lg font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>Emergency Contacts</h2>
+           <h2 className="text-lg font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>Kontak Darurat</h2>
            <Button 
              onClick={handleAdd}
              size="sm" 
              className="text-[var(--ifrit-bg-primary)] font-semibold hover:bg-[var(--ifrit-amber-hover)] transition-colors"
              style={{ backgroundColor: 'var(--ifrit-amber)' }}
            >
-             <Plus className="w-4 h-4 mr-2" /> Add Contact
+             <Plus className="w-4 h-4 mr-2" /> Tambah Kontak
            </Button>
         </div>
         
@@ -317,15 +315,15 @@ export default function Notifications() {
       <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
         <AlertDialogContent style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)' }}>
           <AlertDialogHeader>
-            <AlertDialogTitle style={{ color: 'var(--ifrit-text-primary)' }}>Remove Contact</AlertDialogTitle>
+            <AlertDialogTitle style={{ color: 'var(--ifrit-text-primary)' }}>Hapus Kontak</AlertDialogTitle>
             <AlertDialogDescription style={{ color: 'var(--ifrit-text-muted)' }}>
-              Are you sure you want to remove this contact? They will no longer receive emergency alerts via WhatsApp.
+              Apakah Anda yakin ingin menghapus kontak ini? Mereka tidak akan lagi menerima notifikasi peringatan bahaya via WhatsApp.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}>Batal</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} style={{ backgroundColor: 'var(--ifrit-fire)', color: 'white' }}>
-              Remove
+              Hapus Kontak
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -55,10 +55,10 @@ export default function FireAlertToast() {
             </div>
             <div className="fire-toast-title-wrap">
               <span className="fire-toast-title">
-                {toast.severity === 'critical' ? '🔴 KEBAKARAN KRITIS' : '🟠 PERINGATAN API'}
+                {toast.severity === 'critical' ? '🚨 BAHAYA KEBAKARAN (SANGAT TINGGI)' : '⚠️ PERINGATAN BAHAYA KEBAKARAN'}
               </span>
               <span className="fire-toast-score">
-                Skor bahaya: {(toast.fusionScore * 100).toFixed(0)}%
+                Tingkat Risiko: {toast.severity === 'critical' ? 'Sangat Kritis' : 'Tinggi'} ({(toast.fusionScore * 100).toFixed(0)}%)
               </span>
             </div>
           </div>

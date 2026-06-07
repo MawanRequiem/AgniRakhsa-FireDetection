@@ -40,12 +40,12 @@ export default function AlertItem({ alert, compact = false }) {
         <div className="flex items-center gap-2 mb-0.5">
           <StatusIndicator status={isCritical ? 'fire' : alert.severity} size="sm" />
           <span className="text-xs font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>
-            {alert.alert_type || 'Alert'}
+            {alert.alert_type === 'fire' ? 'Kebakaran' : alert.alert_type || 'Peringatan'}
           </span>
           {!alert.is_acknowledged && (
             <span className="text-[9px] px-1.5 py-0.5 rounded-sm font-medium"
               style={{ backgroundColor: 'rgba(248, 113, 113, 0.15)', color: 'var(--ifrit-fire)' }}>
-              NEW
+              BARU
             </span>
           )}
         </div>
@@ -56,7 +56,7 @@ export default function AlertItem({ alert, compact = false }) {
         )}
         <span className="text-[10px] font-mono mt-1 block" style={{ color: 'var(--ifrit-text-muted)' }}>
           {alert.created_at
-            ? new Date(alert.created_at).toLocaleString('en-US', {
+            ? new Date(alert.created_at).toLocaleString('id-ID', {
                 day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
               })
             : '-'

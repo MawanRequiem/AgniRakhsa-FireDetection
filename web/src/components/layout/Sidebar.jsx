@@ -19,12 +19,12 @@ import {
 // PERBAIKAN: Menambahkan awalan /dashboard pada semua item navigasi
 // agar sesuai dengan struktur nested routes di App.jsx
 const navItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
-  { to: '/dashboard/rooms', icon: DoorOpen, label: 'Facility Map' },
-  { to: '/dashboard/cctv', icon: Camera, label: 'Live Video' },
-  { to: '/dashboard/devices', icon: Wifi, label: 'Device Settings' },
-  { to: '/dashboard/alerts', icon: Bell, label: 'Safety Alerts' },
-  { to: '/dashboard/settings/notifications', icon: Smartphone, label: 'Alert Contacts' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Ringkasan' },
+  { to: '/dashboard/rooms', icon: DoorOpen, label: 'Peta Gedung' },
+  { to: '/dashboard/cctv', icon: Camera, label: 'Kamera CCTV' },
+  { to: '/dashboard/devices', icon: Wifi, label: 'Sensor & Alat' },
+  { to: '/dashboard/alerts', icon: Bell, label: 'Riwayat Peringatan' },
+  { to: '/dashboard/settings/notifications', icon: Smartphone, label: 'Penerima Notifikasi' },
 ];
 
 export default function Sidebar() {
@@ -37,10 +37,10 @@ export default function Sidebar() {
     try {
       await customFetch('/api/v1/auth/logout', { method: 'POST' });
       clearAuth();
-      toast.success('Logged out successfully');
+      toast.success('Berhasil keluar');
       navigate('/');
     } catch (error) {
-      toast.error('Logout failed');
+      toast.error('Gagal keluar');
       // Even if API fails, clear local state for safety
       clearAuth();
       navigate('/');
@@ -110,14 +110,14 @@ export default function Sidebar() {
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm font-medium text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer group"
         >
           <LogOut className="w-5 h-5 flex-shrink-0 group-hover:scale-110 transition-transform" />
-          {!collapsed && <span>Sign Out</span>}
+          {!collapsed && <span>Keluar</span>}
         </button>
 
         <button
           onClick={toggle}
           className="flex items-center justify-center w-full py-2 rounded-md transition-colors cursor-pointer hover:bg-white/5"
           style={{ color: 'var(--ifrit-text-muted)' }}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? 'Perlebar menu' : 'Perkecil menu'}
         >
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
