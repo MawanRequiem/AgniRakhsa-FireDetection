@@ -36,13 +36,21 @@ logger = logging.getLogger(__name__)
 
 SENSOR_THRESHOLDS = {
     # sensor_type: (safe_max, warning_threshold, danger_threshold, unit)
-    "mq2":          (300,   500,    800,   "ppm"),    # Smoke/combustible gas
-    "mq4":          (200,   400,    700,   "ppm"),    # Methane/CNG
-    "mq6":          (200,   400,    700,   "ppm"),    # LPG/Butane
-    "mq9b":         (50,    100,    200,   "ppm"),    # CO (more dangerous at lower ppm)
-    "flame":        (3000,  2000,   1000,  "raw"),    # Analog IR: lower = fire detected
-    "shtc3_temp":   (40,    55,     70,    "°C"),     # Temperature
-    "shtc3_humidity":(80,   60,     40,    "%RH"),    # Humidity (lower = drier = more risk)
+    
+    # 1. Asap & Gas Mudah Terbakar (Acuan: SNI 03-3985-2000 & Standar LEL K3)
+    "mq2":          (300,   600,    1000,  "ppm"),    # Asap/Gas Kebakaran (Baseline normal indoor ~300)
+    "mq4":          (300,   1000,   5000,  "ppm"),    # Metana/CNG (Danger diatur pada 10% LEL = 5000 ppm)
+    "mq6":          (200,   500,    1400,  "ppm"),    # LPG/Butane (Danger diatur pada 10% LEL = 1400 ppm)
+    
+    # 2. Gas Beracun (Acuan Mutlak: NAB Permenaker No. 5/2018)
+    "mq9b":         (25,    50,     150,   "ppm"),    # Karbon Monoksida (CO) -> Safe Max ketat di 25 ppm
+    
+    # 3. Sensor Optik Api (Karakteristik ADC Aktif-Rendah / Active-Low)
+    "flame":        (3000,  2000,   1000,  "raw"),    # Mengasumsikan ADC 12-bit (ESP32). Lower = Fire.
+    
+    # 4. Parameter Lingkungan Fisik (Acuan: SNI Deteksi Kebakaran & Permenkes 48/2016)
+    "shtc3_temp":   (40,    55,     68,    "°C"),     # Suhu (Danger 68°C sesuai batas bawah aktivasi SNI)
+    "shtc3_humidity":(50,   35,     20,    "%RH"),    # Kelembapan (Makin rendah = makin kering/rawan api)
 }
 
 # Human-readable sensor names for WhatsApp messages (layman Indonesian)
@@ -416,17 +424,22 @@ def _generate_explainable_narrative(
     has_smoke = False
     has_heat = False
     
+    # Read dynamic thresholds from SENSOR_THRESHOLDS configuration
+    flame_warning = SENSOR_THRESHOLDS["flame"][1]
+    mq2_warning = SENSOR_THRESHOLDS["mq2"][1]
+    temp_warning = SENSOR_THRESHOLDS["shtc3_temp"][1]
+
     flame_val_num = 9999
     gas_val_num = 0
     temp_val_num = 0
     
     if sensor_snapshot:
-        # Check flame sensor (active low, value < 1500 indicates fire)
+        # Check flame sensor (active low, value < warning_threshold indicates fire)
         flame_val = sensor_snapshot.get("FLAME") or sensor_snapshot.get("flame")
         if flame_val is not None:
             fv = flame_val if isinstance(flame_val, (int, float)) else flame_val.get("value", 9999)
             flame_val_num = fv
-            if fv < 1500:
+            if fv < flame_warning:
                 has_flame = True
                 
         # Check smoke/gas sensor
@@ -435,7 +448,7 @@ def _generate_explainable_narrative(
             if gas_val is not None:
                 gv = gas_val if isinstance(gas_val, (int, float)) else gas_val.get("value", 0)
                 gas_val_num = gv
-                if gv > 500:
+                if gv > mq2_warning:
                     has_smoke = True
                     break
                     
@@ -445,7 +458,7 @@ def _generate_explainable_narrative(
             if temp_val is not None:
                 tv = temp_val if isinstance(temp_val, (int, float)) else temp_val.get("value", 0)
                 temp_val_num = tv
-                if tv > 55:
+                if tv > temp_warning:
                     has_heat = True
                     break
 
@@ -455,14 +468,14 @@ def _generate_explainable_narrative(
     reasons_id = []
     reasons_en = []
     if has_flame:
-        reasons_id.append(f"deteksi radiasi api aktif oleh sensor inframerah (nilai: {flame_val_num:.0f}, batas aman > 1500)")
-        reasons_en.append(f"active flame radiation detected by infrared sensor (value: {flame_val_num:.0f}, safe limit > 1500)")
+        reasons_id.append(f"deteksi radiasi api aktif oleh sensor inframerah (nilai: {flame_val_num:.0f}, batas aman >= {flame_warning:.0f})")
+        reasons_en.append(f"active flame radiation detected by infrared sensor (value: {flame_val_num:.0f}, safe limit >= {flame_warning:.0f})")
     if has_smoke:
-        reasons_id.append(f"kadar gas/asap tinggi terdeteksi oleh sensor MQ2 ({gas_val_num:.0f} ppm, batas aman < 500 ppm)")
-        reasons_en.append(f"high gas/smoke concentration detected by MQ2 sensor ({gas_val_num:.0f} ppm, safe limit < 500 ppm)")
+        reasons_id.append(f"kadar gas/asap tinggi terdeteksi oleh sensor MQ2 ({gas_val_num:.0f} ppm, batas aman < {mq2_warning:.0f} ppm)")
+        reasons_en.append(f"high gas/smoke concentration detected by MQ2 sensor ({gas_val_num:.0f} ppm, safe limit < {mq2_warning:.0f} ppm)")
     if has_heat:
-        reasons_id.append(f"suhu panas ekstrim terdeteksi oleh sensor SHTC3 ({temp_val_num:.1f}°C, batas aman < 55.0°C)")
-        reasons_en.append(f"extreme high temperature detected by SHTC3 sensor ({temp_val_num:.1f}°C, safe limit < 55.0°C)")
+        reasons_id.append(f"suhu panas ekstrim terdeteksi oleh sensor SHTC3 ({temp_val_num:.1f}°C, batas aman < {temp_warning:.1f}°C)")
+        reasons_en.append(f"extreme high temperature detected by SHTC3 sensor ({temp_val_num:.1f}°C, safe limit < {temp_warning:.1f}°C)")
 
     desc_id = " serta ".join(reasons_id)
     desc_en = " and ".join(reasons_en)
@@ -787,7 +800,11 @@ async def _create_alert(
             risk_display_id = risk_labels_id.get(risk_level, risk_level.upper())
             risk_display_en = risk_labels_en.get(risk_level, risk_level.upper())
             
-            # Determine what was detected
+            # Determine what was detected using dynamic thresholds from SENSOR_THRESHOLDS
+            flame_warning = SENSOR_THRESHOLDS["flame"][1]
+            mq2_warning = SENSOR_THRESHOLDS["mq2"][1]
+            temp_warning = SENSOR_THRESHOLDS["shtc3_temp"][1]
+
             detection_sources_id = []
             detection_sources_en = []
             if sensor_snapshot:
@@ -795,7 +812,7 @@ async def _create_alert(
                 flame_val = sensor_snapshot.get("FLAME") or sensor_snapshot.get("flame")
                 if flame_val is not None:
                     fv = flame_val if isinstance(flame_val, (int, float)) else flame_val.get("value", 9999)
-                    if fv < 1500:
+                    if fv < flame_warning:
                         detection_sources_id.append("Api terdeteksi oleh sensor inframerah")
                         detection_sources_en.append("Fire detected by infrared sensor")
                 
@@ -804,7 +821,7 @@ async def _create_alert(
                     gas_val = sensor_snapshot.get(gas_key)
                     if gas_val is not None:
                         gv = gas_val if isinstance(gas_val, (int, float)) else gas_val.get("value", 0)
-                        if gv > 500:
+                        if gv > mq2_warning:
                             detection_sources_id.append("Kadar asap tinggi terdeteksi")
                             detection_sources_en.append("High smoke level detected")
                             break
@@ -814,7 +831,7 @@ async def _create_alert(
                     temp_val = sensor_snapshot.get(temp_key)
                     if temp_val is not None:
                         tv = temp_val if isinstance(temp_val, (int, float)) else temp_val.get("value", 0)
-                        if tv > 55:
+                        if tv > temp_warning:
                             detection_sources_id.append(f"Suhu ruangan sangat tinggi ({tv:.0f}°C)")
                             detection_sources_en.append(f"Room temperature very high ({tv:.0f}°C)")
                             break
