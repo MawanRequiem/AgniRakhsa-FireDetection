@@ -1,16 +1,24 @@
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { AlertCircle, Flame, Info, ShieldCheck } from 'lucide-react';
 import PropTypes from 'prop-types';
+import { useUIStore } from '@/store/store';
+import { getLocalizedMessage } from '@/lib/translations';
 
 export default function AlertFeed({ alerts }) {
   const shouldReduceMotion = useReducedMotion();
+  const language = useUIStore((s) => s.language);
+  const locale = language === 'en' ? 'en-US' : 'id-ID';
 
   if (!alerts || alerts.length === 0) {
     return (
       <div className="flex h-48 flex-col items-center justify-center p-8 text-center rounded-md" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)' }}>
         <ShieldCheck className="mb-2 h-8 w-8 opacity-30" style={{ color: 'var(--ifrit-safe)' }} />
-        <p className="text-sm font-medium" style={{ color: 'var(--ifrit-text-secondary)' }}>Semua sistem berjalan normal</p>
-        <p className="text-xs mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>Tidak ada bahaya terdeteksi saat ini</p>
+        <p className="text-sm font-medium" style={{ color: 'var(--ifrit-text-secondary)' }}>
+          {language === 'en' ? 'All systems running normally' : 'Semua sistem berjalan normal'}
+        </p>
+        <p className="text-xs mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>
+          {language === 'en' ? 'No hazards detected at this time' : 'Tidak ada bahaya terdeteksi saat ini'}
+        </p>
       </div>
     );
   }
@@ -49,10 +57,10 @@ export default function AlertFeed({ alerts }) {
             </div>
             <div className="flex-1 space-y-1">
               <p className="text-sm font-medium leading-tight" style={{ color: 'var(--ifrit-text-primary)' }}>
-                {alert.message || `Alert: ${alert.severity}`}
+                {getLocalizedMessage(alert.message, language) || `Alert: ${alert.severity}`}
               </p>
               <div className="flex items-center text-[11px] font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>
-                <span>{new Date(alert.created_at).toLocaleString('id-ID', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                <span>{new Date(alert.created_at).toLocaleString(locale, { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             </div>
           </motion.div>

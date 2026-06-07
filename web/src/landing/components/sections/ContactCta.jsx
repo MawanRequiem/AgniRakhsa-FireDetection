@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useLanguage } from '@landing/hooks/useLanguage';
 import ScrollReveal from '@landing/components/ui/ScrollReveal';
 import SectionHeading from '@landing/components/ui/SectionHeading';
@@ -8,11 +9,12 @@ export default function ContactCta() {
   const { t } = useLanguage();
   const form = t('contactCta.form');
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
 
   function handleSubmit(e) {
     e.preventDefault();
-    // Placeholder - would connect to backend
-    setSubmitted(true);
+    setSending(true);
+    setTimeout(() => { setSending(false); setSubmitted(true); }, 800);
   }
 
   return (
@@ -30,7 +32,12 @@ export default function ContactCta() {
           {/* Form side */}
           <ScrollReveal delay={100}>
             {submitted ? (
-              <div className="bg-light-surface rounded-[var(--radius-lg)] p-8 text-center">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="bg-light-surface rounded-[var(--radius-lg)] p-8 text-center"
+              >
                 <div className="text-4xl mb-4">✓</div>
                 <h4 className="text-xl mb-2">
                   {t('contactCta.form.interest') === "I'm interested in" ? 'Thank you!' : 'Terima kasih!'}
@@ -41,7 +48,7 @@ export default function ContactCta() {
                     : 'Kami akan segera menghubungi Anda.'
                   }
                 </p>
-              </div>
+              </motion.div>
             ) : (
               <form
                 onSubmit={handleSubmit}
@@ -139,8 +146,8 @@ export default function ContactCta() {
                   />
                 </div>
 
-                <Button type="submit" size="lg" className="mt-2 w-full justify-center">
-                  {form.submit}
+                <Button type="submit" size="lg" className="mt-2 w-full justify-center" disabled={sending}>
+                  {sending ? 'Mengirim...' : form.submit}
                 </Button>
               </form>
             )}

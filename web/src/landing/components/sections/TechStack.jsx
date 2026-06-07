@@ -27,7 +27,7 @@ export default function TechStack() {
         <div className="grid md:grid-cols-3 gap-6">
           {layers.map((layer, i) => (
             <ScrollReveal key={i} delay={i * 120}>
-              <div className="bg-dark-surface border border-dark-border rounded-2xl p-6 h-full">
+              <div className="bg-dark-surface border border-dark-border rounded-2xl p-6 h-full hover:border-ifrit-red/20 hover:-translate-y-1 transition-all duration-300">
                 <div className="flex items-center gap-3 mb-5 pb-4 border-b border-dark-border">
                   <span className="w-6 h-6 rounded-md bg-ifrit-red/20 flex items-center justify-center text-[10px] font-mono font-bold text-ifrit-red">
                     0{i + 1}

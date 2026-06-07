@@ -239,5 +239,28 @@ export const getLocalizedMessage = (message, lang) => {
       return message;
     }
   }
+
+  // Handle legacy/old alerts format: "Fire risk detected — Level: HIGH, Fusion score: 0.63"
+  if (message.includes('Fire risk detected') || message.includes('Level:')) {
+    const isEn = lang === 'en';
+    const levelMatch = message.match(/Level:\s*(\w+)/i);
+    const scoreMatch = message.match(/(?:Fusion\s+)?score:\s*([\d.]+)/i);
+    const level = levelMatch ? levelMatch[1] : '';
+    const score = scoreMatch ? scoreMatch[1] : '';
+    
+    // Map levels to layperson friendly terms
+    const levelMap = {
+      en: { CRITICAL: 'CRITICAL', HIGH: 'HIGH', MEDIUM: 'WARNING', LOW: 'LOW', SAFE: 'SAFE' },
+      id: { CRITICAL: 'SANGAT KRITIS', HIGH: 'TINGGI', MEDIUM: 'WASPADA', LOW: 'RENDAH', SAFE: 'AMAN' }
+    };
+    const mappedLevel = levelMap[lang]?.[level.toUpperCase()] || level;
+    
+    if (isEn) {
+      return `⚠️ Fire risk detected (Level: ${mappedLevel}${score ? `, Fusion Score: ${score}` : ''})`;
+    } else {
+      return `⚠️ Risiko kebakaran terdeteksi (Tingkat Bahaya: ${mappedLevel}${score ? `, Skor Analisis: ${score}` : ''})`;
+    }
+  }
+
   return message;
 };
