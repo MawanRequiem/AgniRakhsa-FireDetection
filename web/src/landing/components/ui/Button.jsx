@@ -3,19 +3,19 @@ import { forwardRef } from 'react';
 const variants = {
   primary: `
     bg-ifrit-red text-white
-    hover:bg-ifrit-red-light
-    active:bg-ifrit-red-dark
+    hover:bg-ifrit-red-light hover:scale-[1.02]
+    active:bg-ifrit-red-dark active:scale-[0.97]
     focus-visible:ring-2 focus-visible:ring-ifrit-red focus-visible:ring-offset-2
   `,
   secondary: `
     bg-transparent border-2 border-current
-    hover:bg-white/10
-    active:bg-white/5
+    hover:bg-white/10 hover:scale-[1.02]
+    active:bg-white/5 active:scale-[0.97]
   `,
   ghost: `
     bg-transparent
-    hover:bg-white/10
-    active:bg-white/5
+    hover:bg-white/10 hover:scale-[1.02]
+    active:bg-white/5 active:scale-[0.97]
   `,
 };
 

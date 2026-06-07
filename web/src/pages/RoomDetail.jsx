@@ -41,7 +41,24 @@ const SENSOR_CONFIG = {
   cng: { label: 'MQ-5 (Gas Alam)', unit: 'ppm', type: 'gas', max: 4095 },
 };
 
+const SENSOR_LABELS = {
+  'Suhu Ruangan': { en: 'Room Temperature', id: 'Room Temperature' },
+  'Kelembapan Udara': { en: 'Air Humidity', id: 'Air Humidity' },
+  'Deteksi Api (Sensor)': { en: 'Flame Detector', id: 'Flame Detector' },
+  'MQ-2 (Detektor Asap)': { en: 'MQ-2 (Smoke & LPG)', id: 'MQ-2 (Smoke & LPG)' },
+  'MQ-4 (Gas Metana)': { en: 'MQ-4 (Methane CH4)', id: 'MQ-4 (Methane CH4)' },
+  'MQ-5 (Gas Alam)': { en: 'MQ-5 (Natural Gas)', id: 'MQ-5 (Gas Alam)' },
+  'MQ-6 (Gas LPG)': { en: 'MQ-6 (LPG Gas)', id: 'MQ-6 (LPG Gas)' },
+  'MQ-7 (Karbon Monoksida)': { en: 'MQ-7 (Carbon Monoxide CO)', id: 'MQ-7 (Carbon Monoxide CO)' },
+  'MQ-9B (Gas Karbon)': { en: 'MQ-9B (Carbon Monoxide CO)', id: 'MQ-9B (Carbon Monoxide CO)' },
+  'MQ-135 (Kualitas Udara)': { en: 'MQ-135 (Air Quality)', id: 'MQ-135 (Air Quality)' },
+};
+
 function SensorBar({ label, value, unit, type }) {
+  const language = useUIStore((s) => s.language);
+  const isEn = language === 'en';
+  const displayLabel = SENSOR_LABELS[label] ? SENSOR_LABELS[label][isEn ? 'en' : 'id'] : label;
+
   const config = Object.values(SENSOR_CONFIG).find(c => c.label === label);
   const max = config ? config.max : 4095;
   
@@ -92,7 +109,7 @@ function SensorBar({ label, value, unit, type }) {
   return (
     <div className="flex flex-col gap-1 mb-3">
       <div className="flex justify-between items-center text-xs">
-        <span className="font-semibold text-[var(--ifrit-text-secondary)]">{label}</span>
+        <span className="font-semibold text-[var(--ifrit-text-secondary)]">{displayLabel}</span>
         <span className="font-mono text-[var(--ifrit-text-primary)]">{value?.toFixed(1)} {unit}</span>
       </div>
       <div className="h-1.5 w-full bg-[var(--ifrit-bg-tertiary)] rounded-full overflow-hidden border border-[var(--ifrit-border)]">
