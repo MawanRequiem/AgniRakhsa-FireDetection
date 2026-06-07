@@ -57,9 +57,9 @@ SENSOR_DISPLAY_NAMES = {
     "SHTC3_HUMIDITY": ("Kelembaban", "%"),
 }
 
-# Alert cooldown per room to prevent spam (room_id → last_alert_timestamp)
-_alert_cooldowns: dict[str, float] = {}
-ALERT_COOLDOWN_SECONDS = 60  # Minimum 60 seconds between alerts for the same room
+# WhatsApp per-contact cooldown to prevent flooding individuals
+# Key: f"{room_id}:{phone}", Value: timestamp of last message sent
+_wa_contact_cooldowns: dict[str, float] = {}
 
 
 def _compute_sensor_score_from_thresholds(snapshot: dict) -> float:
@@ -416,17 +416,86 @@ async def _create_alert(
     """
     import time as _time
 
-    # ─── Cooldown Check ───────────────────────────────────────────────────
     room_key = str(room_id) if room_id else "global"
     now = _time.time()
-    last_alert = _alert_cooldowns.get(room_key, 0)
-    if now - last_alert < ALERT_COOLDOWN_SECONDS:
-        logger.info(
-            f"Alert cooldown active for room {room_key}. "
-            f"Skipping alert ({now - last_alert:.0f}s < {ALERT_COOLDOWN_SECONDS}s)"
+
+    # ─── Three-Rule State-Change Alerting ─────────────────────────────────
+    # Rule 1: If unacknowledged alert exists with SAME risk_level → SKIP (spam)
+    # Rule 2: If unacknowledged alert exists with LOWER risk_level → KIRIM (escalation)
+    # Rule 3: No unacknowledged alerts → check grace period since LAST alert
+
+    risk_rank = {"high": 1, "critical": 2}
+
+    try:
+        last_unack = (
+            supabase.table("alerts")
+            .select("id, risk_level, created_at")
+            .eq("room_id", room_key)
+            .eq("is_acknowledged", False)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
         )
-        return
-    _alert_cooldowns[room_key] = now
+
+        if last_unack.data:
+            last_unack_level = last_unack.data[0].get("risk_level")
+
+            if last_unack_level == risk_level:
+                logger.info(
+                    f"Alert suppressed for room {room_key}: "
+                    f"unacknowledged {last_unack_level} alert already active "
+                    f"(Rule 1: same risk_level)"
+                )
+                return
+
+            if risk_rank.get(last_unack_level, 0) < risk_rank.get(risk_level, 0):
+                logger.warning(
+                    f"ESCALATION for room {room_key}: "
+                    f"{last_unack_level} → {risk_level}. Bypassing all cooldowns."
+                )
+            else:
+                logger.info(
+                    f"Alert suppressed for room {room_key}: "
+                    f"risk_level decreased ({last_unack_level} → {risk_level})"
+                )
+                return
+        else:
+            # Rule 3: No unacknowledged alerts — check grace period since ANY last alert
+            last_any = (
+                supabase.table("alerts")
+                .select("id, risk_level, created_at")
+                .eq("room_id", room_key)
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+
+            if last_any.data:
+                last_alert_time_str = last_any.data[0].get("created_at")
+                if last_alert_time_str:
+                    try:
+                        last_alert_dt = datetime.fromisoformat(
+                            last_alert_time_str.replace("Z", "+00:00")
+                        )
+                        elapsed = (datetime.now(timezone.utc) - last_alert_dt).total_seconds()
+                        if elapsed < settings.ALERT_COOLDOWN_SECONDS:
+                            logger.info(
+                                f"Alert suppressed for room {room_key}: "
+                                f"post-ACK grace period ({elapsed:.0f}s < "
+                                f"{settings.ALERT_COOLDOWN_SECONDS}s since last alert)"
+                            )
+                            return
+                    except (ValueError, TypeError) as e:
+                        logger.warning(
+                            f"Could not parse last alert time for room {room_key}: {e}. "
+                            f"Allowing alert."
+                        )
+
+    except Exception as e:
+        logger.error(
+            f"Error during state-change check for room {room_key}: {e}. "
+            f"Allowing alert as safety fallback."
+        )
 
     severity_map = {"high": "high", "critical": "critical"}
     severity = severity_map.get(risk_level, "medium")
@@ -612,13 +681,27 @@ async def _create_alert(
             wa_message += f"_Pesan otomatis dari Sistem AgniRaksha_"
             
             # Send to all active contacts as background tasks
+            # Per-contact rate limiting to prevent flooding individuals
             for contact in active_contacts:
                 phone = contact.get("phone")
-                if phone:
-                    asyncio.create_task(
-                        send_whatsapp_message(
-                            phone=phone,
-                            message=wa_message,
-                            image_url=image_url
-                        )
+                if not phone:
+                    continue
+
+                wa_key = f"{room_key}:{phone}"
+                last_wa = _wa_contact_cooldowns.get(wa_key, 0)
+                if now - last_wa < settings.WA_CONTACT_COOLDOWN_SECONDS:
+                    logger.info(
+                        f"WA rate limit for {wa_key}: "
+                        f"({now - last_wa:.0f}s < {settings.WA_CONTACT_COOLDOWN_SECONDS}s)"
                     )
+                    continue
+
+                _wa_contact_cooldowns[wa_key] = now
+                asyncio.create_task(
+                    send_whatsapp_message(
+                        phone=phone,
+                        message=wa_message,
+                        image_url=image_url,
+                        room_id=room_key,
+                    )
+                )

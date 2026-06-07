@@ -7,6 +7,11 @@ const router = Router()
 // Apply security middleware to all routes in this router
 router.use(apiKeyMiddleware)
 
+// Per-contact rate limiting: key = "${phone}:${roomId}", value = timestamp
+// Prevents flooding individual contacts with repeated alerts for the same room
+const waCooldowns = new Map()
+const WA_CONTACT_COOLDOWN_MS = 10 * 60 * 1000 // 10 minutes
+
 /**
  * GET /api/messages/status
  * Exposes the connection status and any pending QR code image to authenticated backend requests.
@@ -43,6 +48,22 @@ router.post('/', async (req, res) => {
         if (!targetJid) {
             return res.status(400).json({ error: 'Invalid phone number format' })
         }
+
+        // Per-contact rate limiting: prevent flooding the same contact
+        // about the same room within the cooldown window
+        const roomId = req.body.roomId || '__global__'
+        const waKey = `${phone}:${roomId}`
+        const now = Date.now()
+        const lastSent = waCooldowns.get(waKey)
+        if (lastSent && (now - lastSent) < WA_CONTACT_COOLDOWN_MS) {
+            const remaining = Math.ceil((WA_CONTACT_COOLDOWN_MS - (now - lastSent)) / 1000)
+            console.log(`[Rate Limit] Suppressed duplicate WA for ${waKey} (${remaining}s remaining)`)
+            return res.status(429).json({
+                error: 'Rate limited',
+                retryAfterSeconds: remaining,
+            })
+        }
+        waCooldowns.set(waKey, now)
         
         // Ensure WA connection is ready and authenticated
         const sock = getWASocket()

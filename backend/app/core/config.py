@@ -26,7 +26,6 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = ""
     
     # WhatsApp Gateway Configuration
-    # WhatsApp Gateway Configuration
     GATEWAY_URL: str = "http://whatsapp-gateway:3001"
     GATEWAY_API_KEY: str = "agniraksha-secure-key-2026"
     
@@ -48,6 +47,12 @@ class Settings(BaseSettings):
     RISK_THRESHOLD_MEDIUM: float = 0.4
     RISK_THRESHOLD_HIGH: float = 0.6
     RISK_THRESHOLD_CRITICAL: float = 0.8
+
+    # Alert Suppression (Anti-Spam)
+    ALERT_COOLDOWN_SECONDS: int = 300           # 5 min grace period after last alert
+    SENSOR_ONLY_THRESHOLD: float = 0.7          # Min sensor score for Path 3 (camera-less)
+    SENSOR_ONLY_CONSECUTIVE_WINDOWS: int = 3    # Consecutive windows needed for Path 3 alert
+    WA_CONTACT_COOLDOWN_SECONDS: int = 600      # 10 min per-contact WhatsApp rate limit
     
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 

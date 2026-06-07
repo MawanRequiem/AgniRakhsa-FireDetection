@@ -21,6 +21,7 @@ from typing import Dict, List
 from collections import defaultdict
 
 from app.core.redis import redis_manager
+from app.core.config import settings
 from app.services import fusion_service
 from app.core.db import supabase
 
@@ -32,13 +33,10 @@ buffers: Dict[str, Dict[str, List[dict]]] = defaultdict(lambda: {"image": [], "s
 MAX_AGE_SECONDS = 5.0
 MATCH_WINDOW_SECONDS = 2.0
 
-# Sensor-only alert: minimum threshold score to trigger fusion without camera
-# This allows high gas readings to bypass the image requirement
-SENSOR_ONLY_THRESHOLD = 0.5
-
-# Track last sensor-only alert per room to prevent spam
-_sensor_only_cooldowns: Dict[str, float] = {}
-SENSOR_ONLY_COOLDOWN_SECONDS = 30
+# Sustained sensor reading buffer for Path 3 (sensor-only)
+# Key: room_id, Value: list of recent sensor scores (rolling window)
+# Alert only fires when ALL values in the window exceed the threshold
+_sensor_score_buffer: Dict[str, list[float]] = defaultdict(list)
 
 
 async def process_buffers():
@@ -111,34 +109,39 @@ async def process_buffers():
         
         # ─── Path 3: Sensor-only evaluation ──────────────────────────────
         # Process sensor events that have NO matching image event.
-        # This is the critical path for aerosol/gas/flame sensor-only detection.
+        # Uses sustained readings: requires N consecutive windows above threshold
+        # before triggering. Prevents false positives from transient sensor spikes.
         if sensors and not images:
-            # Take the oldest unmatched sensor event
             sens_event = sensors[0]
-            
-            # Only process if it's old enough that we know no image is coming
+
             if now - sens_event["timestamp"] > MATCH_WINDOW_SECONDS:
                 room_buffer["sensor"].remove(sens_event)
-                
-                # Check cooldown to prevent alert spam
-                last_alert = _sensor_only_cooldowns.get(room_id, 0)
-                if now - last_alert < SENSOR_ONLY_COOLDOWN_SECONDS:
-                    continue
-                
-                # Evaluate sensor risk using threshold/IF scoring
+
                 snapshot = sens_event.get("snapshot", {})
                 sensor_score = _evaluate_sensor_risk(snapshot, room_id)
-                
-                if sensor_score >= SENSOR_ONLY_THRESHOLD:
+
+                required_windows = settings.SENSOR_ONLY_CONSECUTIVE_WINDOWS
+                threshold = settings.SENSOR_ONLY_THRESHOLD
+
+                if sensor_score >= threshold:
+                    _sensor_score_buffer[room_id].append(sensor_score)
+                    if len(_sensor_score_buffer[room_id]) > required_windows:
+                        _sensor_score_buffer[room_id] = _sensor_score_buffer[room_id][-required_windows:]
+                else:
+                    _sensor_score_buffer[room_id] = []
+
+                buf_len = len(_sensor_score_buffer[room_id])
+                if buf_len >= required_windows:
+                    avg_score = sum(_sensor_score_buffer[room_id]) / buf_len
                     logger.warning(
                         f"🔥 SENSOR-ONLY ALERT for room {room_id}! "
-                        f"sensor_score={sensor_score:.3f} (threshold={SENSOR_ONLY_THRESHOLD}). "
+                        f"sustained sensor_score avg={avg_score:.3f} "
+                        f"({buf_len}/{required_windows} consecutive windows). "
                         f"Snapshot: {snapshot}"
                     )
-                    _sensor_only_cooldowns[room_id] = now
-                    
+                    _sensor_score_buffer[room_id] = []
+
                     try:
-                        # Run fusion with image_score=0 (sensor-driven)
                         await fusion_service.run_fusion(
                             image_score=0.0,
                             room_id=room_id,
@@ -150,17 +153,17 @@ async def process_buffers():
                         logger.error(f"Error running sensor-only fusion (path 3): {e}")
                 else:
                     logger.debug(
-                        f"Sensor event for room {room_id} below threshold: "
-                        f"score={sensor_score:.3f} < {SENSOR_ONLY_THRESHOLD}"
+                        f"Sensor event for room {room_id} above threshold but "
+                        f"building sustained window ({buf_len}/{required_windows}): "
+                        f"score={sensor_score:.3f}"
                     )
+
+                    # Also reset room to safe if readings are consistently low
                     try:
-                        # If sensors are safe, check if room status needs to be reset to safe.
-                        # Only reset if there are no active (unacknowledged) alerts for this room.
                         room_res = supabase.table("rooms").select("status").eq("id", str(room_id)).execute()
                         if room_res.data:
                             current_status = room_res.data[0].get("status")
                             if current_status != "safe":
-                                # Check active alerts
                                 active_res = (
                                     supabase.table("alerts")
                                     .select("id")
@@ -169,7 +172,7 @@ async def process_buffers():
                                     .execute()
                                 )
                                 if not active_res.data:
-                                    logger.info(f"Resetting room {room_id} status to safe (sensors are safe, no active alerts)")
+                                    logger.info(f"Resetting room {room_id} status to safe")
                                     supabase.table("rooms").update({"status": "safe"}).eq("id", str(room_id)).execute()
                     except Exception as e:
                         logger.error(f"Error resetting room {room_id} status to safe: {e}")

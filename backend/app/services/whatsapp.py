@@ -6,6 +6,7 @@ async def send_whatsapp_message(
     phone: str,
     message: str,
     image_url: Optional[str] = None,
+    room_id: Optional[str] = None,
 ) -> bool:
     """
     Sends a WhatsApp message via the internal gateway.
@@ -18,6 +19,7 @@ async def send_whatsapp_message(
         phone: Target phone number.
         message: Text message body (or caption if image provided).
         image_url: Optional public URL to an image to send as attachment.
+        room_id: Optional room ID for per-contact rate limiting on gateway.
         
     Returns:
         True if message was sent successfully.
@@ -29,18 +31,20 @@ async def send_whatsapp_message(
     }
     payload = {
         "phone": phone,
-        "message": message
+        "message": message,
+        "roomId": room_id or "__global__",
     }
     
-    # Include image URL if provided
     if image_url:
         payload["imageUrl"] = image_url
     
     try:
-        # Secure timeout and strict validation for external/internal calls
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.post(url, json=payload, headers=headers)
             
+            if response.status_code == 429:
+                print(f"[Gateway Rate Limited] Phone {phone} room {room_id}")
+                return False
             if response.status_code != 200:
                 print(f"[Gateway Error] {response.status_code}: {response.text}")
                 return False
