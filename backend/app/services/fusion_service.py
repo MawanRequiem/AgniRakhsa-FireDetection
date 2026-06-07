@@ -407,7 +407,7 @@ def _generate_explainable_narrative(
     image_url: Optional[str] = None
 ) -> tuple[str, str]:
     """
-    Generates layman-friendly narrative explaining the fusion model's fire decision.
+    Generates layman-friendly narrative explaining the fusion model's fire decision with actual values.
     Returns a tuple of (narrative_id, narrative_en).
     """
     has_image = bool(image_url) or image_score > 0.3
@@ -416,19 +416,25 @@ def _generate_explainable_narrative(
     has_smoke = False
     has_heat = False
     
+    flame_val_num = 9999
+    gas_val_num = 0
+    temp_val_num = 0
+    
     if sensor_snapshot:
         # Check flame sensor (active low, value < 1500 indicates fire)
         flame_val = sensor_snapshot.get("FLAME") or sensor_snapshot.get("flame")
         if flame_val is not None:
             fv = flame_val if isinstance(flame_val, (int, float)) else flame_val.get("value", 9999)
+            flame_val_num = fv
             if fv < 1500:
                 has_flame = True
                 
-        # Check smoke sensor
+        # Check smoke/gas sensor
         for gas_key in ("MQ2", "mq2"):
             gas_val = sensor_snapshot.get(gas_key)
             if gas_val is not None:
                 gv = gas_val if isinstance(gas_val, (int, float)) else gas_val.get("value", 0)
+                gas_val_num = gv
                 if gv > 500:
                     has_smoke = True
                     break
@@ -438,81 +444,83 @@ def _generate_explainable_narrative(
             temp_val = sensor_snapshot.get(temp_key)
             if temp_val is not None:
                 tv = temp_val if isinstance(temp_val, (int, float)) else temp_val.get("value", 0)
+                temp_val_num = tv
                 if tv > 55:
                     has_heat = True
                     break
 
     has_sensors = has_flame or has_smoke or has_heat
 
+    # Build descriptive list of sensor anomalies with their exact values and safe threshold references
+    reasons_id = []
+    reasons_en = []
+    if has_flame:
+        reasons_id.append(f"deteksi radiasi api aktif oleh sensor inframerah (nilai: {flame_val_num:.0f}, batas aman > 1500)")
+        reasons_en.append(f"active flame radiation detected by infrared sensor (value: {flame_val_num:.0f}, safe limit > 1500)")
+    if has_smoke:
+        reasons_id.append(f"kadar gas/asap tinggi terdeteksi oleh sensor MQ2 ({gas_val_num:.0f} ppm, batas aman < 500 ppm)")
+        reasons_en.append(f"high gas/smoke concentration detected by MQ2 sensor ({gas_val_num:.0f} ppm, safe limit < 500 ppm)")
+    if has_heat:
+        reasons_id.append(f"suhu panas ekstrim terdeteksi oleh sensor SHTC3 ({temp_val_num:.1f}°C, batas aman < 55.0°C)")
+        reasons_en.append(f"extreme high temperature detected by SHTC3 sensor ({temp_val_num:.1f}°C, safe limit < 55.0°C)")
+
+    desc_id = " serta ".join(reasons_id)
+    desc_en = " and ".join(reasons_en)
+
     if has_image and has_sensors:
-        reasons_id = []
-        reasons_en = []
-        if has_flame:
-            reasons_id.append("deteksi api langsung oleh sensor inframerah")
-            reasons_en.append("direct fire detection from infrared sensor")
-        if has_smoke:
-            reasons_id.append("kepulan asap tebal")
-            reasons_en.append("thick smoke accumulation")
-        if has_heat:
-            reasons_id.append("kenaikan suhu ekstrim")
-            reasons_en.append("extreme temperature rise")
-            
-        desc_id = " dan ".join(reasons_id)
-        desc_en = " and ".join(reasons_en)
-        
         narrative_id = (
             f"Kombinasi analisis visual kamera (AI mendeteksi objek menyerupai api) "
-            f"dan data sensor fisik ({desc_id}) mengonfirmasi adanya kebakaran aktif. "
-            f"Sistem mendeteksi tingkat bahaya yang sangat tinggi."
+            f"dan pembacaan sensor fisik ({desc_id}) mengonfirmasi adanya kebakaran aktif. "
+            f"Sistem menyimpulkan tingkat bahaya yang sangat tinggi."
         )
         narrative_en = (
             f"Visual analysis from the camera (AI detected fire-like objects) "
             f"combined with physical sensor readings ({desc_en}) confirms active fire. "
-            f"The system has detected a very high level of danger."
+            f"The system concludes a very high level of danger."
         )
     elif has_image:
         narrative_id = (
             "Peringatan dipicu oleh sistem analisis visual AI pada kamera pengawas yang mendeteksi "
-            "adanya kobaran api atau asap tebal secara visual. Sensor fisik ruangan belum menunjukkan indikasi bahaya."
+            "adanya kobaran api atau asap tebal secara visual. Sensor fisik ruangan saat ini masih normal."
         )
         narrative_en = (
             "This warning is triggered by the camera AI visual analysis detecting fire or thick smoke. "
-            "Ambient physical sensors have not registered significant anomalies yet."
+            "Ambient physical sensors are currently registering normal readings."
         )
     elif has_sensors:
-        reasons_id = []
-        reasons_en = []
-        if has_flame:
-            reasons_id.append("sensor inframerah menangkap radiasi api")
-            reasons_en.append("infrared sensor captured fire radiation")
-        if has_smoke:
-            reasons_id.append("sensor gas mendeteksi asap tebal")
-            reasons_en.append("gas sensor detected thick smoke")
-        if has_heat:
-            reasons_id.append("sensor suhu mendeteksi panas ekstrim")
-            reasons_en.append("temperature sensor detected extreme heat")
-            
-        desc_id = " serta ".join(reasons_id)
-        desc_en = " and ".join(reasons_en)
-        
         narrative_id = (
-            f"Peringatan dipicu oleh anomali sensor fisik ruangan: {desc_id}. "
-            f"Kamera pengawas belum/tidak mendeteksi visual api secara langsung, "
+            f"Peringatan dipicu oleh anomali pembacaan sensor fisik ruangan: {desc_id}. "
+            f"Kamera pengawas belum mendeteksi visual api secara langsung, "
             f"namun kondisi ruangan terkonfirmasi tidak aman."
         )
         narrative_en = (
-            f"This warning is triggered by room sensor anomalies: {desc_en}. "
+            f"This warning is triggered by room physical sensor reading anomalies: {desc_en}. "
             f"Although the camera does not show active visual fire/smoke, "
             f"environmental conditions are confirmed unsafe."
         )
     else:
+        # Show actual metrics even if under thresholds, if they triggered a mathematical anomaly (Isolation Forest)
+        anomaly_parts_id = []
+        anomaly_parts_en = []
+        if gas_val_num > 0:
+            anomaly_parts_id.append(f"gas MQ2: {gas_val_num:.0f} ppm")
+            anomaly_parts_en.append(f"MQ2 gas: {gas_val_num:.0f} ppm")
+        if temp_val_num > 0:
+            anomaly_parts_id.append(f"suhu: {temp_val_num:.1f}°C")
+            anomaly_parts_en.append(f"temp: {temp_val_num:.1f}°C")
+            
+        anomaly_desc_id = ", ".join(anomaly_parts_id)
+        anomaly_desc_en = ", ".join(anomaly_parts_en)
+        
         narrative_id = (
-            "Peringatan dipicu oleh anomali lingkungan (udara sangat kering/kelembaban rendah) "
-            "atau pola pembacaan sensor yang tidak wajar dari kondisi normal harian ruangan."
+            f"Peringatan dipicu oleh deteksi ketidakwajaran pola lingkungan (Isolation Forest) "
+            f"berdasarkan kombinasi metrik saat ini ({anomaly_desc_id or 'tidak ada data sensor'}), "
+            f"menunjukkan deviasi dari kondisi ruangan normal."
         )
         narrative_en = (
-            "This warning is triggered by environmental anomalies (extremely dry air/low humidity) "
-            "or sensor patterns deviating significantly from normal daily room conditions."
+            f"This warning is triggered by environmental pattern anomalies (Isolation Forest) "
+            f"based on current metrics ({anomaly_desc_en or 'no sensor data'}), "
+            f"indicating a deviation from normal room conditions."
         )
         
     return narrative_id, narrative_en
