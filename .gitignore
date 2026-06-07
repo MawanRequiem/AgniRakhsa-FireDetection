@@ -159,3 +159,8 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Agent and AI Tool Configs
+AGENTS.md
+.agents/
+.commandcode/
