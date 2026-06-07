@@ -5,6 +5,7 @@ import { Building2, Activity, BellRing, Route, HardDrive, Thermometer, Wind } fr
 
 import { useDashboardStore } from '@/stores/useDashboardStore';
 import { useRoomsStore } from '@/stores/useRoomsStore';
+import { useUIStore } from '@/store/store';
 import MetricCard from '@/components/dashboard/MetricCard';
 import AlertFeed from '@/components/dashboard/AlertFeed';
 import SensorsOverview from '@/components/dashboard/SensorsOverview';
@@ -12,6 +13,7 @@ import NodeCard from '@/components/dashboard/NodeCard';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const language = useUIStore((s) => s.language);
   const { 
     summary, 
     recentAlerts, 
@@ -64,9 +66,9 @@ export default function Dashboard() {
   }, [fetchSummary, fetchRecentAlerts, fetchDevices, fetchSensorHealth, fetchRooms, connectWebSocket, disconnectWebSocket]);
 
   const getRoomName = (roomId) => {
-    if (!roomId) return 'Unassigned';
+    if (!roomId) return language === 'en' ? 'Unassigned' : 'Belum Ditetapkan';
     const room = rooms.find(r => r.id === roomId);
-    return room ? room.name : 'Unknown';
+    return room ? room.name : (language === 'en' ? 'Unknown' : 'Tidak Diketahui');
   };
 
   const getNodeRoomName = (deviceId) => {
@@ -95,8 +97,8 @@ export default function Dashboard() {
     });
   });
 
-  let statusValue = "Semua Area Aman";
-  let statusSubtext = "Pemantauan aktif - tidak ada ancaman";
+  let statusValue = language === 'en' ? "All Areas Safe" : "Semua Area Aman";
+  let statusSubtext = language === 'en' ? "Monitoring active - no threats" : "Pemantauan aktif - tidak ada ancaman";
   let statusColor = "green";
   let StatusIcon = Activity;
 
@@ -104,18 +106,24 @@ export default function Dashboard() {
   const criticalRooms = roomStatus.critical || 0;
 
   if (summary.activeAlerts > 0) {
-    statusValue = "Bahaya Kebakaran!";
-    statusSubtext = `${summary.activeAlerts} peringatan aktif memerlukan tindakan segera`;
+    statusValue = language === 'en' ? "Fire Hazard!" : "Bahaya Kebakaran!";
+    statusSubtext = language === 'en' 
+      ? `${summary.activeAlerts} active alert(s) require immediate action` 
+      : `${summary.activeAlerts} peringatan aktif memerlukan tindakan segera`;
     statusColor = "red";
     StatusIcon = BellRing;
   } else if (criticalRooms > 0) {
-    statusValue = "Status Kritis";
-    statusSubtext = `${criticalRooms} ruangan dalam kondisi bahaya`;
+    statusValue = language === 'en' ? "Critical Status" : "Status Kritis";
+    statusSubtext = language === 'en' 
+      ? `${criticalRooms} room(s) in danger condition` 
+      : `${criticalRooms} ruangan dalam kondisi bahaya`;
     statusColor = "red";
     StatusIcon = BellRing;
   } else if (summary.highRiskRooms > 0) {
-    statusValue = "Ancaman Terdeteksi";
-    statusSubtext = `${summary.highRiskRooms} ruangan berisiko tinggi`;
+    statusValue = language === 'en' ? "Threat Detected" : "Ancaman Terdeteksi";
+    statusSubtext = language === 'en' 
+      ? `${summary.highRiskRooms} high risk room(s)` 
+      : `${summary.highRiskRooms} ruangan berisiko tinggi`;
     statusColor = "red";
     StatusIcon = Route;
   }
@@ -127,55 +135,67 @@ export default function Dashboard() {
         <div>
            <div className="flex items-center gap-3">
              <h2 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--ifrit-text-primary)' }}>
-               Pemantauan Fasilitas
+               {language === 'en' ? 'Facility Monitoring' : 'Pemantauan Fasilitas'}
              </h2>
              {isConnected ? (
                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md" style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                 <span className="text-[10px] font-semibold tracking-wider text-emerald-600 dark:text-emerald-400">Terhubung</span>
+                 <span className="text-[10px] font-semibold tracking-wider text-emerald-600 dark:text-emerald-400">
+                   {language === 'en' ? 'Connected' : 'Terhubung'}
+                 </span>
                </div>
              ) : (
                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md" style={{ backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
                  <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                 <span className="text-[10px] font-semibold tracking-wider text-red-600 dark:text-red-400">Terputus</span>
+                 <span className="text-[10px] font-semibold tracking-wider text-red-600 dark:text-red-400">
+                   {language === 'en' ? 'Disconnected' : 'Terputus'}
+                 </span>
                </div>
              )}
            </div>
-           <p className="text-xs mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>Memantau semua area dari bahaya kebakaran dan asap</p>
+           <p className="text-xs mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>
+             {language === 'en' ? 'Monitoring all areas for fire and smoke hazards' : 'Memantau semua area dari bahaya kebakaran dan asap'}
+           </p>
          </div>
       </div>
       
       {/* Top Stats Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard 
-          title="Status Fasilitas" 
+          title={language === 'en' ? 'Facility Status' : 'Status Fasilitas'} 
           value={isLoading ? '-' : statusValue} 
           subtext={statusSubtext}
           icon={StatusIcon} 
           color={statusColor}
         />
         <MetricCard 
-          title="Suhu Tertinggi" 
+          title={language === 'en' ? 'Highest Temperature' : 'Suhu Tertinggi'} 
           value={maxTemp > -Infinity ? `${maxTemp.toFixed(1)}°C` : '-'} 
-          subtext={maxTempNodeId ? `Ruangan: ${getNodeRoomName(maxTempNodeId)}` : 'Menunggu Data'}
+          subtext={maxTempNodeId 
+            ? `${language === 'en' ? 'Room' : 'Ruangan'}: ${getNodeRoomName(maxTempNodeId)}` 
+            : (language === 'en' ? 'Waiting for Data' : 'Menunggu Data')}
           icon={Thermometer} 
           color={maxTemp > 35 ? "red" : "default"} 
         />
         <MetricCard 
-          title="Kadar Gas Tertinggi" 
+          title={language === 'en' ? 'Highest Gas Level' : 'Kadar Gas Tertinggi'} 
           value={maxGas > -Infinity ? `${maxGas.toFixed(0)} ppm` : '-'} 
-          subtext={maxGasNodeId ? `Ruangan: ${getNodeRoomName(maxGasNodeId)}` : 'Menunggu Data'}
+          subtext={maxGasNodeId 
+            ? `${language === 'en' ? 'Room' : 'Ruangan'}: ${getNodeRoomName(maxGasNodeId)}` 
+            : (language === 'en' ? 'Waiting for Data' : 'Menunggu Data')}
           icon={Wind} 
           color={maxGas > 800 ? "red" : "default"}
         />
         <MetricCard 
-          title="Kesehatan Perangkat" 
-          value={isLoading ? '-' : `${summary.onlineDevices} / ${devices.length} Aktif`} 
+          title={language === 'en' ? 'Device Health' : 'Kesehatan Perangkat'} 
+          value={isLoading ? '-' : `${summary.onlineDevices} / ${devices.length} ${language === 'en' ? 'Active' : 'Aktif'}`} 
           subtext={(() => {
             const unhealthyCount = sensorHealth?.sensors?.filter(s => s.status !== 'healthy')?.length || 0;
             return unhealthyCount > 0 
-              ? <span className="text-red-500 font-medium">{unhealthyCount} sensor perlu diperiksa</span>
-              : "Semua perangkat dan sensor normal";
+              ? <span className="text-red-500 font-medium">
+                  {unhealthyCount} {language === 'en' ? 'sensor(s) need inspection' : 'sensor perlu diperiksa'}
+                </span>
+              : (language === 'en' ? 'All devices and sensors healthy' : 'Semua perangkat dan sensor normal');
           })()}
           icon={HardDrive} 
           color={summary.onlineDevices < devices.length || (sensorHealth?.sensors?.filter(s => s.status !== 'healthy')?.length > 0) ? "red" : "blue"} 
@@ -193,16 +213,22 @@ export default function Dashboard() {
         >
           <div className="flex items-center justify-between p-4 border-b flex-shrink-0" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
             <div className="flex items-center gap-3">
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Grafik Pemantauan</h3>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>
+                {language === 'en' ? 'Monitoring Chart' : 'Grafik Pemantauan'}
+              </h3>
               <select 
                 value={selectedDevice}
                 onChange={(e) => setSelectedDevice(e.target.value)}
                 className="text-xs p-1.5 pr-6 rounded-md border outline-none cursor-pointer"
                 style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-secondary)' }}
               >
-                <option value="ALL">Rata-rata Semua Area</option>
+                <option value="ALL">
+                  {language === 'en' ? 'Average of All Areas' : 'Rata-rata Semua Area'}
+                </option>
                 {devices?.map((d) => (
-                  <option key={d.id} value={d.id}>Sensor: {getRoomName(d.room_id)}</option>
+                  <option key={d.id} value={d.id}>
+                    {language === 'en' ? 'Sensor' : 'Sensor'}: {getRoomName(d.room_id)}
+                  </option>
                 ))}
               </select>
             </div>
@@ -242,13 +268,15 @@ export default function Dashboard() {
           style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-primary)' }}
         >
           <div className="flex items-center justify-between p-4 border-b flex-shrink-0" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Aktivitas Terkini</h3>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>
+              {language === 'en' ? 'Recent Activity' : 'Aktivitas Terkini'}
+            </h3>
             <button 
               onClick={() => navigate('/dashboard/alerts')}
               className="text-xs font-medium transition-opacity hover:opacity-80 cursor-pointer"
               style={{ color: 'var(--ifrit-brand)' }}
             >
-              Lihat semua →
+              {language === 'en' ? 'View all →' : 'Lihat semua →'}
             </button>
           </div>
           
@@ -271,17 +299,21 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <HardDrive className="w-4 h-4" style={{ color: 'var(--ifrit-text-muted)' }} />
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Status Sensor Aktif</h3>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>
+              {language === 'en' ? 'Active Sensor Status' : 'Status Sensor Aktif'}
+            </h3>
           </div>
-          <span className="text-xs" style={{ color: 'var(--ifrit-text-muted)' }}>{devices.length} sensor terdaftar</span>
+          <span className="text-xs" style={{ color: 'var(--ifrit-text-muted)' }}>
+            {devices.length} {language === 'en' ? 'registered sensor(s)' : 'sensor terdaftar'}
+          </span>
         </div>
         
         {isLoading && devices.length === 0 ? (
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-             {[1,2,3,4].map(i => (
-               <div key={i} className="h-64 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--ifrit-bg-primary)' }} />
-             ))}
-           </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {[1,2,3,4].map(i => (
+                <div key={i} className="h-64 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--ifrit-bg-primary)' }} />
+              ))}
+            </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {devices.map((device) => (
@@ -295,7 +327,9 @@ export default function Dashboard() {
             {devices.length === 0 && (
               <div className="col-span-full py-12 text-center border rounded-lg" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-primary)' }}>
                 <HardDrive className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                <p className="text-sm" style={{ color: 'var(--ifrit-text-muted)' }}>Belum ada sensor terdaftar.</p>
+                <p className="text-sm" style={{ color: 'var(--ifrit-text-muted)' }}>
+                  {language === 'en' ? 'No registered sensors yet.' : 'Belum ada sensor terdaftar.'}
+                </p>
               </div>
             )}
           </div>
@@ -305,3 +339,6 @@ export default function Dashboard() {
     </div>
   );
 }
+
+
+

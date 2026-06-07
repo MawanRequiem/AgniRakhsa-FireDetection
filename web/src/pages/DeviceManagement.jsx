@@ -13,6 +13,7 @@ import AddCameraDialog from '@/components/devices/AddCameraDialog';
 import DeviceCalibrationDialog from '@/components/devices/DeviceCalibrationDialog';
 import { Camera, Cpu, Plus, Trash2, Wifi, WifiOff, RefreshCw, Copy, Check, Settings2, Loader2 } from 'lucide-react';
 import { customFetch } from '@/lib/api';
+import { useUIStore } from '@/store/store';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +34,9 @@ export default function DeviceManagement() {
   const [copiedId, setCopiedId] = useState(null);
   const [cameraToDelete, setCameraToDelete] = useState(null);
   const [calibrationDevice, setCalibrationDevice] = useState(null);
+  
+  const language = useUIStore((s) => s.language);
+  const isEn = language === 'en';
 
   const fetchAll = useCallback(async () => {
     try {
@@ -135,12 +139,12 @@ export default function DeviceManagement() {
         style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}
       >
         <SelectValue>
-          {currentRoomId ? (getRoomName(currentRoomId) || 'Unknown Room') : '- Unassigned -'}
+          {currentRoomId ? (getRoomName(currentRoomId) || (isEn ? 'Unknown Room' : 'Ruangan Tidak Diketahui')) : (isEn ? '- Unassigned -' : '- Belum Ditetapkan -')}
         </SelectValue>
       </SelectTrigger>
       <SelectContent style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)' }}>
         <SelectItem value="none">
-          <span style={{ color: 'var(--ifrit-text-muted)' }}>- Unassigned -</span>
+          <span style={{ color: 'var(--ifrit-text-muted)' }}>{isEn ? '- Unassigned -' : '- Belum Ditetapkan -'}</span>
         </SelectItem>
         {rooms.map((room) => (
           <SelectItem key={room.id} value={room.id}>
@@ -154,10 +158,14 @@ export default function DeviceManagement() {
   if (isLoading) {
     return (
       <div className="space-y-6 max-w-7xl mx-auto">
-        <h1 className="text-2xl font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Device Management</h1>
+        <h1 className="text-2xl font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>
+          {isEn ? 'Device Management' : 'Manajemen Perangkat'}
+        </h1>
         <div className="flex flex-col items-center justify-center h-[40vh]">
           <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mb-4" style={{ borderColor: 'var(--ifrit-brand)' }} />
-          <p className="text-sm" style={{ color: 'var(--ifrit-text-muted)' }}>Loading devices...</p>
+          <p className="text-sm" style={{ color: 'var(--ifrit-text-muted)' }}>
+            {isEn ? 'Loading devices...' : 'Memuat perangkat...'}
+          </p>
         </div>
       </div>
     );
@@ -168,8 +176,12 @@ export default function DeviceManagement() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Manage Devices</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>Connect cameras, set up sensors, and assign them to specific areas.</p>
+          <h1 className="text-2xl font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>
+            {isEn ? 'Manage Devices' : 'Kelola Perangkat'}
+          </h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>
+            {isEn ? 'Connect cameras, set up sensors, and assign them to specific areas.' : 'Hubungkan kamera, siapkan sensor, dan tetapkan ke area tertentu.'}
+          </p>
         </div>
         <Button
           onClick={() => fetchAll()}
@@ -178,7 +190,7 @@ export default function DeviceManagement() {
           className="flex items-center gap-2 border cursor-pointer"
           style={{ borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-secondary)' }}
         >
-          <RefreshCw className="w-3.5 h-3.5" /> Refresh
+          <RefreshCw className="w-3.5 h-3.5" /> {isEn ? 'Refresh' : 'Segarkan'}
         </Button>
       </div>
 
@@ -189,11 +201,11 @@ export default function DeviceManagement() {
           style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)', borderBottomWidth: '1px' }}
         >
           <TabsTrigger value="cameras" className="capitalize px-4 py-2 data-[state=active]:bg-[var(--ifrit-bg-tertiary)] data-[state=active]:text-[var(--ifrit-brand)] flex items-center gap-2">
-            <Camera className="w-4 h-4" /> Cameras
+            <Camera className="w-4 h-4" /> {isEn ? 'Cameras' : 'Kamera'}
             <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--ifrit-bg-primary)' }}>{cameras.length}</span>
           </TabsTrigger>
           <TabsTrigger value="sensors" className="capitalize px-4 py-2 data-[state=active]:bg-[var(--ifrit-bg-tertiary)] data-[state=active]:text-[var(--ifrit-brand)] flex items-center gap-2">
-            <Cpu className="w-4 h-4" /> Monitoring Units
+            <Cpu className="w-4 h-4" /> {isEn ? 'Monitoring Units' : 'Unit Pemantau'}
             <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--ifrit-bg-primary)' }}>{devices.length}</span>
           </TabsTrigger>
         </TabsList>
@@ -202,28 +214,30 @@ export default function DeviceManagement() {
         <TabsContent value="cameras" className="mt-0 outline-none">
           <div className="border rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
             <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--ifrit-border)' }}>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Registered Cameras</h3>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>
+                {isEn ? 'Registered Cameras' : 'Kamera Terdaftar'}
+              </h3>
               <Button onClick={() => setShowAddCamera(true)} size="sm" className="flex items-center gap-2 cursor-pointer text-white" style={{ backgroundColor: 'var(--ifrit-brand)' }}>
-                <Plus className="w-4 h-4" /> Add Camera
+                <Plus className="w-4 h-4" /> {isEn ? 'Add Camera' : 'Tambah Kamera'}
               </Button>
             </div>
             {cameras.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16" style={{ color: 'var(--ifrit-text-muted)' }}>
                 <Camera className="w-10 h-10 mb-3 opacity-30" />
-                <p className="font-medium">No cameras registered</p>
-                <p className="text-xs mt-1">Click "Add Camera" to register one.</p>
+                <p className="font-medium">{isEn ? 'No cameras registered' : 'Tidak ada kamera terdaftar'}</p>
+                <p className="text-xs mt-1">{isEn ? 'Click "Add Camera" to register one.' : 'Klik "Tambah Kamera" untuk mendaftarkannya.'}</p>
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow style={{ borderColor: 'var(--ifrit-border)' }}>
-                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>Status</TableHead>
-                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>Name</TableHead>
-                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>Type</TableHead>
-                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>Assigned Room</TableHead>
-                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>Camera ID</TableHead>
-                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>Last Frame</TableHead>
-                    <TableHead className="text-xs font-medium text-right" style={{ color: 'var(--ifrit-text-muted)' }}>Actions</TableHead>
+                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>{isEn ? 'Status' : 'Status'}</TableHead>
+                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>{isEn ? 'Name' : 'Nama'}</TableHead>
+                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>{isEn ? 'Type' : 'Tipe'}</TableHead>
+                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>{isEn ? 'Assigned Room' : 'Ruangan Terpilih'}</TableHead>
+                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>{isEn ? 'Camera ID' : 'ID Kamera'}</TableHead>
+                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>{isEn ? 'Last Frame' : 'Bingkai Terakhir'}</TableHead>
+                    <TableHead className="text-xs font-medium text-right" style={{ color: 'var(--ifrit-text-muted)' }}>{isEn ? 'Actions' : 'Aksi'}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -247,9 +261,9 @@ export default function DeviceManagement() {
                           onClick={() => handleCopyId(cam.id)}
                           className="flex items-center gap-1.5 text-[10px] font-mono px-2 py-1 rounded border transition-colors cursor-pointer"
                           style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-muted)' }}
-                          title="Click to copy Camera ID"
+                          title={isEn ? 'Click to copy Camera ID' : 'Klik untuk menyalin ID Kamera'}
                         >
-                          {copiedId === cam.id ? (<><Check className="w-3 h-3 text-emerald-400" /> Copied</>) : (<><Copy className="w-3 h-3" /> {cam.id.substring(0, 8)}…</>)}
+                          {copiedId === cam.id ? (<><Check className="w-3 h-3 text-emerald-400" /> {isEn ? 'Copied' : 'Disalin'}</>) : (<><Copy className="w-3 h-3" /> {cam.id.substring(0, 8)}…</>)}
                         </button>
                       </TableCell>
                       <TableCell><span className="text-xs font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>{formatTime(cam.last_frame_at)}</span></TableCell>
@@ -270,26 +284,30 @@ export default function DeviceManagement() {
         <TabsContent value="sensors" className="mt-0 outline-none">
           <div className="border rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
             <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--ifrit-border)' }}>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Internal Sensors</h3>
-              <p className="text-xs" style={{ color: 'var(--ifrit-text-muted)' }}>Automatically connects when turned on</p>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>
+                {isEn ? 'Internal Sensors' : 'Sensor Internal'}
+              </h3>
+              <p className="text-xs" style={{ color: 'var(--ifrit-text-muted)' }}>
+                {isEn ? 'Automatically connects when turned on' : 'Terhubung otomatis saat dinyalakan'}
+              </p>
             </div>
             {devices.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16" style={{ color: 'var(--ifrit-text-muted)' }}>
                 <Cpu className="w-10 h-10 mb-3 opacity-30" />
-                <p className="font-medium">No sensor nodes registered</p>
-                <p className="text-xs mt-1">Devices connect themselves when powered on.</p>
+                <p className="font-medium">{isEn ? 'No sensor nodes registered' : 'Tidak ada sensor terdaftar'}</p>
+                <p className="text-xs mt-1">{isEn ? 'Devices connect themselves when powered on.' : 'Perangkat akan terhubung sendiri saat dinyalakan.'}</p>
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow style={{ borderColor: 'var(--ifrit-border)' }}>
-                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>Status</TableHead>
-                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>Name</TableHead>
-                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>MAC Address</TableHead>
-                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>Assigned Room</TableHead>
-                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>System Version</TableHead>
-                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>Last Seen</TableHead>
-                    <TableHead className="text-xs font-medium text-right" style={{ color: 'var(--ifrit-text-muted)' }}>Actions</TableHead>
+                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>{isEn ? 'Status' : 'Status'}</TableHead>
+                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>{isEn ? 'Name' : 'Nama'}</TableHead>
+                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>{isEn ? 'MAC Address' : 'Alamat MAC'}</TableHead>
+                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>{isEn ? 'Assigned Room' : 'Ruangan Terpilih'}</TableHead>
+                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>{isEn ? 'System Version' : 'Versi Sistem'}</TableHead>
+                    <TableHead className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>{isEn ? 'Last Seen' : 'Terakhir Terlihat'}</TableHead>
+                    <TableHead className="text-xs font-medium text-right" style={{ color: 'var(--ifrit-text-muted)' }}>{isEn ? 'Actions' : 'Aksi'}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -327,7 +345,7 @@ export default function DeviceManagement() {
                           onClick={() => setCalibrationDevice(dev)} 
                           className="hover:bg-[var(--ifrit-bg-tertiary)] cursor-pointer"
                           style={{ color: 'var(--ifrit-text-secondary)' }}
-                          title="Manage Calibration"
+                          title={isEn ? 'Manage Calibration' : 'Kelola Kalibrasi'}
                         >
                           <Settings2 className="w-4 h-4" />
                         </Button>
@@ -348,6 +366,30 @@ export default function DeviceManagement() {
         onOpenChange={(open) => !open && setCalibrationDevice(null)} 
         device={calibrationDevice} 
       />
+
+      <AlertDialog open={!!cameraToDelete} onOpenChange={(open) => !open && setCameraToDelete(null)}>
+        <AlertDialogContent style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)' }}>
+          <AlertDialogHeader>
+            <AlertDialogTitle style={{ color: 'var(--ifrit-text-primary)' }}>
+              {isEn ? 'Delete Camera' : 'Hapus Kamera'}
+            </AlertDialogTitle>
+            <AlertDialogDescription style={{ color: 'var(--ifrit-text-muted)' }}>
+              {isEn 
+                ? 'Are you sure you want to delete this camera? This action cannot be undone.'
+                : 'Apakah Anda yakin ingin menghapus kamera ini? Tindakan ini tidak dapat dibatalkan.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}>
+              {isEn ? 'Cancel' : 'Batal'}
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteCamera} style={{ backgroundColor: 'var(--ifrit-fire)', color: 'white' }}>
+              {isEn ? 'Delete' : 'Hapus'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+

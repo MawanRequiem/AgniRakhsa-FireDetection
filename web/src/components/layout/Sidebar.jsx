@@ -3,6 +3,7 @@ import { useUIStore } from '@/store/store';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { customFetch } from '@/lib/api';
 import { toast } from 'sonner';
+import { translations } from '@/lib/translations';
 import {
   LayoutDashboard,
   DoorOpen,
@@ -19,28 +20,31 @@ import {
 // PERBAIKAN: Menambahkan awalan /dashboard pada semua item navigasi
 // agar sesuai dengan struktur nested routes di App.jsx
 const navItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Ringkasan' },
-  { to: '/dashboard/rooms', icon: DoorOpen, label: 'Peta Gedung' },
-  { to: '/dashboard/cctv', icon: Camera, label: 'Kamera CCTV' },
-  { to: '/dashboard/devices', icon: Wifi, label: 'Sensor & Alat' },
-  { to: '/dashboard/alerts', icon: Bell, label: 'Riwayat Peringatan' },
-  { to: '/dashboard/settings/notifications', icon: Smartphone, label: 'Penerima Notifikasi' },
+  { to: '/dashboard', icon: LayoutDashboard, labelKey: 'dashboard' },
+  { to: '/dashboard/rooms', icon: DoorOpen, labelKey: 'rooms' },
+  { to: '/dashboard/cctv', icon: Camera, labelKey: 'cctv_feed' },
+  { to: '/dashboard/devices', icon: Wifi, labelKey: 'devices' },
+  { to: '/dashboard/alerts', icon: Bell, labelKey: 'alerts' },
+  { to: '/dashboard/settings/notifications', icon: Smartphone, labelKey: 'notifications' },
 ];
 
 export default function Sidebar() {
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggle = useUIStore((s) => s.toggleSidebar);
+  const language = useUIStore((s) => s.language);
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const navigate = useNavigate();
+
+  const t = translations[language] || translations['en'];
 
   const handleLogout = async () => {
     try {
       await customFetch('/api/v1/auth/logout', { method: 'POST' });
       clearAuth();
-      toast.success('Berhasil keluar');
+      toast.success(language === 'en' ? 'Logged out successfully' : 'Berhasil keluar');
       navigate('/');
     } catch (error) {
-      toast.error('Gagal keluar');
+      toast.error(language === 'en' ? 'Logout failed' : 'Gagal keluar');
       // Even if API fails, clear local state for safety
       clearAuth();
       navigate('/');
@@ -69,7 +73,7 @@ export default function Sidebar() {
 
       {/* Navigation - Area Menu Utama */}
       <nav className="flex-1 py-3 px-2 space-y-1 relative">
-        {navItems.map(({ to, icon: Icon, label }) => (
+        {navItems.map(({ to, icon: Icon, labelKey }) => (
           <NavLink
             key={to}
             to={to}
@@ -95,7 +99,7 @@ export default function Sidebar() {
                   />
                 )}
                 <Icon className="w-5 h-5 flex-shrink-0" />
-                {!collapsed && <span>{label}</span>}
+                {!collapsed && <span>{t[labelKey]}</span>}
               </>
             )}
           </NavLink>
@@ -110,7 +114,7 @@ export default function Sidebar() {
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm font-medium text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer group"
         >
           <LogOut className="w-5 h-5 flex-shrink-0 group-hover:scale-110 transition-transform" />
-          {!collapsed && <span>Keluar</span>}
+          {!collapsed && <span>{t['logout']}</span>}
         </button>
 
         <button
@@ -124,4 +128,5 @@ export default function Sidebar() {
       </div>
     </aside>
   );
-}
+}
+

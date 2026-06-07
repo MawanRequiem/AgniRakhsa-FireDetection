@@ -5,13 +5,18 @@ import HoverClue from '@/components/ui/HoverClue';
 import { useNavigate } from 'react-router-dom';
 import { useAlertsStore } from '@/stores/useAlertsStore';
 import { useRoomsStore } from '@/stores/useRoomsStore';
+import { useUIStore } from '@/store/store';
 import { CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { translations, getLocalizedMessage } from '@/lib/translations';
 
 export default function Alerts() {
   const navigate = useNavigate();
   const { alerts, total, isLoading, fetchAlerts, setFilters, acknowledgeAlert } = useAlertsStore();
   const { rooms, fetchRooms } = useRoomsStore();
+  const language = useUIStore((s) => s.language);
+
+  const t = translations[language] || translations['en'];
 
   const [severityFilter, setSeverityFilter] = useState('all');
   const [roomFilter, setRoomFilter] = useState('all');
@@ -39,11 +44,11 @@ export default function Alerts() {
     e.stopPropagation();
     const success = await acknowledgeAlert(alertId);
     if (success) {
-      toast.success('Peringatan telah dikonfirmasi aman');
+      toast.success(language === 'en' ? 'Alert has been confirmed safe' : 'Peringatan telah dikonfirmasi aman');
     } else {
-      toast.error('Gagal mengonfirmasi peringatan');
+      toast.error(language === 'en' ? 'Failed to confirm alert' : 'Gagal mengonfirmasi peringatan');
     }
-  }, [acknowledgeAlert]);
+  }, [acknowledgeAlert, language]);
 
   // Build room name lookup
   const roomMap = useMemo(() => {
@@ -54,15 +59,19 @@ export default function Alerts() {
     return map;
   }, [rooms]);
 
+  const locale = language === 'en' ? 'en-US' : 'id-ID';
+
   return (
     <div className="space-y-6">
       <div>
         <div className="flex items-center">
-          <h1 className="text-2xl font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Notifikasi Peringatan Kebakaran</h1>
-          <HoverClue text="Daftar riwayat semua masalah terdeteksi. Baris merah membutuhkan perhatian segera. Klik baris untuk melihat kamera ruangan." />
+          <h1 className="text-2xl font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>
+            {language === 'en' ? 'Fire Warning & Alerts History' : 'Notifikasi Peringatan Kebakaran'}
+          </h1>
+          <HoverClue text={language === 'en' ? 'Historical list of all issues detected. Highlighted rows require immediate attention. Click a row to view room cameras.' : 'Daftar riwayat semua masalah terdeteksi. Baris merah membutuhkan perhatian segera. Klik baris untuk melihat kamera ruangan.'} />
         </div>
         <p className="text-sm mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>
-          Riwayat semua peringatan, deteksi sensor, dan status sistem keamanan. 
+          {language === 'en' ? 'History of all alerts, sensor telemetry anomaly, and fire status.' : 'Riwayat semua peringatan, deteksi sensor, dan status sistem keamanan.'} 
           <span className="font-mono ml-2 text-xs opacity-70">[ Total: {total} ]</span>
         </p>
       </div>
@@ -76,11 +85,11 @@ export default function Alerts() {
             className="w-full appearance-none rounded-lg border py-2.5 pl-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ifrit-brand)] font-medium cursor-pointer"
             style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}
           >
-            <option value="all">Semua Tingkat Bahaya</option>
-            <option value="critical">Sangat Kritis (Bahaya Besar)</option>
-            <option value="high">Tinggi (Bahaya)</option>
-            <option value="medium">Sedang (Waspada)</option>
-            <option value="low">Rendah (Aman/Normal)</option>
+            <option value="all">{t['all_severities']}</option>
+            <option value="critical">{language === 'en' ? 'Very Critical (Hazardous)' : 'Sangat Kritis (Bahaya Besar)'}</option>
+            <option value="high">{language === 'en' ? 'High' : 'Tinggi (Bahaya)'}</option>
+            <option value="medium">{language === 'en' ? 'Medium (Warning)' : 'Sedang (Waspada)'}</option>
+            <option value="low">{language === 'en' ? 'Low (Safe/Normal)' : 'Rendah (Aman/Normal)'}</option>
           </select>
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3" style={{ color: 'var(--ifrit-text-muted)' }}>
             <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -96,7 +105,7 @@ export default function Alerts() {
             className="w-full appearance-none rounded-lg border py-2.5 pl-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ifrit-brand)] font-medium cursor-pointer"
             style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}
           >
-            <option value="all">Semua Lokasi</option>
+            <option value="all">{t['all_rooms']}</option>
             {rooms.map(room => (
               <option key={room.id} value={room.id}>{room.name}</option>
             ))}
@@ -114,18 +123,18 @@ export default function Alerts() {
         <Table>
           <TableHeader style={{ backgroundColor: 'var(--ifrit-bg-secondary)' }}>
             <TableRow style={{ borderColor: 'var(--ifrit-border)' }}>
-              <TableHead style={{ color: 'var(--ifrit-text-muted)' }}>Tingkat Bahaya</TableHead>
-              <TableHead style={{ color: 'var(--ifrit-text-muted)' }}>Waktu Deteksi</TableHead>
-              <TableHead style={{ color: 'var(--ifrit-text-muted)' }}>Lokasi Ruangan</TableHead>
-              <TableHead style={{ color: 'var(--ifrit-text-muted)' }}>Detail Kejadian</TableHead>
-              <TableHead className="text-right" style={{ color: 'var(--ifrit-text-muted)' }}>Tindakan</TableHead>
+              <TableHead style={{ color: 'var(--ifrit-text-muted)' }}>{language === 'en' ? 'Risk Level' : 'Tingkat Bahaya'}</TableHead>
+              <TableHead style={{ color: 'var(--ifrit-text-muted)' }}>{language === 'en' ? 'Detection Time' : 'Waktu Deteksi'}</TableHead>
+              <TableHead style={{ color: 'var(--ifrit-text-muted)' }}>{language === 'en' ? 'Room Location' : 'Lokasi Ruangan'}</TableHead>
+              <TableHead style={{ color: 'var(--ifrit-text-muted)' }}>{language === 'en' ? 'Event Message' : 'Detail Kejadian'}</TableHead>
+              <TableHead className="text-right" style={{ color: 'var(--ifrit-text-muted)' }}>{t['actions']}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && alerts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="h-32 text-center" style={{ color: 'var(--ifrit-text-muted)' }}>
-                  <div className="animate-pulse">Memuat peringatan...</div>
+                  <div className="animate-pulse">{language === 'en' ? 'Loading alerts...' : 'Memuat peringatan...'}</div>
                 </TableCell>
               </TableRow>
             ) : alerts.length > 0 ? (
@@ -147,7 +156,7 @@ export default function Alerts() {
                       <StatusIndicator status={alert.severity === 'critical' ? 'fire' : alert.severity === 'high' ? 'warning' : 'info'} showLabel size="sm" />
                     </TableCell>
                     <TableCell className="font-mono text-xs whitespace-nowrap" style={{ color: 'var(--ifrit-text-secondary)' }}>
-                      {new Date(alert.created_at).toLocaleString('id-ID', { 
+                      {new Date(alert.created_at).toLocaleString(locale, { 
                         day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' 
                       })}
                     </TableCell>
@@ -155,19 +164,19 @@ export default function Alerts() {
                       {roomName}
                     </TableCell>
                     <TableCell className="max-w-[300px] truncate" style={{ color: 'var(--ifrit-text-primary)' }}>
-                      {alert.message}
+                      {getLocalizedMessage(alert.message, language)}
                     </TableCell>
                     <TableCell className="text-right">
                       {alert.is_acknowledged ? (
                         <span className="text-xs flex items-center justify-end gap-1" style={{ color: 'var(--ifrit-text-muted)' }}>
-                          <CheckCircle2 className="w-3 h-3" /> Sudah Aman
+                          <CheckCircle2 className="w-3 h-3" /> {language === 'en' ? 'Safe / Handled' : 'Sudah Aman'}
                         </span>
                       ) : (
                         <button
                           onClick={(e) => handleAcknowledge(e, alert.id)}
                           className="text-[10px] px-2.5 py-1 rounded bg-[var(--ifrit-fire)] text-white font-bold led-fire hover:opacity-80 transition-opacity"
                         >
-                          KONFIRMASI SEKARANG
+                          {t['confirm_now']}
                         </button>
                       )}
                     </TableCell>
@@ -177,7 +186,7 @@ export default function Alerts() {
             ) : (
               <TableRow>
                 <TableCell colSpan={5} className="h-32 text-center" style={{ color: 'var(--ifrit-text-muted)' }}>
-                  Tidak ada peringatan yang cocok dengan filter saat ini.
+                  {language === 'en' ? 'No alerts found matching the current filters.' : 'Tidak ada peringatan yang cocok dengan filter saat ini.'}
                 </TableCell>
               </TableRow>
             )}
@@ -187,3 +196,4 @@ export default function Alerts() {
     </div>
   );
 }
+

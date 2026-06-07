@@ -20,20 +20,25 @@ export default function CtaBanner() {
         aria-hidden="true"
       />
 
-      <div className="container-wide relative z-10 py-20 md:py-28" style={{ textAlign: 'center' }}>
-        <ScrollReveal>
-          <h2 className="text-text-on-dark mb-4">{t('ctaBanner.title')}</h2>
-        </ScrollReveal>
-        <ScrollReveal delay={100}>
-          <p className="text-text-on-dark-muted text-lg mb-8" style={{ maxWidth: '36rem', marginInline: 'auto' }}>
-            {t('ctaBanner.subtitle')}
-          </p>
-        </ScrollReveal>
-        <ScrollReveal delay={200}>
-          <Button as={Link} to="/contact" size="lg">
-            {t('ctaBanner.cta')}
-          </Button>
-        </ScrollReveal>
+      <div className="container-wide relative z-10 py-24 md:py-32">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <ScrollReveal>
+            <div>
+              <h2 className="text-text-on-dark mb-4">{t('ctaBanner.title')}</h2>
+              <p className="text-text-on-dark-muted text-lg leading-relaxed">
+                {t('ctaBanner.subtitle')}
+              </p>
+            </div>
+          </ScrollReveal>
+
+          <ScrollReveal delay={150}>
+            <div className="flex lg:justify-end">
+              <Button as={Link} to="/contact" size="lg">
+                {t('ctaBanner.cta')}
+              </Button>
+            </div>
+          </ScrollReveal>
+        </div>
       </div>
     </section>
   );

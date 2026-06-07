@@ -1,4 +1,5 @@
 import { useNotificationStore } from '@/stores/useNotificationStore';
+import { useUIStore } from '@/store/store';
 import { X, AlertTriangle, Flame, MapPin, Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -13,10 +14,13 @@ export default function FireAlertToast() {
   const dismissToast = useNotificationStore((s) => s.dismissToast);
   const soundEnabled = useNotificationStore((s) => s.soundEnabled);
   const toggleSound = useNotificationStore((s) => s.toggleSound);
+  const language = useUIStore((s) => s.language);
 
   const activeToasts = notifications.filter((n) => n.showToast);
 
   if (activeToasts.length === 0) return null;
+
+  const locale = language === 'en' ? 'en-US' : 'id-ID';
 
   return (
     <div className="fire-toast-container">
@@ -24,7 +28,10 @@ export default function FireAlertToast() {
       <button
         onClick={toggleSound}
         className="fire-toast-sound-toggle"
-        title={soundEnabled ? 'Matikan suara alarm' : 'Nyalakan suara alarm'}
+        title={soundEnabled 
+          ? (language === 'en' ? 'Mute alarm' : 'Matikan suara alarm') 
+          : (language === 'en' ? 'Unmute alarm' : 'Nyalakan suara alarm')
+        }
       >
         {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
       </button>
@@ -39,7 +46,7 @@ export default function FireAlertToast() {
           <button
             onClick={() => dismissToast(toast.id)}
             className="fire-toast-close"
-            aria-label="Tutup notifikasi"
+            aria-label={language === 'en' ? 'Close notification' : 'Tutup notifikasi'}
           >
             <X size={16} />
           </button>
@@ -55,10 +62,17 @@ export default function FireAlertToast() {
             </div>
             <div className="fire-toast-title-wrap">
               <span className="fire-toast-title">
-                {toast.severity === 'critical' ? '🚨 BAHAYA KEBAKARAN (SANGAT TINGGI)' : '⚠️ PERINGATAN BAHAYA KEBAKARAN'}
+                {toast.severity === 'critical' 
+                  ? (language === 'en' ? '🚨 CRITICAL FIRE ALERT' : '🚨 BAHAYA KEBAKARAN (SANGAT TINGGI)') 
+                  : (language === 'en' ? '⚠️ HIGH FIRE WARNING' : '⚠️ PERINGATAN BAHAYA KEBAKARAN')
+                }
               </span>
               <span className="fire-toast-score">
-                Tingkat Risiko: {toast.severity === 'critical' ? 'Sangat Kritis' : 'Tinggi'} ({(toast.fusionScore * 100).toFixed(0)}%)
+                {language === 'en' ? 'Risk Level' : 'Tingkat Risiko'}: {
+                  toast.severity === 'critical' 
+                    ? (language === 'en' ? 'Critical' : 'Sangat Kritis') 
+                    : (language === 'en' ? 'High' : 'Tinggi')
+                } ({(toast.fusionScore * 100).toFixed(0)}%)
               </span>
             </div>
           </div>
@@ -74,7 +88,7 @@ export default function FireAlertToast() {
             <div className="fire-toast-image-wrap">
               <img
                 src={toast.imageUrl}
-                alt="Deteksi api oleh kamera"
+                alt={language === 'en' ? 'Fire detection by camera' : 'Deteksi api oleh kamera'}
                 className="fire-toast-image"
                 loading="eager"
               />
@@ -84,15 +98,16 @@ export default function FireAlertToast() {
           {/* Timestamp */}
           <div className="fire-toast-time">
             {toast.timestamp
-              ? new Date(toast.timestamp).toLocaleTimeString('id-ID', {
+              ? new Date(toast.timestamp).toLocaleTimeString(locale, {
                   hour: '2-digit',
                   minute: '2-digit',
                   second: '2-digit',
                 })
-              : 'Baru saja'}
+              : (language === 'en' ? 'Just now' : 'Baru saja')}
           </div>
         </div>
       ))}
     </div>
   );
 }
+

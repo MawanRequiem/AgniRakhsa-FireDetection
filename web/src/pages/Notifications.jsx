@@ -5,6 +5,7 @@ import ContactForm from '@/components/notifications/ContactForm';
 import { Button } from '@/components/ui/button';
 import { Plus, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useUIStore } from '@/store/store';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +26,10 @@ export default function Notifications() {
   const [whatsappStatus, setWhatsappStatus] = useState('disconnected'); // 'connecting' | 'connected' | 'disconnected' | 'qr'
   const [whatsappQr, setWhatsappQr] = useState(null);
   const [pollInterval, setPollInterval] = useState(30000);
+  const language = useUIStore((s) => s.language);
+
+  const isEn = language === 'en';
+  const locale = isEn ? 'en-US' : 'id-ID';
 
   // Fetch contacts from backend
   const fetchContacts = async () => {
@@ -37,7 +42,7 @@ export default function Notifications() {
       }
     } catch (err) {
       console.error('Failed to fetch contacts:', err);
-      toast.error('Gagal memuat daftar kontak');
+      toast.error(isEn ? 'Failed to load contacts list' : 'Gagal memuat daftar kontak');
     } finally {
       setIsLoading(false);
     }
@@ -109,12 +114,12 @@ export default function Notifications() {
         
         if (res.status === 204) {
           setContacts(contacts.filter(c => c.id !== deletingId));
-          toast.success('Kontak berhasil dihapus');
+          toast.success(isEn ? 'Contact successfully deleted' : 'Kontak berhasil dihapus');
         } else {
-          toast.error('Gagal menghapus kontak');
+          toast.error(isEn ? 'Failed to delete contact' : 'Gagal menghapus kontak');
         }
       } catch (err) {
-        toast.error('Kesalahan jaringan saat menghapus');
+        toast.error(isEn ? 'Network error while deleting contact' : 'Kesalahan jaringan saat menghapus');
       } finally {
         setDeletingId(null);
       }
@@ -132,40 +137,56 @@ export default function Notifications() {
       });
 
       if (res.ok) {
-        toast.success(editingContact ? 'Kontak berhasil diperbarui' : 'Kontak baru berhasil ditambahkan');
+        toast.success(
+          editingContact 
+            ? (isEn ? 'Contact successfully updated' : 'Kontak berhasil diperbarui') 
+            : (isEn ? 'New contact successfully added' : 'Kontak baru berhasil ditambahkan')
+        );
         fetchContacts(); // Refresh list
       } else {
         const errData = await res.json();
-        toast.error(errData.detail || 'Gagal menyimpan kontak');
+        toast.error(errData.detail || (isEn ? 'Failed to save contact' : 'Gagal menyimpan kontak'));
       }
     } catch (err) {
-      toast.error('Kesalahan jaringan saat menyimpan');
+      toast.error(isEn ? 'Network error while saving' : 'Kesalahan jaringan saat menyimpan');
     }
   };
 
   const handleTest = async (contact) => {
     try {
+      const messageBody = isEn
+        ? `🛠 *[Ifrit] - System Test*\n\nHello ${contact.name}, this is an automated message to verify your WhatsApp notification system is active.\n\nIf you receive this message, it means your number is successfully registered in the *Ifrit Fire Detection* early warning system. No action is required at this time.\n\n*Test Time:* ${new Date().toLocaleString(locale)}`
+        : `🛠 *[Ifrit] - Uji Coba Sistem*\n\nHalo ${contact.name}, ini adalah pesan otomatis untuk memastikan sistem notifikasi WhatsApp Anda telah aktif.\n\nJika Anda menerima pesan ini, berarti nomor Anda sudah terdaftar dalam sistem peringatan dini *Ifrit Fire Detection*. Tidak ada tindakan yang diperlukan saat ini.\n\n*Waktu Tes:* ${new Date().toLocaleString(locale)}`;
+
       const res = await customFetch('/api/v1/notifications/whatsapp', {
         method: 'POST',
         body: JSON.stringify({
           phone: contact.phone,
-          message: `🛠 *[Ifrit] - Uji Coba Sistem*\n\nHalo ${contact.name}, ini adalah pesan otomatis untuk memastikan sistem notifikasi WhatsApp Anda telah aktif.\n\nJika Anda menerima pesan ini, berarti nomor Anda sudah terdaftar dalam sistem peringatan dini *Ifrit Fire Detection*. Tidak ada tindakan yang diperlukan saat ini.\n\n*Waktu Tes:* ${new Date().toLocaleString('id-ID')}`
+          message: messageBody
         })
       });
 
       if (res.ok) {
-        toast.success(`Pesan uji coba terkirim ke ${contact.name}`);
+        toast.success(isEn ? `Test message sent to ${contact.name}` : `Pesan uji coba terkirim ke ${contact.name}`);
       } else {
-        toast.error('Gagal mengirim pesan uji coba');
+        toast.error(isEn ? 'Failed to send test message' : 'Gagal mengirim pesan uji coba');
       }
     } catch (err) {
-      toast.error('Kesalahan jaringan saat uji coba');
+      toast.error(isEn ? 'Network error during test' : 'Kesalahan jaringan saat uji coba');
     }
-  };  return (
+  };
+
+  return (
     <div className="space-y-8 max-w-5xl mx-auto">
       <div>
-        <h1 className="text-2xl font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Penerima Notifikasi Bahaya</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>Tambahkan kontak yang akan menerima pesan darurat otomatis via WhatsApp.</p>
+        <h1 className="text-2xl font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>
+          {isEn ? 'Emergency Alert Recipients' : 'Penerima Notifikasi Bahaya'}
+        </h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>
+          {isEn 
+            ? 'Add contacts who will receive automated emergency alerts via WhatsApp.' 
+            : 'Tambahkan kontak yang akan menerima pesan darurat otomatis via WhatsApp.'}
+        </p>
       </div>
 
       <style>{`
@@ -204,8 +225,14 @@ export default function Notifications() {
       {/* Gateway Status Card */}
       <div className="flex items-center justify-between p-4 rounded-md border" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
         <div>
-          <h2 className="text-sm font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>Status Sistem Notifikasi</h2>
-          <p className="text-xs mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>Sistem ini mengirimkan pesan WhatsApp secara otomatis saat kondisi darurat terdeteksi.</p>
+          <h2 className="text-sm font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>
+            {isEn ? 'Notification System Status' : 'Status Sistem Notifikasi'}
+          </h2>
+          <p className="text-xs mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>
+            {isEn 
+              ? 'This system sends automated WhatsApp alerts when emergency conditions are detected.' 
+              : 'Sistem ini mengirimkan pesan WhatsApp secara otomatis saat kondisi darurat terdeteksi.'}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {whatsappConnected ? (
@@ -214,16 +241,16 @@ export default function Notifications() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: 'var(--ifrit-safe)' }}></span>
                   <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: 'var(--ifrit-safe)' }}></span>
                 </span>
-                <CheckCircle2 className="w-4 h-4 ml-1" /> Tersambung
+                <CheckCircle2 className="w-4 h-4 ml-1" /> {isEn ? 'Connected' : 'Tersambung'}
              </span>
           ) : whatsappStatus === 'connecting' ? (
              <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--ifrit-amber)' }}>
                 <span className="w-2 h-2 rounded-full animate-pulse bg-[var(--ifrit-amber)]" />
-                Menghubungkan...
+                {isEn ? 'Connecting...' : 'Menghubungkan...'}
              </span>
           ) : (
              <span className="flex items-center gap-1.5 text-sm font-medium text-red-500">
-                <AlertCircle className="w-4 h-4" /> Perlu Pindai QR
+                <AlertCircle className="w-4 h-4" /> {isEn ? 'QR Scan Required' : 'Perlu Pindai QR'}
              </span>
           )}
         </div>
@@ -233,25 +260,44 @@ export default function Notifications() {
       {!whatsappConnected && (
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6 p-6 rounded-md border transition-all duration-300" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
           <div className="md:col-span-3 space-y-4">
-            <h3 className="text-lg font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>Tautkan Perangkat WhatsApp</h3>
+            <h3 className="text-lg font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>
+              {isEn ? 'Link WhatsApp Device' : 'Tautkan Perangkat WhatsApp'}
+            </h3>
             <p className="text-sm leading-relaxed" style={{ color: 'var(--ifrit-text-muted)' }}>
-              Hubungkan nomor WhatsApp Anda dengan sistem pemantauan <strong>Ifrit</strong> untuk menerima peringatan bahaya kebakaran instan ke kontak darurat.
+              {isEn 
+                ? <>Link your WhatsApp account to the <strong>Ifrit</strong> monitoring system to receive instant fire alerts to emergency contacts.</>
+                : <>Hubungkan nomor WhatsApp Anda dengan sistem pemantauan <strong>Ifrit</strong> untuk menerima peringatan bahaya kebakaran instan ke kontak darurat.</>}
             </p>
             
             <div className="space-y-3 pt-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ifrit-text-primary)' }}>Langkah Penyambungan:</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ifrit-text-primary)' }}>
+                {isEn ? 'Linking Instructions:' : 'Langkah Penyambungan:'}
+              </h4>
               <ol className="list-decimal list-inside space-y-2 text-xs leading-relaxed" style={{ color: 'var(--ifrit-text-muted)' }}>
-                <li>Buka aplikasi <strong>WhatsApp</strong> di telepon genggam Anda.</li>
-                <li>Ketuk ikon <strong>Menu (⋮)</strong> atau buka <strong>Pengaturan</strong>, lalu pilih <strong>Perangkat Tertaut (Linked Devices)</strong>.</li>
-                <li>Pilih tombol <strong>Tautkan Perangkat (Link a Device)</strong>.</li>
-                <li>Arahkan kamera ponsel Anda ke kode QR di samping untuk mulai memindai.</li>
+                {isEn ? (
+                  <>
+                    <li>Open <strong>WhatsApp</strong> on your mobile phone.</li>
+                    <li>Tap the <strong>Menu (⋮)</strong> icon or open <strong>Settings</strong>, and select <strong>Linked Devices</strong>.</li>
+                    <li>Select <strong>Link a Device</strong>.</li>
+                    <li>Point your phone's camera to the QR code on the right to scan.</li>
+                  </>
+                ) : (
+                  <>
+                    <li>Buka aplikasi <strong>WhatsApp</strong> di telepon genggam Anda.</li>
+                    <li>Ketuk ikon <strong>Menu (⋮)</strong> atau buka <strong>Pengaturan</strong>, lalu pilih <strong>Perangkat Tertaut (Linked Devices)</strong>.</li>
+                    <li>Pilih tombol <strong>Tautkan Perangkat (Link a Device)</strong>.</li>
+                    <li>Arahkan kamera ponsel Anda ke kode QR di samping untuk mulai memindai.</li>
+                  </>
+                )}
               </ol>
             </div>
 
             <div className="pt-3 flex items-center gap-2">
               <span className={`inline-block w-2 h-2 rounded-full ${whatsappStatus === 'qr' ? 'bg-[var(--ifrit-amber)] animate-ping' : 'bg-red-500 animate-pulse'}`} />
               <span className="text-xs font-semibold" style={{ color: whatsappStatus === 'qr' ? 'var(--ifrit-amber)' : 'red' }}>
-                {whatsappStatus === 'qr' ? 'Siap dipindai. Menunggu pemindaian ponsel...' : 'Menghubungkan ke gateway...'}
+                {whatsappStatus === 'qr' 
+                  ? (isEn ? 'Ready to scan. Waiting for phone scan...' : 'Siap dipindai. Menunggu pemindaian ponsel...') 
+                  : (isEn ? 'Connecting to gateway...' : 'Menghubungkan ke gateway...')}
               </span>
             </div>
           </div>
@@ -272,12 +318,12 @@ export default function Notifications() {
               <div className="flex flex-col items-center justify-center p-6 text-center border rounded-lg" style={{ borderColor: 'var(--ifrit-border)', width: '220px', height: '220px', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
                 <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin mb-3" style={{ borderColor: 'var(--ifrit-amber)', borderTopColor: 'transparent' }} />
                 <span className="text-xs font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>
-                  Membuat kode QR baru...
+                  {isEn ? 'Generating new QR code...' : 'Membuat kode QR baru...'}
                 </span>
               </div>
             )}
             <p className="text-[10px] mt-3 text-center" style={{ color: 'var(--ifrit-text-muted)' }}>
-              Kode QR di atas akan memperbarui diri secara otomatis.
+              {isEn ? 'The QR code above will refresh automatically.' : 'Kode QR di atas akan memperbarui diri secara otomatis.'}
             </p>
           </div>
         </div>
@@ -286,14 +332,16 @@ export default function Notifications() {
       {/* Contacts List */}
       <div>
         <div className="flex items-center justify-between mb-4">
-           <h2 className="text-lg font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>Kontak Darurat</h2>
+           <h2 className="text-lg font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>
+             {isEn ? 'Emergency Contacts' : 'Kontak Darurat'}
+           </h2>
            <Button 
              onClick={handleAdd}
              size="sm" 
              className="text-[var(--ifrit-bg-primary)] font-semibold hover:bg-[var(--ifrit-amber-hover)] transition-colors"
              style={{ backgroundColor: 'var(--ifrit-amber)' }}
            >
-             <Plus className="w-4 h-4 mr-2" /> Tambah Kontak
+             <Plus className="w-4 h-4 mr-2" /> {isEn ? 'Add Contact' : 'Tambah Kontak'}
            </Button>
         </div>
         
@@ -315,15 +363,21 @@ export default function Notifications() {
       <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
         <AlertDialogContent style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)' }}>
           <AlertDialogHeader>
-            <AlertDialogTitle style={{ color: 'var(--ifrit-text-primary)' }}>Hapus Kontak</AlertDialogTitle>
+            <AlertDialogTitle style={{ color: 'var(--ifrit-text-primary)' }}>
+              {isEn ? 'Delete Contact' : 'Hapus Kontak'}
+            </AlertDialogTitle>
             <AlertDialogDescription style={{ color: 'var(--ifrit-text-muted)' }}>
-              Apakah Anda yakin ingin menghapus kontak ini? Mereka tidak akan lagi menerima notifikasi peringatan bahaya via WhatsApp.
+              {isEn 
+                ? 'Are you sure you want to delete this contact? They will no longer receive emergency alerts via WhatsApp.' 
+                : 'Apakah Anda yakin ingin menghapus kontak ini? Mereka tidak akan lagi menerima notifikasi peringatan bahaya via WhatsApp.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}>Batal</AlertDialogCancel>
+            <AlertDialogCancel style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}>
+              {isEn ? 'Cancel' : 'Batal'}
+            </AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} style={{ backgroundColor: 'var(--ifrit-fire)', color: 'white' }}>
-              Hapus Kontak
+              {isEn ? 'Delete Contact' : 'Hapus Kontak'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -331,3 +385,5 @@ export default function Notifications() {
     </div>
   );
 }
+
+

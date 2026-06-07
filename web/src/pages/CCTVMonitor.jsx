@@ -5,6 +5,7 @@ import { LayoutGrid, Maximize, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { customFetch } from '@/lib/api';
 import { useDashboardStore } from '@/stores/useDashboardStore';
+import { useUIStore } from '@/store/store';
 
 export default function CCTVMonitor() {
   const [layout, setLayout] = useState('grid-4');
@@ -13,6 +14,8 @@ export default function CCTVMonitor() {
   const [selectedCamera, setSelectedCamera] = useState(null);
   
   const connectWebSocket = useDashboardStore((state) => state.connectWebSocket);
+  const language = useUIStore((s) => s.language);
+  const isEn = language === 'en';
 
   useEffect(() => {
     // Ensure websocket is connected for live video 
@@ -45,8 +48,12 @@ export default function CCTVMonitor() {
     <div className="space-y-6 h-[calc(100vh-8rem)] flex flex-col">
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Live Video Surveillance</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>Real-time views of all monitored zones.</p>
+          <h1 className="text-2xl font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>
+            {isEn ? 'Live Video Surveillance' : 'Pemantauan Video Langsung'}
+          </h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--ifrit-text-muted)' }}>
+            {isEn ? 'Real-time views of all monitored zones.' : 'Tampilan langsung real-time dari seluruh zona yang dipantau.'}
+          </p>
         </div>
         
         {/* Layout Controls */}
@@ -88,9 +95,15 @@ export default function CCTVMonitor() {
       ) : cameras.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center border border-dashed rounded-xl bg-[var(--ifrit-bg-secondary)]" style={{ borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-muted)' }}>
           <Video className="w-12 h-12 mb-4 opacity-30 animate-pulse text-[var(--ifrit-brand)]" />
-          <h2 className="text-md font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--ifrit-text-primary)' }}>No Cameras Connected</h2>
-          <p className="text-xs opacity-70">No camera sources configured in this facility.</p>
-          <p className="text-[10px] mt-1 opacity-50 font-mono">Configure nodes via device management.</p>
+          <h2 className="text-md font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--ifrit-text-primary)' }}>
+            {isEn ? 'No Cameras Connected' : 'Tidak Ada Kamera Tersambung'}
+          </h2>
+          <p className="text-xs opacity-70">
+            {isEn ? 'No camera sources configured in this facility.' : 'Belum ada sumber kamera yang dikonfigurasi di fasilitas ini.'}
+          </p>
+          <p className="text-[10px] mt-1 opacity-50 font-mono">
+            {isEn ? 'Configure nodes via device management.' : 'Konfigurasi node melalui manajemen perangkat.'}
+          </p>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0">
@@ -144,7 +157,9 @@ export default function CCTVMonitor() {
                 <div className="space-y-6">
                   {/* Title & Room */}
                   <div>
-                    <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest font-mono">CCTV Operator Deck</span>
+                    <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest font-mono">
+                      {isEn ? 'CCTV Operator Deck' : 'Dek Operator CCTV'}
+                    </span>
                     <h2 className="text-lg font-bold mt-1 tracking-tight" style={{ color: 'var(--ifrit-text-primary)' }}>{selectedCamera.name}</h2>
                     <div className="flex items-center gap-2 mt-2">
                       <span 
@@ -155,7 +170,7 @@ export default function CCTVMonitor() {
                           color: 'var(--ifrit-text-secondary)'
                         }}
                       >
-                        Room ID: {selectedCamera.room_id ? selectedCamera.room_id.slice(0, 8) : 'Unassigned'}
+                        {isEn ? 'Room ID' : 'ID Ruangan'}: {selectedCamera.room_id ? selectedCamera.room_id.slice(0, 8) : (isEn ? 'Unassigned' : 'Belum Ditetapkan')}
                       </span>
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded border font-mono ${selectedCamera.status === 'online' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'}`}>
                         {selectedCamera.status.toUpperCase()}
@@ -165,18 +180,24 @@ export default function CCTVMonitor() {
                   
                   {/* Camera Telemetry Specs */}
                   <div className="space-y-3 border-t pt-4" style={{ borderColor: 'var(--ifrit-border)' }}>
-                    <h3 className="text-[10px] font-bold uppercase tracking-wider font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>Telemetry Status</h3>
+                    <h3 className="text-[10px] font-bold uppercase tracking-wider font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>
+                      {isEn ? 'Telemetry Status' : 'Status Telemetri'}
+                    </h3>
                     <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                       <div className="p-2.5 border rounded" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
                         <div className="text-[9px]" style={{ color: 'var(--ifrit-text-muted)' }}>FPS RATE</div>
                         <div className="font-bold mt-0.5" style={{ color: 'var(--ifrit-text-primary)' }}>25.4 FPS</div>
                       </div>
                       <div className="p-2.5 border rounded" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
-                        <div className="text-[9px]" style={{ color: 'var(--ifrit-text-muted)' }}>LATENCY</div>
+                        <div className="text-[9px]" style={{ color: 'var(--ifrit-text-muted)' }}>
+                          {isEn ? 'LATENCY' : 'LATENSI'}
+                        </div>
                         <div className="font-bold mt-0.5" style={{ color: 'var(--ifrit-text-primary)' }}>42 ms</div>
                       </div>
                       <div className="p-2.5 border rounded" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
-                        <div className="text-[9px]" style={{ color: 'var(--ifrit-text-muted)' }}>RESOLUTION</div>
+                        <div className="text-[9px]" style={{ color: 'var(--ifrit-text-muted)' }}>
+                          {isEn ? 'RESOLUTION' : 'RESOLUSI'}
+                        </div>
                         <div className="font-bold mt-0.5" style={{ color: 'var(--ifrit-text-primary)' }}>1280×720</div>
                       </div>
                       <div className="p-2.5 border rounded" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
@@ -188,18 +209,20 @@ export default function CCTVMonitor() {
 
                   {/* Trigger History Logs */}
                   <div className="space-y-3 border-t pt-4" style={{ borderColor: 'var(--ifrit-border)' }}>
-                    <h3 className="text-[10px] font-bold uppercase tracking-wider font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>Trigger History</h3>
+                    <h3 className="text-[10px] font-bold uppercase tracking-wider font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>
+                      {isEn ? 'Trigger History' : 'Riwayat Pemicu'}
+                    </h3>
                     <div className="space-y-1.5 font-mono text-[10px]" style={{ color: 'var(--ifrit-text-secondary)' }}>
                       <div className="flex justify-between items-center py-1 border-b" style={{ borderColor: 'var(--ifrit-border)' }}>
-                        <span>[17:42:01] System Connected</span>
+                        <span>[17:42:01] {isEn ? 'System Connected' : 'Sistem Terhubung'}</span>
                         <span className="text-emerald-600 dark:text-emerald-400 font-semibold">OK</span>
                       </div>
                       <div className="flex justify-between items-center py-1 border-b" style={{ borderColor: 'var(--ifrit-border)' }}>
-                        <span>[17:43:55] Heat Threshold Checked</span>
+                        <span>[17:43:55] {isEn ? 'Heat Threshold Checked' : 'Ambang Panas Diperiksa'}</span>
                         <span style={{ color: 'var(--ifrit-text-muted)' }}>NOMINAL</span>
                       </div>
                       <div className="flex justify-between items-center py-1 border-b" style={{ borderColor: 'var(--ifrit-border)' }}>
-                        <span>[17:45:10] AI Model Calibrated</span>
+                        <span>[17:45:10] {isEn ? 'AI Model Calibrated' : 'Model AI Dikalibrasi'}</span>
                         <span className="text-emerald-600 dark:text-emerald-400 font-semibold">READY</span>
                       </div>
                     </div>
@@ -211,10 +234,12 @@ export default function CCTVMonitor() {
                   <Button 
                     className="w-full text-xs font-mono font-bold tracking-wider py-2.5 bg-red-600 hover:bg-red-700 text-white rounded border-0 transition-colors"
                     onClick={() => {
-                      alert(`Manual override drill triggered for room: ${selectedCamera.room_id || 'unassigned'}`);
+                      alert(isEn 
+                        ? `Manual override drill triggered for room: ${selectedCamera.room_id || 'unassigned'}`
+                        : `Latihan pengabaian manual dipicu untuk ruangan: ${selectedCamera.room_id || 'belum ditetapkan'}`);
                     }}
                   >
-                    TRIGGER MANUAL ALARM
+                    {isEn ? 'TRIGGER MANUAL ALARM' : 'PICU ALARM MANUAL'}
                   </Button>
                   <Button 
                     variant="outline" 
@@ -225,7 +250,7 @@ export default function CCTVMonitor() {
                     }}
                     onClick={() => setSelectedCamera(null)}
                   >
-                    CLOSE MONITOR PANEL
+                    {isEn ? 'CLOSE MONITOR PANEL' : 'TUTUP PANEL MONITOR'}
                   </Button>
                 </div>
               </div>
@@ -236,3 +261,4 @@ export default function CCTVMonitor() {
     </div>
   );
 }
+

@@ -9,6 +9,7 @@ import { customFetch } from '@/lib/api';
 import { useDashboardStore } from '@/stores/useDashboardStore';
 import RoomDeviceCalibration from '@/components/devices/RoomDeviceCalibration';
 import RoomDeviceExportCard from '@/components/devices/RoomDeviceExportCard';
+import { useUIStore } from '@/store/store';
 
 const SENSOR_CONFIG = {
   // Temperature keys
@@ -109,6 +110,8 @@ export default function RoomDetail() {
   const navigate = useNavigate();
   const { selectedRoom, isLoading, fetchRoomDetail, clearSelectedRoom } = useRoomsStore();
   const { latestReadings, connectWebSocket } = useDashboardStore();
+  const language = useUIStore((s) => s.language);
+  const isEn = language === 'en';
   
   const [timeRange, setTimeRange] = useState('1H');
   const [initialReadings, setInitialReadings] = useState({});
@@ -142,7 +145,6 @@ export default function RoomDetail() {
       }
     };
     fetchSensorData();
-    // Replaced 5s polling with real-time WebSocket data from useDashboardStore
   }, [id, selectedRoom?.devices?.length]);
 
   // Combine initial readings with real-time websocket updates
@@ -199,7 +201,9 @@ export default function RoomDetail() {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh]">
         <div className="w-8 h-8 border-2 border-[var(--ifrit-brand)] border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-sm font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>MEMUAT DATA RUANGAN...</p>
+        <p className="text-sm font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>
+          {isEn ? 'LOADING ROOM DATA...' : 'MEMUAT DATA RUANGAN...'}
+        </p>
       </div>
     );
   }
@@ -207,9 +211,11 @@ export default function RoomDetail() {
   if (!selectedRoom) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh]">
-        <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--ifrit-text-primary)' }}>Ruangan Tidak Ditemukan</h2>
+        <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--ifrit-text-primary)' }}>
+          {isEn ? 'Room Not Found' : 'Ruangan Tidak Ditemukan'}
+        </h2>
         <button onClick={() => navigate('/rooms')} className="text-[var(--ifrit-brand)] hover:underline flex items-center gap-2">
-          <ArrowLeft className="w-4 h-4" /> Kembali ke Daftar Ruangan
+          <ArrowLeft className="w-4 h-4" /> {isEn ? 'Back to Rooms List' : 'Kembali ke Daftar Ruangan'}
         </button>
       </div>
     );
@@ -233,28 +239,32 @@ export default function RoomDetail() {
             className="flex items-center gap-2 text-xs font-semibold mb-3 hover:text-[var(--ifrit-brand)] transition-colors"
             style={{ color: 'var(--ifrit-text-muted)' }}
           >
-            <ArrowLeft className="w-3 h-3" /> Kembali ke Fasilitas
+            <ArrowLeft className="w-3 h-3" /> {isEn ? 'Back to Facility' : 'Kembali ke Fasilitas'}
           </button>
           <div className="flex items-center gap-3">
             <StatusIndicator status={room.status === 'critical' ? 'fire' : room.status} size="lg" />
             <h1 className="text-3xl font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>{room.name}</h1>
             
             <span className="text-xs px-2 py-1 rounded font-mono mt-1" style={{ backgroundColor: 'var(--ifrit-bg-secondary)', color: 'var(--ifrit-text-secondary)' }}>
-              Lokasi: {room.floor || room.building_name || '-'}
+              {isEn ? 'Location' : 'Lokasi'}: {room.floor || room.building_name || '-'}
             </span>
           </div>
         </div>
         
         <div className="flex flex-col items-start md:items-end gap-1" style={{ color: 'var(--ifrit-text-muted)' }}>
-          <span className="text-xs">Perangkat: {room.devices?.length || 0} | Sensor: {room.sensor_count || 0}</span>
+          <span className="text-xs">
+            {isEn ? 'Devices' : 'Perangkat'}: {room.devices?.length || 0} | {isEn ? 'Sensors' : 'Sensor'}: {room.sensor_count || 0}
+          </span>
           <div className="flex items-center gap-1.5 font-mono text-sm">
             <Clock className="w-4 h-4" />
-            {new Date(room.created_at).toLocaleString('id-ID')}
+            {new Date(room.created_at).toLocaleString(isEn ? 'en-US' : 'id-ID')}
           </div>
         </div>
       </div>
 
-      <h2 className="text-sm font-bold mb-2 mt-4" style={{ color: 'var(--ifrit-text-muted)' }}>Dasbor Keamanan</h2>
+      <h2 className="text-sm font-bold mb-2 mt-4" style={{ color: 'var(--ifrit-text-muted)' }}>
+        {isEn ? 'Safety Dashboard' : 'Dasbor Keamanan'}
+      </h2>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Column: Widescreen Camera Feed & Administration Tools */}
@@ -280,9 +290,15 @@ export default function RoomDetail() {
               }}
             >
               <Video className="w-8 h-8 mb-3 opacity-40 text-[var(--ifrit-brand)]" />
-              <p className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>Tidak Ada Siaran Video Langsung</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--ifrit-text-secondary)' }}>Siaran CCTV belum dikonfigurasi untuk area keamanan ini.</p>
-              <p className="text-[10px] font-mono mt-3 opacity-55">Hubungi administrator sistem untuk menautkan kamera</p>
+              <p className="text-sm font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>
+                {isEn ? 'No Live Video Stream' : 'Tidak Ada Siaran Video Langsung'}
+              </p>
+              <p className="text-xs mt-1" style={{ color: 'var(--ifrit-text-secondary)' }}>
+                {isEn ? 'CCTV stream has not been configured for this safety area.' : 'Siaran CCTV belum dikonfigurasi untuk area keamanan ini.'}
+              </p>
+              <p className="text-[10px] font-mono mt-3 opacity-55">
+                {isEn ? 'Contact the system administrator to link a camera.' : 'Hubungi administrator sistem untuk menautkan kamera'}
+              </p>
             </div>
           )}
 
@@ -298,37 +314,45 @@ export default function RoomDetail() {
           <div className="border rounded-xl p-4" style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)' }}>
             <div className="flex items-center gap-2 mb-4">
               <Thermometer className="w-4 h-4 text-blue-400" />
-              <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>Kondisi Udara & Suhu</h3>
+              <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>
+                {isEn ? 'Air Conditions & Temperature' : 'Kondisi Udara & Suhu'}
+              </h3>
             </div>
             {envSensors.length > 0 ? envSensors.map(([k, v]) => (
               <SensorBar key={k} label={SENSOR_CONFIG[k].label} value={v} unit={SENSOR_CONFIG[k].unit} type="env" />
-            )) : <p className="text-xs text-[var(--ifrit-text-muted)] italic">Tidak ada sensor udara aktif.</p>}
+            )) : <p className="text-xs text-[var(--ifrit-text-muted)] italic">{isEn ? 'No active environmental sensors.' : 'Tidak ada sensor udara aktif.'}</p>}
           </div>
 
           <div className="border rounded-xl p-4" style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)' }}>
             <div className="flex items-center gap-2 mb-4">
               <Wind className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>Kadar Asap & Gas</h3>
+              <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>
+                {isEn ? 'Smoke & Gas Levels' : 'Kadar Asap & Gas'}
+              </h3>
             </div>
             {gasSensors.length > 0 ? gasSensors.map(([k, v]) => (
               <SensorBar key={k} label={SENSOR_CONFIG[k].label} value={v} unit={SENSOR_CONFIG[k].unit} type="gas" />
-            )) : <p className="text-xs text-[var(--ifrit-text-muted)] italic">Tidak ada sensor asap/gas aktif.</p>}
+            )) : <p className="text-xs text-[var(--ifrit-text-muted)] italic">{isEn ? 'No active smoke/gas detectors.' : 'Tidak ada sensor asap/gas aktif.'}</p>}
           </div>
 
           <div className="border rounded-xl p-4" style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)' }}>
             <div className="flex items-center gap-2 mb-4">
               <Flame className="w-4 h-4 text-[var(--ifrit-fire)]" />
-              <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>Detektor Api</h3>
+              <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>
+                {isEn ? 'Flame Detectors' : 'Detektor Api'}
+              </h3>
             </div>
             {fireSensors.length > 0 ? fireSensors.map(([k, v]) => (
               <SensorBar key={k} label={SENSOR_CONFIG[k].label} value={v} unit={SENSOR_CONFIG[k].unit} type="fire" />
-            )) : <p className="text-xs text-[var(--ifrit-text-muted)] italic">Tidak ada sensor deteksi api aktif.</p>}
+            )) : <p className="text-xs text-[var(--ifrit-text-muted)] italic">{isEn ? 'No active flame detectors.' : 'Tidak ada sensor deteksi api aktif.'}</p>}
           </div>
         </div>
 
       </div>
 
-      <h2 className="text-sm font-bold mb-2 mt-8 pt-4 border-t" style={{ color: 'var(--ifrit-text-muted)', borderColor: 'var(--ifrit-border)' }}>Data Riwayat</h2>
+      <h2 className="text-sm font-bold mb-2 mt-8 pt-4 border-t" style={{ color: 'var(--ifrit-text-muted)', borderColor: 'var(--ifrit-border)' }}>
+        {isEn ? 'Historical Data' : 'Data Riwayat'}
+      </h2>
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         
         {/* Historical Charts */}
@@ -336,7 +360,9 @@ export default function RoomDetail() {
            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
              <div className="flex items-center gap-2">
                <Activity className="w-4 h-4" style={{ color: 'var(--ifrit-text-secondary)' }} />
-               <h2 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>Tren Keamanan</h2>
+               <h2 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>
+                 {isEn ? 'Safety Trends' : 'Tren Keamanan'}
+               </h2>
              </div>
              
              <div className="flex items-center rounded-md p-1 border" style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)' }}>
@@ -366,7 +392,9 @@ export default function RoomDetail() {
                <SensorChart data={trendData} timeRange={timeRange} height={300} />
              ) : (
                <div className="h-[300px] flex items-center justify-center" style={{ color: 'var(--ifrit-text-muted)' }}>
-                 <p className="text-xs font-mono">TIDAK ADA DATA RIWAYAT PADA PERIODE INI</p>
+                 <p className="text-xs font-mono">
+                   {isEn ? 'NO HISTORICAL DATA FOR THIS PERIOD' : 'TIDAK ADA DATA RIWAYAT PADA PERIODE INI'}
+                 </p>
                </div>
              )}
            </div>
@@ -377,7 +405,9 @@ export default function RoomDetail() {
            <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
               <div className="flex items-center gap-2">
                 <History className="w-4 h-4" style={{ color: 'var(--ifrit-text-secondary)' }} />
-                <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>Kejadian Keamanan Terkini</h3>
+                <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>
+                  {isEn ? 'Recent Safety Events' : 'Kejadian Keamanan Terkini'}
+                </h3>
               </div>
               <span className="text-xs font-mono px-2 rounded-full" style={{ backgroundColor: 'var(--ifrit-bg-primary)', color: 'var(--ifrit-text-muted)' }}>{alerts.length}</span>
            </div>
@@ -387,18 +417,20 @@ export default function RoomDetail() {
                   <div key={a.id} className="p-3 rounded-md border" style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)' }}>
                     <div className="flex items-center gap-2 mb-1">
                       <StatusIndicator status={a.severity === 'critical' ? 'fire' : 'warning'} size="sm" />
-                      <span className="text-xs font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>{a.alert_type || 'Peringatan'}</span>
+                      <span className="text-xs font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>
+                        {a.alert_type || (isEn ? 'Alert' : 'Peringatan')}
+                      </span>
                     </div>
                     <p className="text-xs" style={{ color: 'var(--ifrit-text-secondary)' }}>{a.message}</p>
                     <span className="text-[10px] font-mono mt-1 block" style={{ color: 'var(--ifrit-text-muted)' }}>
-                      {new Date(a.created_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      {new Date(a.created_at).toLocaleString(isEn ? 'en-US' : 'id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                 ))
               ) : (
                 <div className="py-8 text-center h-full flex flex-col items-center justify-center font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>
                   <History className="w-8 h-8 mb-2 opacity-30" />
-                  Tidak ada peringatan aktif untuk ruangan ini.
+                  {isEn ? 'No active alerts for this room.' : 'Tidak ada peringatan aktif untuk ruangan ini.'}
                 </div>
               )}
            </div>
@@ -407,3 +439,4 @@ export default function RoomDetail() {
     </div>
   );
 }
+

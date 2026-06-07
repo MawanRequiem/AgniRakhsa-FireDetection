@@ -9,4 +9,11 @@ export const useUIStore = create((set) => ({
 
   selectedRoomFilter: 'all',
   setRoomFilter: (filter) => set({ selectedRoomFilter: filter }),
+
+  language: localStorage.getItem('language') || 'en',
+  setLanguage: (lang) => {
+    localStorage.setItem('language', lang);
+    set({ language: lang });
+  },
 }));
+
