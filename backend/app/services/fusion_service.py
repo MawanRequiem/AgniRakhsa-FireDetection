@@ -26,6 +26,7 @@ from app.services import sensor_service
 from app.api.ws_manager import manager
 from app.services.whatsapp import send_whatsapp_message
 from app.ai import registry
+from app.ai.iot_sensor.detector import SENSOR_TYPE_MAP
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +170,29 @@ def score_sensors(room_id: Optional[str], snapshot: Optional[dict] = None) -> tu
                 sensor_score = threshold_score
                 algorithm += "+sanity-clamped"
             else:
-                sensor_score = if_score
+                # If the IF model doesn't cover flame/temperature/humidity,
+                # we must ensure that critical threshold detections on those
+                # uncovered sensors are not suppressed by the IF score.
+                uncovered_sensors = {}
+                for s_type, val in snapshot.items():
+                    training_name = SENSOR_TYPE_MAP.get(s_type.upper())
+                    if training_name is None or training_name not in getattr(sensor_detector, "_training_columns", []):
+                        uncovered_sensors[s_type] = val
+                
+                if uncovered_sensors:
+                    uncovered_threshold_score = _compute_sensor_score_from_thresholds(uncovered_sensors)
+                    if uncovered_threshold_score > if_score:
+                        logger.info(
+                            f"Uncovered sensors threshold override for room {room_id}: "
+                            f"IF score={if_score:.3f}, uncovered threshold score="
+                            f"{uncovered_threshold_score:.3f}. Using threshold score."
+                        )
+                        sensor_score = uncovered_threshold_score
+                        algorithm += "+uncovered-override"
+                    else:
+                        sensor_score = if_score
+                else:
+                    sensor_score = if_score
             
             logger.info(
                 f"IF model used for room {room_id}: "
@@ -274,51 +297,7 @@ async def run_fusion(
         sensor_snapshot = {}
     
     # ─── Compute Sensor Score: ML Model → Threshold Fallback ──────────────
-    algorithm = "v1.0-threshold-fallback"
-    # Always compute threshold score as a sanity baseline
-    threshold_score = _compute_sensor_score_from_thresholds(sensor_snapshot)
-    
-    try:
-        sensor_detector = registry.get_sensor_detector()
-        if room_id and sensor_detector.has_enough_data(str(room_id)):
-            if_score = sensor_detector.predict(str(room_id))
-            algorithm = "v2.0-isolation-forest"
-            
-            # ─── IF Sanity Gate ────────────────────────────────────────
-            # The IF model can hallucinate on normal data (e.g. when disabled
-            # sensors produce zero-features). If ALL threshold-based scores
-            # indicate SAFE (< 0.15), clamp the IF score to prevent false alerts
-            # on obviously safe sensor readings like 5 ppm smoke.
-            IF_SANITY_FLOOR = 0.15
-            if threshold_score < IF_SANITY_FLOOR and if_score > 0.4:
-                logger.warning(
-                    f"IF sanity gate triggered for room {room_id}: "
-                    f"IF says {if_score:.3f} but thresholds say {threshold_score:.3f}. "
-                    f"Clamping to threshold score (IF likely hallucinating)."
-                )
-                sensor_score = threshold_score
-                algorithm += "+sanity-clamped"
-            else:
-                sensor_score = if_score
-            
-            logger.info(
-                f"IF model used for room {room_id}: "
-                f"if_raw={if_score:.4f}, threshold={threshold_score:.4f}, "
-                f"final_sensor={sensor_score:.4f}, "
-                f"buffer_status={sensor_detector.get_buffer_status()}"
-            )
-        else:
-            sensor_score = threshold_score
-            if room_id and sensor_detector.is_loaded:
-                buf_status = sensor_detector.get_buffer_status()
-                room_buf = buf_status.get(str(room_id), 0)
-                logger.debug(
-                    f"IF model not ready for room {room_id}: "
-                    f"{room_buf}/9 samples. Using threshold fallback."
-                )
-    except RuntimeError:
-        # Sensor model not loaded — use threshold fallback
-        sensor_score = threshold_score
+    sensor_score, algorithm = score_sensors(room_id, sensor_snapshot)
     
     # ─── Weighted Late Fusion ─────────────────────────────────────────────
     # Dynamic weight rebalancing:

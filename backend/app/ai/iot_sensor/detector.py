@@ -42,6 +42,13 @@ SENSOR_TYPE_MAP: dict[str, str] = {
 # The model still expects flame_presence features — they'll default to 0.0
 DISABLED_SENSORS: set[str] = set()  # All sensors now active
 
+# ─── Flame Sensor Pre-Normalization ──────────────────────────────────────────
+# The training dataset had flame_presence values pre-normalized to [0.0, 1.0].
+# Raw ADC from ESP32: 0 (fire) → 4095 (no fire, pull-up).
+# Training normalization: flame_presence = 1.0 - (raw_adc / 4095)
+#   → 1.0 = flame fully present, 0.0 = no flame
+FLAME_ADC_MAX = 4095.0
+
 # Training column order (alphabetical from pivot — confirmed by user).
 TRAINING_COLUMNS = sorted(SENSOR_TYPE_MAP.values())
 # → ['cng', 'co', 'flame_presence', 'lpg', 'smoke']
@@ -81,6 +88,8 @@ class SensorAnomalyDetector:
         self._scaler = None
         self._buffers: dict[str, deque] = {}  # room_id → deque of snapshots
         self._lock = Lock()
+        self._training_columns = TRAINING_COLUMNS
+        self._feature_columns = FEATURE_COLUMNS
 
     def load(self, model_dir: str) -> None:
         """
@@ -101,30 +110,48 @@ class SensorAnomalyDetector:
         self._model = joblib.load(model_path)
         self._scaler = joblib.load(scaler_path)
 
-        # Validate scaler expects our feature count
+        # Determine features dynamically from scaler
         n_features = self._scaler.n_features_in_
-        if n_features != EXPECTED_FEATURE_COUNT:
-            raise ValueError(
-                f"Scaler expects {n_features} features but detector produces "
-                f"{EXPECTED_FEATURE_COUNT}. Feature mismatch — check column order."
-            )
-
-        # Cross-validate column names if available
         if hasattr(self._scaler, "feature_names_in_"):
             expected = list(self._scaler.feature_names_in_)
-            if expected != FEATURE_COLUMNS:
-                logger.warning(
-                    f"Feature column order mismatch!\n"
-                    f"  Scaler expects: {expected}\n"
-                    f"  Detector builds: {FEATURE_COLUMNS}"
-                )
-                # Override with scaler's actual order for safety
-                FEATURE_COLUMNS.clear()
-                FEATURE_COLUMNS.extend(expected)
+            self._feature_columns = expected
+            
+            seen = set()
+            training_cols = []
+            for feat in expected:
+                for suffix in FEATURE_SUFFIXES:
+                    if feat.endswith(f"_{suffix}"):
+                        sensor = feat[:-len(suffix)-1]
+                        if sensor not in seen:
+                            seen.add(sensor)
+                            training_cols.append(sensor)
+                        break
+            self._training_columns = training_cols
+        else:
+            # Fallback based on feature count
+            if n_features == 20:
+                self._training_columns = ['cng', 'co', 'lpg', 'smoke']
+            elif n_features == 25:
+                self._training_columns = ['cng', 'co', 'flame_presence', 'lpg', 'smoke']
+            else:
+                self._training_columns = sorted(SENSOR_TYPE_MAP.values())
+            
+            self._feature_columns = [
+                f"{col}_{suffix}"
+                for col in self._training_columns
+                for suffix in FEATURE_SUFFIXES
+            ]
+
+        # Validate feature counts match
+        if len(self._feature_columns) != n_features:
+            raise ValueError(
+                f"Scaler expects {n_features} features but detector builds "
+                f"{len(self._feature_columns)} features. Feature count mismatch."
+            )
 
         logger.info(
             f"Sensor anomaly model loaded: {model_path.name} "
-            f"({EXPECTED_FEATURE_COUNT} features, window={WINDOW_SIZE})"
+            f"({len(self._feature_columns)} features, training columns: {self._training_columns}, window={WINDOW_SIZE})"
         )
 
     @property
@@ -143,11 +170,19 @@ class SensorAnomalyDetector:
         # Map ESP32 sensor types → training column names, skipping disabled sensors
         mapped = {}
         for sensor_type, value in sensor_snapshot.items():
-            if sensor_type in DISABLED_SENSORS:
+            s_type_upper = sensor_type.upper()
+            if s_type_upper in DISABLED_SENSORS:
                 continue
-            training_name = SENSOR_TYPE_MAP.get(sensor_type)
+            training_name = SENSOR_TYPE_MAP.get(s_type_upper)
             if training_name is not None:
-                mapped[training_name] = float(value)
+                val = float(value)
+                
+                # Pre-normalize flame sensor to match training data range [0, 1]
+                if training_name == "flame_presence":
+                    val = 1.0 - (val / FLAME_ADC_MAX)
+                    val = max(0.0, min(1.0, val))  # Clamp safety
+                    
+                mapped[training_name] = val
 
         # Only ingest if we have at least one relevant sensor
         if not mapped:
@@ -194,7 +229,7 @@ class SensorAnomalyDetector:
         #   max, min, slope, last, max_jump (per sensor)
         features = {}
 
-        for col in TRAINING_COLUMNS:
+        for col in self._training_columns:
             # Extract values for this sensor across the window
             values = np.array([
                 sample.get(col, 0.0) for sample in window_data
@@ -215,8 +250,8 @@ class SensorAnomalyDetector:
         # Build feature vector as DataFrame with column names (avoids sklearn warning)
         import pandas as pd
         feature_df = pd.DataFrame(
-            [[features[col] for col in FEATURE_COLUMNS]],
-            columns=FEATURE_COLUMNS,
+            [[features[col] for col in self._feature_columns]],
+            columns=self._feature_columns,
         )
 
         # Scale using the fitted StandardScaler
