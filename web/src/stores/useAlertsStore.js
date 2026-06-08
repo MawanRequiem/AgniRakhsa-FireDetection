@@ -8,16 +8,19 @@ export const useAlertsStore = create((set, get) => ({
     roomId: null,
     acknowledged: false,
   },
+  pageSize: 5,
   globalLoading: false,
   error: null,
   roomSummaries: [],
   isAcknowledgingRoom: null,
 
   _buildAlertParams: (roomId, page, f) => {
+    const { pageSize } = get();
+    const ps = pageSize || 5;
     const params = new URLSearchParams();
     params.set('room_id', roomId);
     params.set('page', String(page));
-    params.set('page_size', '5');
+    params.set('page_size', String(pageSize));
     if (f.severity) params.set('severity', f.severity);
     if (f.acknowledged !== null && f.acknowledged !== undefined) {
       params.set('acknowledged', String(f.acknowledged));
@@ -219,4 +222,9 @@ export const useAlertsStore = create((set, get) => ({
   },
 
   setAcknowledgingRoom: (roomId) => set({ isAcknowledgingRoom: roomId }),
+
+  setPageSize: (size) => {
+    const valid = Math.max(1, Math.min(50, Number(size) || 5));
+    set({ pageSize: valid, roomsData: {} });
+  },
 }));

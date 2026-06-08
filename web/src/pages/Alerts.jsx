@@ -10,10 +10,8 @@ import { CheckCircle2, ShieldCheck, Image as ImageIcon, CheckSquare, Square, Che
 import { toast } from 'sonner';
 import { translations, getLocalizedMessage, getLocalizedExplanation } from '@/lib/translations';
 
-const PER_PAGE = 5;
-
 export default function Alerts() {
-  const { roomsData, globalLoading, roomSummaries, isAcknowledgingRoom, fetchRoomPage, fetchAllFirstPages, setFilters, acknowledgeAlert, acknowledgeRoom, setAcknowledgingRoom } = useAlertsStore();
+  const { roomsData, pageSize, globalLoading, roomSummaries, isAcknowledgingRoom, fetchRoomPage, fetchAllFirstPages, setFilters, setPageSize, acknowledgeAlert, acknowledgeRoom, setAcknowledgingRoom } = useAlertsStore();
   const { rooms, fetchRooms } = useRoomsStore();
   const language = useUIStore((s) => s.language);
   const t = translations[language] || translations['en'];
@@ -163,16 +161,24 @@ export default function Alerts() {
   }, [rooms]);
 
   const orderedRooms = useMemo(() => {
-    const entries = Object.entries(roomsData);
     const sm = {};
     for (const s of roomSummaries) sm[s.room_id] = s;
+
+    const allRoomIds = new Set(Object.keys(roomsData));
+    for (const r of rooms) allRoomIds.add(r.id);
+
+    const entries = [...allRoomIds].map((rid) => {
+      const data = roomsData[rid] || { page: 1, pageSize: pageSize || 5, total: 0, alerts: [], isLoading: false };
+      return [rid, data];
+    });
+
     entries.sort((a, b) => {
       const sa = sm[a[0]]?.total_alerts ?? a[1].total;
       const sb = sm[b[0]]?.total_alerts ?? b[1].total;
       return sb - sa;
     });
     return entries;
-  }, [roomsData, roomSummaries]);
+  }, [roomsData, roomSummaries, rooms, pageSize]);
 
   const locale = language === 'en' ? 'en-US' : 'id-ID';
 
@@ -212,8 +218,9 @@ export default function Alerts() {
   };
 
   const renderPagination = (roomId, roomData) => {
-    const maxPage = Math.max(1, Math.ceil(roomData.total / (roomData.pageSize || PER_PAGE)));
-    if (roomData.total <= (roomData.pageSize || PER_PAGE)) return null;
+    const ps = roomData.pageSize || pageSize || 5;
+    const maxPage = Math.max(1, Math.ceil(roomData.total / ps));
+    if (roomData.total <= ps) return null;
     return (
       <div className="flex items-center justify-between p-3 border-t" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
         <span className="text-xs" style={{ color: 'var(--ifrit-text-muted)' }}>
@@ -247,110 +254,156 @@ export default function Alerts() {
           const img = detailAlert.image_url || detailAlert.snapshot_url;
           const roomName = roomMap[detailAlert.room_id] || detailAlert.room_id || '-';
           const sd = parseSensorData(detailAlert.message);
+          const sevColor =
+            detailAlert.severity === 'critical' ? 'var(--ifrit-fire)' :
+            detailAlert.severity === 'high' ? 'var(--ifrit-warning)' : 'var(--ifrit-info)';
+
+          const handleAckAndClose = async (e) => {
+            e.stopPropagation();
+            await handleAcknowledge(e, detailAlert.id, detailAlert.room_id);
+            setTimeout(() => setDetailAlert(null), 500);
+          };
 
           return (
             <motion.div
-              className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto"
-              style={{ backgroundColor: 'rgba(0,0,0,0.75)' }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+              style={{ backgroundColor: 'rgba(5,5,8,0.88)', backdropFilter: 'blur(8px)' }}
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
+              transition={{ duration: 0.18 }}
               onClick={() => setDetailAlert(null)}
             >
               <motion.div
-                className="relative w-full my-8 max-w-3xl rounded-xl border shadow-2xl"
-                style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}
-                initial={{ opacity: 0, scale: 0.92, y: 20 }}
+                className="relative w-full max-w-4xl max-h-[90vh] min-h-[320px] rounded-2xl overflow-hidden flex flex-col shadow-2xl"
+                style={{ backgroundColor: 'var(--ifrit-bg-primary)', border: '1px solid var(--ifrit-border)' }}
+                initial={{ opacity: 0, scale: 0.94, y: 32 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.92, y: 20 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
+                exit={{ opacity: 0, scale: 0.94, y: 32 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 onClick={(e) => e.stopPropagation()}
               >
+                {/* Severity color bar */}
+                <div className="h-1.5 w-full flex-shrink-0" style={{ backgroundColor: sevColor }} />
+
                 {/* Header */}
-                <div className="flex items-center justify-between p-5 border-b sticky top-0 z-10 rounded-t-xl"
-                  style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-tertiary)' }}>
-                  <div className="flex items-center gap-3">
-                    <StatusIndicator status={detailAlert.severity === 'critical' ? 'fire' : detailAlert.severity === 'high' ? 'warning' : 'info'} size="md" />
-                    <div>
-                      <span className="font-bold text-base block" style={{ color: 'var(--ifrit-text-primary)' }}>
+                <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-3 flex-shrink-0">
+                  <div className="flex items-start gap-4 min-w-0">
+                    <div className="mt-0.5 flex-shrink-0">
+                      <StatusIndicator status={detailAlert.severity === 'critical' ? 'fire' : detailAlert.severity === 'high' ? 'warning' : 'info'} size="lg" />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-lg font-bold leading-tight mb-1" style={{ color: 'var(--ifrit-text-primary)' }}>
                         {getLocalizedMessage(detailAlert.message, language)}
-                      </span>
-                      <span className="text-xs" style={{ color: 'var(--ifrit-text-muted)' }}>
-                        {roomName} · {fmt(detailAlert.created_at)}
-                      </span>
+                      </h2>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" style={{ color: 'var(--ifrit-text-muted)' }}>
+                        <span className="font-semibold" style={{ color: 'var(--ifrit-brand)' }}>{roomName}</span>
+                        <span className="font-mono tabular-nums">{fmt(detailAlert.created_at)}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
+                          style={{ backgroundColor: `${sevColor}18`, color: sevColor, border: `1px solid ${sevColor}40` }}>
+                          {detailAlert.severity}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <button onClick={() => setDetailAlert(null)}
-                    className="p-2 rounded hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ifrit-brand)]"
+                    className="p-2 -mr-1 -mt-1 rounded-lg hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ifrit-brand)] flex-shrink-0"
                     aria-label={language === 'en' ? 'Close' : 'Tutup'}>
                     <X className="w-5 h-5" style={{ color: 'var(--ifrit-text-muted)' }} />
                   </button>
                 </div>
 
-                <div className="p-5 space-y-5">
-                  {/* Image */}
-                  {img && (
-                    <div className="rounded-xl overflow-hidden border shadow-sm" style={{ borderColor: 'var(--ifrit-border)' }}>
-                      <img src={img} alt="" className="w-full object-cover max-h-96" />
-                    </div>
-                  )}
-
-                  {/* Metadata grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 rounded-xl border"
-                    style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
-                    <Meta label="Risk Level" labelId="Tingkat Bahaya" lang={language}>
-                      <StatusIndicator status={detailAlert.severity === 'critical' ? 'fire' : detailAlert.severity === 'high' ? 'warning' : 'info'} showLabel size="sm" />
-                    </Meta>
-                    <Meta label="Room" labelId="Ruangan" lang={language} value={roomName} />
-                    <Meta label="Detection Time" labelId="Waktu Deteksi" lang={language} value={fmt(detailAlert.created_at)} mono />
-                    <Meta label="Status" labelId="Status" lang={language}>
-                      <span style={{ color: detailAlert.is_acknowledged ? 'var(--ifrit-safe)' : 'var(--ifrit-warning)' }}>
-                        {detailAlert.is_acknowledged ? (language === 'en' ? 'Confirmed Safe' : 'Sudah Aman') : (language === 'en' ? 'Unacknowledged' : 'Belum Dikonfirmasi')}
-                      </span>
-                    </Meta>
-                    <Meta label="Severity" labelId="Severitas" lang={language} value={detailAlert.severity?.toUpperCase()} />
-                    {detailAlert.acknowledged_at && (
-                      <Meta label="Acknowledged At" labelId="Dikonfirmasi Pada" lang={language} value={fmt(detailAlert.acknowledged_at)} mono />
+                {/* Body — scrollable */}
+                <div className="flex-1 overflow-y-auto px-6 pb-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+                    {/* Left: image */}
+                    {img && (
+                      <div className="lg:col-span-3">
+                        <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--ifrit-border)' }}>
+                          <img src={img} alt="" className="w-full object-cover max-h-[400px]" />
+                        </div>
+                      </div>
                     )}
+
+                    {/* Right: metadata + sensors + action */}
+                    <div className={`space-y-4 ${img ? 'lg:col-span-2' : 'lg:col-span-5 lg:grid lg:grid-cols-2 lg:gap-5 lg:space-y-0'}`}>
+                      {/* Metadata */}
+                      <div className="space-y-3">
+                        <div className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--ifrit-text-muted)' }}>
+                          {language === 'en' ? 'Alert Details' : 'Detail Peringatan'}
+                        </div>
+                        <div className="space-y-2.5">
+                          <MetaRow label={language === 'en' ? 'Status' : 'Status'} lang={language}>
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full"
+                              style={{
+                                backgroundColor: detailAlert.is_acknowledged ? 'rgba(34,197,94,0.12)' : 'rgba(234,179,8,0.12)',
+                                color: detailAlert.is_acknowledged ? 'var(--ifrit-safe)' : 'var(--ifrit-warning)',
+                              }}>
+                              {detailAlert.is_acknowledged
+                                ? <><CheckCircle2 className="w-3 h-3" />{language === 'en' ? 'Confirmed Safe' : 'Sudah Aman'}</>
+                                : <>{language === 'en' ? 'Unacknowledged' : 'Belum Dikonfirmasi'}</>}
+                            </span>
+                          </MetaRow>
+                          <MetaRow label={language === 'en' ? 'Room' : 'Ruangan'} lang={language} value={roomName} />
+                          <MetaRow label={language === 'en' ? 'Time' : 'Waktu'} lang={language} value={fmt(detailAlert.created_at)} mono />
+                          {detailAlert.acknowledged_at && (
+                            <MetaRow label={language === 'en' ? 'Acknowledged' : 'Dikonfirmasi'} lang={language} value={fmt(detailAlert.acknowledged_at)} mono />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Sensors */}
+                      {sd && (
+                        <div className="space-y-3">
+                          <div className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--ifrit-text-muted)' }}>
+                            {language === 'en' ? 'Sensor Readings' : 'Data Sensor'}
+                          </div>
+                          <div className="grid grid-cols-2 gap-2.5">
+                            {sd.temperature !== undefined && <SensorBadge icon={Thermometer} color="var(--ifrit-warning)" label="Temp" value={`${sd.temperature}°C`} />}
+                            {sd.humidity !== undefined && <SensorBadge icon={Droplets} color="var(--ifrit-brand)" label="Humid" value={`${sd.humidity}%`} />}
+                            {sd.gas_level !== undefined && <SensorBadge icon={Gauge} color="var(--ifrit-fire)" label="Gas" value={`${sd.gas_level} ppm`} />}
+                            {sd.flame_detected !== undefined && (
+                              <SensorBadge icon={Flame} color={sd.flame_detected ? 'var(--ifrit-fire)' : 'var(--ifrit-safe)'}
+                                label="Flame" value={sd.flame_detected ? (language === 'en' ? 'DETECTED' : 'TERDETEKSI') : (language === 'en' ? 'CLEAR' : 'AMAN')} />
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Explanation */}
                   {getLocalizedExplanation(detailAlert.message, language) && (
-                    <div className="p-4 rounded-xl border italic text-sm leading-relaxed"
+                    <div className="mt-5 p-4 rounded-xl border text-sm leading-relaxed"
                       style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)', color: 'var(--ifrit-text-muted)' }}>
                       {getLocalizedExplanation(detailAlert.message, language)}
                     </div>
                   )}
+                </div>
 
-                  {/* Sensor panel */}
-                  {sd && (
-                    <div className="p-4 rounded-xl border space-y-3" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
-                      <div className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--ifrit-text-muted)' }}>
-                        {language === 'en' ? 'Sensor Readings' : 'Data Sensor'}
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {sd.temperature !== undefined && <SensorBadge icon={Thermometer} color="var(--ifrit-warning)" label="Temp" value={`${sd.temperature}°C`} />}
-                        {sd.humidity !== undefined && <SensorBadge icon={Droplets} color="var(--ifrit-brand)" label="Humid" value={`${sd.humidity}%`} />}
-                        {sd.gas_level !== undefined && <SensorBadge icon={Gauge} color="var(--ifrit-fire)" label="Gas" value={`${sd.gas_level} ppm`} />}
-                        {sd.flame_detected !== undefined && (
-                          <SensorBadge icon={Flame} color={sd.flame_detected ? 'var(--ifrit-fire)' : 'var(--ifrit-safe)'}
-                            label="Flame" value={sd.flame_detected ? (language === 'en' ? 'DETECTED' : 'TERDETEKSI') : (language === 'en' ? 'CLEAR' : 'AMAN')} />
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ACK button */}
-                  {!detailAlert.is_acknowledged && (
-                    <button onClick={(e) => { handleAcknowledge(e, detailAlert.id, detailAlert.room_id); setDetailAlert(null); }}
+                {/* Footer — ACK + close */}
+                <div className="flex items-center gap-3 px-6 py-4 border-t flex-shrink-0"
+                  style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
+                  {!detailAlert.is_acknowledged ? (
+                    <button onClick={handleAckAndClose}
                       disabled={acknowledgingId === detailAlert.id}
-                      className="w-full flex items-center justify-center gap-3 font-bold text-sm px-4 py-3 rounded-xl transition-all hover:opacity-90 active:scale-[0.98] shadow-lg disabled:opacity-50"
+                      className="flex-1 flex items-center justify-center gap-2.5 font-bold text-sm px-5 py-3 rounded-xl transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50 shadow-lg"
                       style={{ backgroundColor: 'var(--ifrit-safe)', color: 'white' }}>
                       {acknowledgingId === detailAlert.id ? (
                         <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'white', borderTopColor: 'transparent' }} />
                       ) : <CheckCircle2 className="w-5 h-5" />}
-                      {language === 'en' ? 'Confirm Safe' : 'Konfirmasi Aman'}
+                      {language === 'en' ? 'Confirm Safe — Mark as Acknowledged' : 'Konfirmasi Aman — Tandai Selesai'}
                     </button>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center gap-2.5 font-bold text-sm px-5 py-3 rounded-xl"
+                      style={{ backgroundColor: 'rgba(34,197,94,0.1)', color: 'var(--ifrit-safe)' }}>
+                      <CheckCircle2 className="w-5 h-5" />
+                      {language === 'en' ? 'This alert has been confirmed safe' : 'Peringatan ini sudah dikonfirmasi aman'}
+                    </div>
                   )}
+                  <button onClick={() => setDetailAlert(null)}
+                    className="px-5 py-3 rounded-xl text-sm font-medium hover:bg-white/10 transition-colors flex-shrink-0"
+                    style={{ color: 'var(--ifrit-text-muted)' }}>
+                    {language === 'en' ? 'Close' : 'Tutup'}
+                  </button>
                 </div>
               </motion.div>
             </motion.div>
@@ -398,6 +451,14 @@ export default function Alerts() {
           <option value="active">{language === 'en' ? 'Unacknowledged' : 'Belum Dikonfirmasi'}</option>
           <option value="all">{language === 'en' ? 'All Statuses' : 'Semua Status'}</option>
           <option value="acknowledged">{language === 'en' ? 'Acknowledged' : 'Sudah Dikonfirmasi'}</option>
+        </select>
+        <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); doFetch(buildFilters()); }}
+          className="py-2.5 px-3 rounded-lg border text-sm font-medium cursor-pointer"
+          style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}>
+          <option value={5}>5 / page</option>
+          <option value={15}>15 / page</option>
+          <option value={30}>30 / page</option>
+          <option value={50}>50 / page</option>
         </select>
       </div>
 
@@ -498,7 +559,7 @@ export default function Alerts() {
                 {!isCollapsed && (
                   <>
                     {/* Per-Room Pagination (top) */}
-                    {roomData.total > (roomData.pageSize || PER_PAGE) && (
+                    {roomData.total > (roomData.pageSize || pageSize) && (
                       <div className="px-4 pt-3">
                         {renderPagination(roomId, roomData)}
                       </div>
@@ -665,12 +726,15 @@ export default function Alerts() {
 
 /* ── Helper components ── */
 
-function Meta({ label, labelId, lang, value, mono, children }) {
+function MetaRow({ label, lang, value, mono, children }) {
   return (
-    <div>
-      <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--ifrit-text-muted)' }}>{lang === 'en' ? label : labelId}</div>
-      {children || (mono ? <span className="font-mono text-sm tabular-nums" style={{ color: 'var(--ifrit-text-secondary)' }}>{value}</span>
-        : <span className="text-sm font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>{value}</span>)}
+    <div className="flex items-center justify-between gap-3 py-1.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+      <span className="text-[11px] font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>{label}</span>
+      {children || (
+        mono
+          ? <span className="font-mono text-xs tabular-nums" style={{ color: 'var(--ifrit-text-secondary)' }}>{value}</span>
+          : <span className="text-xs font-semibold text-right" style={{ color: 'var(--ifrit-text-primary)' }}>{value}</span>
+      )}
     </div>
   );
 }
