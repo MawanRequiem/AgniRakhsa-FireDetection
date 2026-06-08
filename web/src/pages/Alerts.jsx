@@ -12,7 +12,7 @@ import { translations, getLocalizedMessage, getLocalizedExplanation } from '@/li
 
 export default function Alerts() {
   const navigate = useNavigate();
-  const { alerts, total, page, pageSize, isLoading, fetchAlerts, setFilters, setPage, acknowledgeAlert } = useAlertsStore();
+  const { alerts, total, page, pageSize, isLoading, roomSummaries, isAcknowledgingRoom, fetchAlerts, setFilters, setPage, acknowledgeAlert, acknowledgeRoom, setAcknowledgingRoom } = useAlertsStore();
   const { rooms, fetchRooms } = useRoomsStore();
   const language = useUIStore((s) => s.language);
 
@@ -23,7 +23,6 @@ export default function Alerts() {
   const [ackFilter, setAckFilter] = useState('all');
   const [selectedAlerts, setSelectedAlerts] = useState(new Set());
   const [isBulkAcknowledging, setIsBulkAcknowledging] = useState(false);
-  const [acknowledgingRoom, setAcknowledgingRoom] = useState(null);
   const [acknowledgingId, setAcknowledgingId] = useState(null);
   const [detailAlert, setDetailAlert] = useState(null);
 
@@ -110,6 +109,26 @@ export default function Alerts() {
     }
   }, [selectedAlerts, acknowledgeAlert, language]);
 
+  const handleAcknowledgeRoom = useCallback(async (roomId, roomName) => {
+    setAcknowledgingRoom(roomId);
+    try {
+      const result = await acknowledgeRoom(roomId);
+      if (result && result.acknowledged_count > 0) {
+        toast.success(language === 'en'
+          ? `${result.acknowledged_count} alerts in ${roomName} confirmed safe`
+          : `${result.acknowledged_count} peringatan di ${roomName} dikonfirmasi aman`);
+        const f = buildFilters();
+        fetchAlerts({ ...f, page: page });
+      } else {
+        toast.info(language === 'en' ? 'No unacknowledged alerts in this room' : 'Tidak ada peringatan yang perlu dikonfirmasi');
+      }
+    } catch {
+      toast.error(language === 'en' ? 'Failed to confirm room alerts' : 'Gagal mengonfirmasi peringatan ruangan');
+    } finally {
+      setAcknowledgingRoom(null);
+    }
+  }, [acknowledgeRoom, setAcknowledgingRoom, buildFilters, fetchAlerts, page, language]);
+
   const roomMap = useMemo(() => {
     const map = {};
     for (const r of rooms) {
@@ -129,6 +148,10 @@ export default function Alerts() {
     }
     return groups;
   }, [alerts, roomMap, language]);
+
+  const handleDrillIntoRoom = (roomId) => {
+    handleFilterChange('room', roomId);
+  };
 
   const locale = language === 'en' ? 'en-US' : 'id-ID';
 
@@ -424,6 +447,23 @@ export default function Alerts() {
         </div>
       </div>
 
+      {/* Active Room Filter Banner */}
+      {roomFilter !== 'all' && (
+        <div className="flex items-center justify-between p-3 rounded-lg border animate-in fade-in slide-in-from-top-2 motion-reduce:animate-none" style={{ backgroundColor: 'var(--ifrit-brand)', borderColor: 'var(--ifrit-brand)', color: 'white' }}>
+          <span className="text-sm font-semibold">
+            {language === 'en' ? 'Filtering: ' : 'Filter: '}
+            {roomMap[roomFilter] || roomFilter}
+          </span>
+          <button
+            onClick={() => handleFilterChange('room', 'all')}
+            className="inline-flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded hover:bg-white/10 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-white"
+          >
+            <X className="w-4 h-4" />
+            {language === 'en' ? 'Clear' : 'Hapus'}
+          </button>
+        </div>
+      )}
+
       {/* Pagination (top) */}
       {totalPages > 1 && renderPagination()}
 
@@ -473,7 +513,10 @@ export default function Alerts() {
         ) : Object.keys(groupedAlerts).length > 0 ? (
           Object.entries(groupedAlerts).map(([roomName, group]) => {
             const allSelected = group.alerts.every(a => selectedAlerts.has(a.id));
-            const hasUnacknowledged = group.alerts.some(a => !a.is_acknowledged);
+            const summary = roomSummaries.find(s => s.room_id === group.roomId);
+            const realTotal = summary?.total_alerts ?? group.alerts.length;
+            const realUnack = summary?.unacknowledged_count ?? 0;
+            const hasUnacknowledged = realUnack > 0;
 
             return (
               <div key={roomName} className="space-y-4">
@@ -486,32 +529,43 @@ export default function Alerts() {
                     >
                       {allSelected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
                     </button>
-                    <span className="font-semibold text-sm" style={{ color: 'var(--ifrit-text-primary)' }}>
-                      {roomName}
-                      <span className="ml-4 text-xs px-4 py-1 rounded-full font-medium" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', color: 'var(--ifrit-text-muted)', border: '1px solid var(--ifrit-border)' }}>
-                        {group.alerts.length} {language === 'en' ? 'alerts' : 'peringatan'}
-                      </span>
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <button
+                        onClick={() => handleDrillIntoRoom(group.roomId)}
+                        className="font-semibold text-sm hover:underline text-left focus:outline-none focus:underline"
+                        style={{ color: 'var(--ifrit-brand)' }}
+                      >
+                        {roomName}
+                      </button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs px-4 py-1 rounded-full font-medium" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', color: 'var(--ifrit-text-muted)', border: '1px solid var(--ifrit-border)' }}>
+                          {realTotal} {language === 'en' ? 'alerts' : 'peringatan'}
+                        </span>
+                        {realUnack > 0 && (
+                          <span className="text-xs px-4 py-1 rounded-full font-medium" style={{ backgroundColor: 'rgba(234, 179, 8, 0.1)', color: 'var(--ifrit-warning)', border: '1px solid var(--ifrit-warning)' }}>
+                            {realUnack} {language === 'en' ? 'unacknowledged' : 'belum dikonfirmasi'}
+                          </span>
+                        )}
+                        {roomFilter === 'all' && (
+                          <button
+                            onClick={() => handleDrillIntoRoom(group.roomId)}
+                            className="text-xs font-medium px-2 py-1 rounded hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-[var(--ifrit-brand)]"
+                            style={{ color: 'var(--ifrit-brand)', backgroundColor: 'rgba(59, 130, 246, 0.1)' }}
+                          >
+                            {language === 'en' ? 'View all' : 'Lihat semua'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   {hasUnacknowledged && (
                     <button
-                      onClick={async () => {
-                        setAcknowledgingRoom(roomName);
-                        try {
-                          const promises = group.alerts.filter(a => !a.is_acknowledged).map(a => acknowledgeAlert(a.id));
-                          const results = await Promise.all(promises);
-                          if (results.some(Boolean)) {
-                            toast.success(language === 'en' ? 'Room alerts confirmed safe' : 'Peringatan ruangan telah dikonfirmasi aman');
-                          }
-                        } finally {
-                          setAcknowledgingRoom(null);
-                        }
-                      }}
-                      disabled={acknowledgingRoom === roomName}
+                      onClick={() => handleAcknowledgeRoom(group.roomId, roomName)}
+                      disabled={isAcknowledgingRoom === group.roomId}
                       className="w-full sm:w-auto inline-flex items-center justify-center gap-4 text-xs font-semibold px-4 py-2 min-h-[44px] rounded-md transition-all duration-150 hover:opacity-90 active:scale-[0.98] motion-reduce:scale-100 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[var(--ifrit-bg-secondary)]"
                       style={{ backgroundColor: 'var(--ifrit-safe)', color: 'white' }}
                     >
-                      {acknowledgingRoom === roomName ? (
+                      {isAcknowledgingRoom === group.roomId ? (
                         <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin motion-reduce:animate-pulse" style={{ borderColor: 'white', borderTopColor: 'transparent' }}></div>
                       ) : (
                         <CheckCircle2 className="w-4 h-4" />
@@ -645,7 +699,10 @@ export default function Alerts() {
             ) : Object.keys(groupedAlerts).length > 0 ? (
               Object.entries(groupedAlerts).map(([roomName, group]) => {
                 const allSelected = group.alerts.every(a => selectedAlerts.has(a.id));
-                const hasUnacknowledged = group.alerts.some(a => !a.is_acknowledged);
+                const summary = roomSummaries.find(s => s.room_id === group.roomId);
+                const realTotal = summary?.total_alerts ?? group.alerts.length;
+                const realUnack = summary?.unacknowledged_count ?? 0;
+                const hasUnacknowledged = realUnack > 0;
 
                 return (
                   <Fragment key={roomName}>
@@ -660,32 +717,41 @@ export default function Alerts() {
                             >
                               {allSelected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
                             </button>
-                            <span className="font-semibold text-sm flex items-center gap-2" style={{ color: 'var(--ifrit-text-primary)' }}>
-                              {roomName}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <button
+                                onClick={() => handleDrillIntoRoom(group.roomId)}
+                                className="font-semibold text-sm hover:underline focus:outline-none focus:underline"
+                                style={{ color: 'var(--ifrit-brand)' }}
+                              >
+                                {roomName}
+                              </button>
                               <span className="text-xs px-4 py-1 rounded-full font-medium" style={{ backgroundColor: 'var(--ifrit-bg-secondary)', color: 'var(--ifrit-text-muted)', border: '1px solid var(--ifrit-border)' }}>
-                                {group.alerts.length} {language === 'en' ? 'alerts' : 'peringatan'}
+                                {realTotal} {language === 'en' ? 'alerts' : 'peringatan'}
                               </span>
-                            </span>
+                              {realUnack > 0 && (
+                                <span className="text-xs px-4 py-1 rounded-full font-medium" style={{ backgroundColor: 'rgba(234, 179, 8, 0.1)', color: 'var(--ifrit-warning)', border: '1px solid var(--ifrit-warning)' }}>
+                                  {realUnack} {language === 'en' ? 'unacknowledged' : 'belum dikonfirmasi'}
+                                </span>
+                              )}
+                              {roomFilter === 'all' && (
+                                <button
+                                  onClick={() => handleDrillIntoRoom(group.roomId)}
+                                  className="text-xs font-medium px-2 py-1 rounded hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-[var(--ifrit-brand)]"
+                                  style={{ color: 'var(--ifrit-brand)', backgroundColor: 'rgba(59, 130, 246, 0.1)' }}
+                                >
+                                  {language === 'en' ? 'View all' : 'Lihat semua'}
+                                </button>
+                              )}
+                            </div>
                           </div>
                           {hasUnacknowledged && (
                             <button
-                              onClick={async () => {
-                                setAcknowledgingRoom(roomName);
-                                try {
-                                  const promises = group.alerts.filter(a => !a.is_acknowledged).map(a => acknowledgeAlert(a.id));
-                                  const results = await Promise.all(promises);
-                                  if (results.some(Boolean)) {
-                                    toast.success(language === 'en' ? 'Room alerts confirmed safe' : 'Peringatan ruangan telah dikonfirmasi aman');
-                                  }
-                                } finally {
-                                  setAcknowledgingRoom(null);
-                                }
-                              }}
-                              disabled={acknowledgingRoom === roomName}
+                              onClick={() => handleAcknowledgeRoom(group.roomId, roomName)}
+                              disabled={isAcknowledgingRoom === group.roomId}
                               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-xs font-semibold px-4 py-2.5 rounded-md transition-all duration-150 hover:opacity-90 active:scale-[0.98] motion-reduce:scale-100 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[var(--ifrit-bg-tertiary)]"
                               style={{ backgroundColor: 'var(--ifrit-safe)', color: 'white' }}
                             >
-                              {acknowledgingRoom === roomName ? (
+                              {isAcknowledgingRoom === group.roomId ? (
                                 <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin motion-reduce:animate-pulse" style={{ borderColor: 'white', borderTopColor: 'transparent' }}></div>
                               ) : (
                                 <CheckCircle2 className="w-4 h-4" />

@@ -3,8 +3,16 @@
 from fastapi import APIRouter, HTTPException
 from uuid import UUID
 from datetime import datetime, timezone
+from collections import defaultdict
 
-from app.schemas.alert import AlertOut, AlertAcknowledge, AlertsResponse
+from app.schemas.alert import (
+    AlertOut,
+    AlertAcknowledge,
+    AlertsResponse,
+    RoomSummaryRequest,
+    RoomSummaryResponse,
+    AcknowledgeRoomResponse,
+)
 from app.core.db import supabase
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
@@ -83,3 +91,103 @@ async def acknowledge_alert(alert_id: UUID, body: AlertAcknowledge):
             supabase.table("rooms").update({"status": "safe"}).eq("id", str(room_id)).execute()
 
     return alert_data
+
+
+@router.post("/room-summary", response_model=RoomSummaryResponse)
+async def room_summary(body: RoomSummaryRequest):
+    """Return per-room alert counts across all pages (no pagination)."""
+    query = supabase.table("alerts").select("room_id, is_acknowledged")
+
+    if body.severity:
+        query = query.eq("severity", body.severity)
+
+    result = query.execute()
+    rows = result.data or []
+
+    # Single-pass grouping
+    counts = defaultdict(lambda: {"total_alerts": 0, "unacknowledged_count": 0})
+    room_ids_seen = set()
+
+    for row in rows:
+        rid = row.get("room_id")
+        if not rid:
+            continue
+        is_ack = row.get("is_acknowledged", False)
+
+        # total_alerts respects the acknowledged filter
+        if body.acknowledged is None or is_ack == body.acknowledged:
+            counts[rid]["total_alerts"] += 1
+
+        # unacknowledged_count always counts ALL unacknowledged
+        if not is_ack:
+            counts[rid]["unacknowledged_count"] += 1
+
+        room_ids_seen.add(rid)
+
+    if not room_ids_seen:
+        return {"rooms": []}
+
+    # Batch-lookup room names
+    room_res = (
+        supabase.table("rooms")
+        .select("id, name")
+        .in_("id", [str(r) for r in room_ids_seen])
+        .execute()
+    )
+    room_name_map = {}
+    for r in (room_res.data or []):
+        room_name_map[r["id"]] = r.get("name", "Unknown Room")
+
+    rooms = []
+    for rid in room_ids_seen:
+        total = counts[rid]["total_alerts"]
+        if total == 0:
+            continue
+        rooms.append({
+            "room_id": rid,
+            "room_name": room_name_map.get(rid, "Unknown Room"),
+            "total_alerts": total,
+            "unacknowledged_count": counts[rid]["unacknowledged_count"],
+        })
+
+    # Sort by total_alerts descending
+    rooms.sort(key=lambda x: x["total_alerts"], reverse=True)
+    return {"rooms": rooms}
+
+
+@router.post("/acknowledge-room/{room_id}", response_model=AcknowledgeRoomResponse)
+async def acknowledge_room(room_id: UUID):
+    """Batch-acknowledge all unacknowledged alerts for a room."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    # Count before updating
+    count_res = (
+        supabase.table("alerts")
+        .select("id", count="exact")
+        .eq("room_id", str(room_id))
+        .eq("is_acknowledged", False)
+        .execute()
+    )
+    count = count_res.count or 0
+
+    if count == 0:
+        return {
+            "room_id": room_id,
+            "acknowledged_count": 0,
+            "message": "No unacknowledged alerts found for this room",
+        }
+
+    # Batch update
+    supabase.table("alerts").update({
+        "is_acknowledged": True,
+        "acknowledged_at": now_iso,
+    }).eq("room_id", str(room_id)).eq("is_acknowledged", False).execute()
+
+    # Update room status to safe
+    supabase.table("rooms").update({"status": "safe"}).eq("id", str(room_id)).execute()
+
+    return {
+        "room_id": room_id,
+        "acknowledged_count": count,
+        "message": f"{count} alerts acknowledged for room",
+    }

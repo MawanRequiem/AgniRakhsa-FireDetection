@@ -31,3 +31,29 @@ class AlertsResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class RoomSummaryItem(BaseModel):
+    """Per-room alert count summary."""
+    room_id: UUID
+    room_name: str
+    total_alerts: int
+    unacknowledged_count: int
+
+
+class RoomSummaryRequest(BaseModel):
+    """Filters for room summary aggregation."""
+    severity: Optional[str] = None
+    acknowledged: Optional[bool] = None
+
+
+class RoomSummaryResponse(BaseModel):
+    """Room summary response."""
+    rooms: list[RoomSummaryItem]
+
+
+class AcknowledgeRoomResponse(BaseModel):
+    """Batch room acknowledge result."""
+    room_id: UUID
+    acknowledged_count: int
+    message: str
