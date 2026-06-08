@@ -1,1 +1,0 @@
-fix(web): move keyboard shortcut below orderedRooms to fix TDZ error
