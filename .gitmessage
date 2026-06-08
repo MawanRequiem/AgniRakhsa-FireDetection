@@ -1,0 +1,2 @@
+fix(web): pass acknowledged filter to room-summary so badges match current filter
+feat(backend): add seed_mock_alerts script for UI testing with 5 rooms and ~200 alerts

@@ -82,7 +82,10 @@ export const useAlertsStore = create((set, get) => ({
       set({ globalLoading: true, error: null });
 
       const roomFilter = f.roomId ? { room_id: f.roomId } : {};
-      const summaryBody = { severity: f.severity || null };
+      const summaryBody = {
+        severity: f.severity || null,
+        acknowledged: f.acknowledged !== null && f.acknowledged !== undefined ? f.acknowledged : null,
+      };
       if (roomFilter.room_id) {
         summaryBody.room_id = roomFilter.room_id;
       }
