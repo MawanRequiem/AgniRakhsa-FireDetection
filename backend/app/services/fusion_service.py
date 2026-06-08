@@ -25,6 +25,7 @@ from app.core.db import supabase
 from app.services import sensor_service
 from app.api.ws_manager import manager
 from app.services.whatsapp import send_whatsapp_message
+from app.services.fcm_service import send_push
 from app.ai import registry
 from app.ai.iot_sensor.detector import SENSOR_TYPE_MAP
 
@@ -896,3 +897,46 @@ async def _create_alert(
                         room_id=room_key,
                     )
                 )
+
+        # --- FCM Push Notification ---
+        asyncio.create_task(_send_fcm_push(
+            room_name=room_name,
+            room_name_en=room_name_en,
+            risk_level=risk_level,
+            fusion_score=fusion_score,
+            image_url=image_url,
+            room_id=room_id,
+            sensor_snapshot=sensor_snapshot,
+        ))
+
+
+async def _send_fcm_push(
+    room_name, room_name_en, risk_level, fusion_score,
+    image_url=None, room_id=None, sensor_snapshot=None,
+):
+    """Send FCM push notification to all registered mobile devices."""
+    try:
+        risk_label = "CRITICAL" if risk_level == "critical" else "HIGH"
+        title = f"FIRE ALERT: {room_name} ({risk_label})"
+        body = (
+            f"{risk_label} risk detected in {room_name_en}. "
+            f"Fusion score: {fusion_score*100:.0f}%. Open app for details."
+        )
+        fcm_data = {
+            "type": "FIRE_ALERT",
+            "room_name": room_name,
+            "risk_level": risk_level,
+            "severity": risk_level,
+            "fusion_score": str(round(fusion_score, 3)),
+        }
+        if room_id:
+            fcm_data["room_id"] = str(room_id)
+        if image_url:
+            fcm_data["image_url"] = image_url
+        sent = send_push(
+            title=title, body=body, data=fcm_data, image_url=image_url,
+        )
+        if sent > 0:
+            logger.info(f"FCM push sent to {sent} devices for room {room_name}")
+    except Exception as e:
+        logger.error(f"FCM push failed: {e}")

@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     # WhatsApp Gateway Configuration
     GATEWAY_URL: str = "http://whatsapp-gateway:3001"
     GATEWAY_API_KEY: str = "agniraksha-secure-key-2026"
+
+    # Firebase Cloud Messaging
+    FIREBASE_CREDENTIALS_PATH: str = "firebase-credentials.json"
     
     # AI Model Configuration
     MODEL_PATH: str = "app/ai/yolo/fire_detection_model.pt"
