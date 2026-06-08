@@ -61,6 +61,23 @@ export default function Alerts() {
     return () => { document.body.style.overflow = ''; };
   }, [detailAlert]);
 
+  const handleAckRoomShortcut = useCallback((e) => {
+    if (!e.ctrlKey || !e.shiftKey || e.key !== 'A') return;
+    e.preventDefault();
+    const visibleRooms = orderedRooms.filter(([rid, d]) => !collapsedRooms.has(rid) && d.alerts && d.alerts.some((a) => !a.is_acknowledged));
+    if (visibleRooms.length === 0) return;
+    const [rid] = visibleRooms[0];
+    const summary = roomSummaries.find((s) => s.room_id === rid);
+    if (summary && summary.unacknowledged_count > 0) {
+      handleAcknowledgeRoom(rid, roomMap[rid] || rid);
+    }
+  }, [orderedRooms, collapsedRooms, roomSummaries, roomMap, handleAcknowledgeRoom]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleAckRoomShortcut);
+    return () => window.removeEventListener('keydown', handleAckRoomShortcut);
+  }, [handleAckRoomShortcut]);
+
   const handleFilterChange = useCallback((type, value) => {
     if (type === 'severity') setSeverityFilter(value);
     if (type === 'room') setRoomFilter(value);
@@ -210,6 +227,20 @@ export default function Alerts() {
 
   const fmt = (d) => new Date(d).toLocaleString(locale, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const fmtShort = (d) => new Date(d).toLocaleString(locale, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+  const relTime = (d) => {
+    const now = Date.now();
+    const diff = now - new Date(d).getTime();
+    const sec = Math.floor(diff / 1000);
+    if (sec < 5) return language === 'en' ? 'just now' : 'baru saja';
+    if (sec < 60) return language === 'en' ? `${sec}s ago` : `${sec}d lalu`;
+    const min = Math.floor(sec / 60);
+    if (min < 60) return language === 'en' ? `${min}m ago` : `${min}m lalu`;
+    const hrs = Math.floor(min / 60);
+    if (hrs < 24) return language === 'en' ? `${hrs}h ago` : `${hrs}j lalu`;
+    const days = Math.floor(hrs / 24);
+    return language === 'en' ? `${days}d ago` : `${days}h lalu`;
+  };
 
   const parseSensorData = (msg) => {
     if (!msg || !msg.startsWith('{')) return null;
@@ -429,7 +460,8 @@ export default function Alerts() {
       </div>
 
       {/* ── Filters ── */}
-      <div className="flex flex-col sm:flex-row gap-3 p-4 rounded-xl border" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
+      <div className="flex flex-col sm:flex-row gap-3 p-4 rounded-xl border"
+        style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
         <select value={severityFilter} onChange={(e) => handleFilterChange('severity', e.target.value)}
           className="py-2.5 px-3 rounded-lg border text-sm font-medium cursor-pointer"
           style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}>
@@ -452,7 +484,7 @@ export default function Alerts() {
           <option value="all">{language === 'en' ? 'All Statuses' : 'Semua Status'}</option>
           <option value="acknowledged">{language === 'en' ? 'Acknowledged' : 'Sudah Dikonfirmasi'}</option>
         </select>
-        <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); doFetch(buildFilters()); }}
+        <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}
           className="py-2.5 px-3 rounded-lg border text-sm font-medium cursor-pointer"
           style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-primary)' }}>
           <option value={5}>5 / page</option>
@@ -491,6 +523,20 @@ export default function Alerts() {
         </div>
       )}
 
+      {/* ── Urgency Banner ── */}
+      {ackFilter !== 'acknowledged' && !globalLoading && orderedRooms.length > 0 && (() => {
+        const allCritical = orderedRooms.every(([, d]) => d.alerts.length > 0 && d.alerts.every((a) => a.severity === 'critical' && !a.is_acknowledged));
+        if (!allCritical) return null;
+        return (
+          <div className="flex items-center gap-3 p-4 rounded-xl animate-pulse" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--ifrit-fire)' }}>
+            <Flame className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--ifrit-fire)' }} />
+            <span className="text-sm font-bold" style={{ color: 'var(--ifrit-fire)' }}>
+              {language === 'en' ? 'All visible alerts are CRITICAL — immediate action required' : 'Semua peringatan yang terlihat KRITIS — tindakan segera diperlukan'}
+            </span>
+          </div>
+        );
+      })()}
+
       {/* ── Loading ── */}
       {globalLoading && (
         <div className="flex flex-col items-center justify-center gap-4 py-16">
@@ -507,6 +553,31 @@ export default function Alerts() {
             const summary = roomSummaries.find((s) => s.room_id === roomId);
             const realTotal = summary?.total_alerts ?? roomData.total;
             const realUnack = summary?.unacknowledged_count ?? 0;
+
+            const badgeCount = ackFilter === 'active' ? realUnack
+              : ackFilter === 'acknowledged' ? (realTotal - realUnack)
+              : realTotal;
+            const badgeLabel = ackFilter === 'active'
+              ? (language === 'en' ? 'unacknowledged' : 'belum')
+              : ackFilter === 'acknowledged'
+                ? (language === 'en' ? 'acknowledged' : 'dikonfirmasi')
+                : (language === 'en' ? 'alerts' : 'peringatan');
+            const badgeBg = ackFilter === 'active'
+              ? 'rgba(234, 179, 8, 0.12)'
+              : ackFilter === 'acknowledged'
+                ? 'rgba(34, 197, 94, 0.1)'
+                : 'var(--ifrit-bg-tertiary)';
+            const badgeColor = ackFilter === 'active'
+              ? 'var(--ifrit-warning)'
+              : ackFilter === 'acknowledged'
+                ? 'var(--ifrit-safe)'
+                : 'var(--ifrit-text-muted)';
+            const badgeBorder = ackFilter === 'active'
+              ? 'var(--ifrit-warning)'
+              : ackFilter === 'acknowledged'
+                ? 'var(--ifrit-safe)'
+                : 'var(--ifrit-border)';
+
             const hasUnack = realUnack > 0;
             const alerts = roomData.alerts || [];
             const allSelected = alerts.length > 0 && alerts.every((a) => selectedAlerts.has(a.id));
@@ -522,15 +593,15 @@ export default function Alerts() {
                   aria-expanded={!isCollapsed}
                 >
                   <div className="flex items-center gap-3 flex-wrap flex-1 min-w-0">
-                    <span className="font-bold text-sm" style={{ color: 'var(--ifrit-brand)' }}>{roomName}</span>
-                    <span className="text-xs px-3 py-0.5 rounded-full font-medium"
-                      style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', color: 'var(--ifrit-text-muted)', border: '1px solid var(--ifrit-border)' }}>
-                      {realTotal} {language === 'en' ? 'alerts' : 'peringatan'}
+                    <span className="font-bold sm:text-lg text-base" style={{ color: 'var(--ifrit-brand)' }}>{roomName}</span>
+                    <span className="text-xs px-3 py-0.5 rounded-full font-bold"
+                      style={{ backgroundColor: badgeBg, color: badgeColor, border: `1px solid ${badgeBorder}` }}>
+                      {badgeCount} {badgeLabel}
                     </span>
-                    {realUnack > 0 && (
-                      <span className="text-xs px-3 py-0.5 rounded-full font-bold"
-                        style={{ backgroundColor: 'rgba(234, 179, 8, 0.12)', color: 'var(--ifrit-warning)', border: '1px solid var(--ifrit-warning)' }}>
-                        {realUnack} {language === 'en' ? 'unacknowledged' : 'belum'}
+                    {ackFilter === 'active' && realUnack > 0 && realTotal !== realUnack && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                        style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', color: 'var(--ifrit-text-muted)', border: '1px solid var(--ifrit-border)' }}>
+                        {realTotal} {language === 'en' ? 'total' : 'total'}
                       </span>
                     )}
                     {isCollapsed && (
@@ -611,10 +682,16 @@ export default function Alerts() {
                                       </div>
                                     )}
                                   </TableCell>
-                                  <TableCell className="font-mono text-xs whitespace-nowrap tabular-nums" style={{ color: 'var(--ifrit-text-secondary)' }}>{fmt(alert.created_at)}</TableCell>
+                                  <TableCell className="font-mono text-xs whitespace-nowrap tabular-nums" style={{ color: 'var(--ifrit-text-secondary)' }}>
+                                    <span className="block">{fmt(alert.created_at)}</span>
+                                    <span className="text-[10px] opacity-60">{relTime(alert.created_at)}</span>
+                                  </TableCell>
                                   <TableCell><StatusIndicator status={alert.severity === 'critical' ? 'fire' : alert.severity === 'high' ? 'warning' : 'info'} showLabel size="sm" /></TableCell>
                                   <TableCell className="max-w-[300px]">
-                                    <div className="text-sm font-medium leading-snug" style={{ color: 'var(--ifrit-text-primary)' }}>{getLocalizedMessage(alert.message, language)}</div>
+                                    <div className={`leading-snug ${alert.severity === 'critical' && !alert.is_acknowledged ? 'text-base font-bold' : 'text-sm font-medium'}`}
+                                      style={{ color: alert.severity === 'critical' && !alert.is_acknowledged ? 'var(--ifrit-fire)' : 'var(--ifrit-text-primary)' }}>
+                                      {getLocalizedMessage(alert.message, language)}
+                                    </div>
                                     {getLocalizedExplanation(alert.message, language) && (
                                       <div className="text-xs mt-1 italic leading-relaxed" style={{ color: 'var(--ifrit-text-muted)' }}>{getLocalizedExplanation(alert.message, language)}</div>
                                     )}

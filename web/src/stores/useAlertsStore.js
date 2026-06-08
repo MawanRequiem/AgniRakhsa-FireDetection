@@ -225,6 +225,9 @@ export const useAlertsStore = create((set, get) => ({
 
   setPageSize: (size) => {
     const valid = Math.max(1, Math.min(50, Number(size) || 5));
-    set({ pageSize: valid, roomsData: {} });
+    const { pageSize } = get();
+    if (valid === pageSize) return;
+    set({ pageSize: valid });
+    get().fetchAllFirstPages();
   },
 }));
