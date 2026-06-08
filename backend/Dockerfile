@@ -43,7 +43,9 @@ RUN pip install --no-cache-dir \
     "pandas>=2.1.0" \
     "tensorflow-cpu>=2.15.0" \
     "Sastrawi>=1.0.1" \
-    "redis>=7.4.0"
+    "redis>=7.4.0" \
+    "requests>=2.31.0" \
+    "firebase-admin>=6.5.0"
 
 COPY . .
 
