@@ -61,22 +61,7 @@ export default function Alerts() {
     return () => { document.body.style.overflow = ''; };
   }, [detailAlert]);
 
-  const handleAckRoomShortcut = useCallback((e) => {
-    if (!e.ctrlKey || !e.shiftKey || e.key !== 'A') return;
-    e.preventDefault();
-    const visibleRooms = orderedRooms.filter(([rid, d]) => !collapsedRooms.has(rid) && d.alerts && d.alerts.some((a) => !a.is_acknowledged));
-    if (visibleRooms.length === 0) return;
-    const [rid] = visibleRooms[0];
-    const summary = roomSummaries.find((s) => s.room_id === rid);
-    if (summary && summary.unacknowledged_count > 0) {
-      handleAcknowledgeRoom(rid, roomMap[rid] || rid);
-    }
-  }, [orderedRooms, collapsedRooms, roomSummaries, roomMap, handleAcknowledgeRoom]);
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleAckRoomShortcut);
-    return () => window.removeEventListener('keydown', handleAckRoomShortcut);
-  }, [handleAckRoomShortcut]);
+  // ─ keyboard shortcut registered after handleAcknowledgeRoom defined ─
 
   const handleFilterChange = useCallback((type, value) => {
     if (type === 'severity') setSeverityFilter(value);
@@ -196,6 +181,23 @@ export default function Alerts() {
     });
     return entries;
   }, [roomsData, roomSummaries, rooms, pageSize]);
+
+  const handleAckRoomShortcut = useCallback((e) => {
+    if (!e.ctrlKey || !e.shiftKey || e.key !== 'A') return;
+    e.preventDefault();
+    const visibleRooms = orderedRooms.filter(([rid, d]) => !collapsedRooms.has(rid) && d.alerts && d.alerts.some((a) => !a.is_acknowledged));
+    if (visibleRooms.length === 0) return;
+    const [rid] = visibleRooms[0];
+    const summary = roomSummaries.find((s) => s.room_id === rid);
+    if (summary && summary.unacknowledged_count > 0) {
+      handleAcknowledgeRoom(rid, roomMap[rid] || rid);
+    }
+  }, [orderedRooms, collapsedRooms, roomSummaries, roomMap, handleAcknowledgeRoom]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleAckRoomShortcut);
+    return () => window.removeEventListener('keydown', handleAckRoomShortcut);
+  }, [handleAckRoomShortcut]);
 
   const locale = language === 'en' ? 'en-US' : 'id-ID';
 
