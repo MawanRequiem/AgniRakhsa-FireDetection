@@ -17,7 +17,7 @@ export const useAlertsStore = create((set, get) => ({
     const params = new URLSearchParams();
     params.set('room_id', roomId);
     params.set('page', String(page));
-    params.set('page_size', '15');
+    params.set('page_size', '5');
     if (f.severity) params.set('severity', f.severity);
     if (f.acknowledged !== null && f.acknowledged !== undefined) {
       params.set('acknowledged', String(f.acknowledged));
@@ -34,7 +34,7 @@ export const useAlertsStore = create((set, get) => ({
         roomsData: {
           ...state.roomsData,
           [roomId]: {
-            ...(state.roomsData[roomId] || { page: 1, pageSize: 15, total: 0, alerts: [] }),
+            ...(state.roomsData[roomId] || { page: 1, pageSize: 5, total: 0, alerts: [] }),
             isLoading: true,
           },
         },
@@ -52,7 +52,7 @@ export const useAlertsStore = create((set, get) => ({
               alerts: data.items || [],
               total: data.total || 0,
               page: data.page || page,
-              pageSize: data.page_size || 15,
+              pageSize: data.page_size || 5,
               isLoading: false,
             },
           },
@@ -66,7 +66,7 @@ export const useAlertsStore = create((set, get) => ({
         roomsData: {
           ...state.roomsData,
           [roomId]: {
-            ...(state.roomsData[roomId] || { page: 1, pageSize: 15, total: 0, alerts: [] }),
+            ...(state.roomsData[roomId] || { page: 1, pageSize: 5, total: 0, alerts: [] }),
             isLoading: false,
           },
         },
@@ -126,7 +126,7 @@ export const useAlertsStore = create((set, get) => ({
           alerts: r.data.items || [],
           total: r.data.total || 0,
           page: 1,
-          pageSize: 15,
+          pageSize: 5,
           isLoading: false,
         };
       }
