@@ -306,7 +306,7 @@ export default function Alerts() {
               onClick={() => setDetailAlert(null)}
             >
               <motion.div
-                className="relative w-full max-w-4xl max-h-[90vh] min-h-[320px] rounded-2xl overflow-hidden flex flex-col shadow-2xl"
+                className={`relative w-full ${img ? 'max-w-4xl' : 'max-w-2xl'} max-h-[90vh] rounded-2xl overflow-hidden flex flex-col shadow-2xl`}
                 style={{ backgroundColor: 'var(--ifrit-bg-primary)', border: '1px solid var(--ifrit-border)' }}
                 initial={{ opacity: 0, scale: 0.94, y: 32 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -350,8 +350,8 @@ export default function Alerts() {
                     {/* Left: image */}
                     {img && (
                       <div className="lg:col-span-3">
-                        <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--ifrit-border)' }}>
-                          <img src={img} alt="" className="w-full object-cover max-h-[400px]" />
+                        <div className="rounded-xl overflow-hidden border relative flex items-center justify-center w-full aspect-video" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: '#000' }}>
+                          <img src={img} alt="" className="absolute inset-0 w-full h-full object-contain" />
                         </div>
                       </div>
                     )}
