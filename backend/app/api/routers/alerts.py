@@ -1,6 +1,6 @@
 """Alert management API endpoints."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 from uuid import UUID
 from datetime import datetime, timezone
 from collections import defaultdict
@@ -14,8 +14,19 @@ from app.schemas.alert import (
     AcknowledgeRoomResponse,
 )
 from app.core.db import supabase
+from app.api.deps import OptionalUser, CurrentUser, get_subscribed_room_ids
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
+
+
+def _check_alert_access(user: OptionalUser, room_id: str | None) -> bool:
+    """Returns True if user can access alerts for this room."""
+    if user is None or user.role == "admin":
+        return True
+    if room_id is None:
+        return False
+    subscribed = get_subscribed_room_ids(user.id)
+    return room_id in subscribed
 
 
 @router.get("", response_model=AlertsResponse)
@@ -26,8 +37,11 @@ async def list_alerts(
     severity: str | None = None,
     room_id: UUID | None = None,
     acknowledged: bool | None = None,
+    user: OptionalUser = None,
 ):
-    """Paginated, filterable list of all system alerts."""
+    """Paginated, filterable list of all system alerts.
+    For basic users, filters to subscribed rooms only.
+    """
     offset = (page - 1) * page_size
 
     query = supabase.table("alerts").select("*", count="exact")
@@ -38,6 +52,17 @@ async def list_alerts(
         query = query.eq("room_id", str(room_id))
     if acknowledged is not None:
         query = query.eq("is_acknowledged", acknowledged)
+
+    # Role-based room filtering
+    if user is not None and user.role == "user":
+        subscribed = get_subscribed_room_ids(user.id)
+        # If the caller also passed room_id, ensure it's in their subscriptions
+        if room_id is not None and str(room_id) not in subscribed:
+            return {"items": [], "total": 0, "page": page, "page_size": page_size}
+        if room_id is None and subscribed:
+            query = query.in_("room_id", subscribed)
+        elif room_id is None and not subscribed:
+            return {"items": [], "total": 0, "page": page, "page_size": page_size}
 
     result = (
         query
@@ -55,8 +80,24 @@ async def list_alerts(
 
 
 @router.patch("/{alert_id}/acknowledge", response_model=AlertOut)
-async def acknowledge_alert(alert_id: UUID, body: AlertAcknowledge):
-    """Mark an alert as acknowledged."""
+async def acknowledge_alert(
+    alert_id: UUID,
+    body: AlertAcknowledge,
+    user: CurrentUser,
+):
+    """Mark an alert as acknowledged. Basic users can only ack alerts in subscribed rooms."""
+    # Fetch alert to check room access
+    alert_res = supabase.table("alerts").select("room_id").eq("id", str(alert_id)).execute()
+    if not alert_res.data:
+        raise HTTPException(404, "Alert not found")
+
+    alert_room_id = alert_res.data[0].get("room_id")
+    if not _check_alert_access(user, alert_room_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to acknowledge this alert",
+        )
+
     update_data = {
         "is_acknowledged": True,
         "acknowledged_at": datetime.now(timezone.utc).isoformat(),
@@ -76,7 +117,7 @@ async def acknowledge_alert(alert_id: UUID, body: AlertAcknowledge):
 
     alert_data = result.data[0]
     room_id = alert_data.get("room_id")
-    
+
     if room_id:
         # Check if there are any other unacknowledged alerts for this room
         active_res = (
@@ -94,12 +135,24 @@ async def acknowledge_alert(alert_id: UUID, body: AlertAcknowledge):
 
 
 @router.post("/room-summary", response_model=RoomSummaryResponse)
-async def room_summary(body: RoomSummaryRequest):
-    """Return per-room alert counts across all pages (no pagination)."""
+async def room_summary(
+    body: RoomSummaryRequest,
+    user: OptionalUser = None,
+):
+    """Return per-room alert counts across all pages (no pagination).
+    For basic users, filters to subscribed rooms only.
+    """
     query = supabase.table("alerts").select("room_id, is_acknowledged")
 
     if body.severity:
         query = query.eq("severity", body.severity)
+
+    if user is not None and user.role == "user":
+        subscribed = get_subscribed_room_ids(user.id)
+        if subscribed:
+            query = query.in_("room_id", subscribed)
+        else:
+            return {"rooms": []}
 
     result = query.execute()
     rows = result.data or []
@@ -114,11 +167,9 @@ async def room_summary(body: RoomSummaryRequest):
             continue
         is_ack = row.get("is_acknowledged", False)
 
-        # total_alerts respects the acknowledged filter
         if body.acknowledged is None or is_ack == body.acknowledged:
             counts[rid]["total_alerts"] += 1
 
-        # unacknowledged_count always counts ALL unacknowledged
         if not is_ack:
             counts[rid]["unacknowledged_count"] += 1
 
@@ -156,8 +207,19 @@ async def room_summary(body: RoomSummaryRequest):
 
 
 @router.post("/acknowledge-room/{room_id}", response_model=AcknowledgeRoomResponse)
-async def acknowledge_room(room_id: UUID):
-    """Batch-acknowledge all unacknowledged alerts for a room."""
+async def acknowledge_room(
+    room_id: UUID,
+    user: CurrentUser,
+):
+    """Batch-acknowledge all unacknowledged alerts for a room.
+    Basic users can only ack alerts in subscribed rooms.
+    """
+    if not _check_alert_access(user, str(room_id)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to acknowledge alerts in this room",
+        )
+
     now_iso = datetime.now(timezone.utc).isoformat()
 
     # Count before updating

@@ -366,8 +366,8 @@ async def run_fusion(
     db_result = supabase.table("fusion_results").insert(insert_data).execute()
     fusion_record = db_result.data[0] if db_result.data else {}
     
-    # Create alert if risk is high or critical (with cooldown)
-    if risk_level in ("high", "critical"):
+    # Create alert if risk is medium, high or critical (with cooldown)
+    if risk_level in ("medium", "high", "critical"):
         await _create_alert(
             room_id=room_id,
             fusion_result_id=fusion_record.get("id"),
@@ -918,7 +918,13 @@ async def _send_fcm_push(
 ):
     """Send FCM push notification to all registered mobile devices."""
     try:
-        risk_label = "CRITICAL" if risk_level == "critical" else "HIGH"
+        if risk_level == "critical":
+            risk_label = "CRITICAL"
+        elif risk_level == "high":
+            risk_label = "HIGH"
+        else:
+            risk_label = "MEDIUM"
+            
         title = f"FIRE ALERT: {room_name} ({risk_label})"
         body = (
             f"{risk_label} risk detected in {room_name_en}. "

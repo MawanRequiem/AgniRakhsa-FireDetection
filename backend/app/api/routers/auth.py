@@ -4,10 +4,76 @@ from typing import Annotated
 import secrets
 from app.core import security
 from app.core.config import settings
-from app.core.db import supabase
+from app.core.db import supabase, supabase_admin
+from app.schemas.user import UserCreate
 import app.api.deps
 
 router = APIRouter()
+
+
+@router.post("/register")
+def register(request: Request, response: Response, body: UserCreate):
+    """
+    Register a new basic user (role='user').
+    Requires SUPABASE_SERVICE_ROLE_KEY to bypass RLS on the users table.
+    On success, behaves identically to login: sets HttpOnly JWT cookie and returns CSRF token.
+    """
+    if supabase_admin is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Registration unavailable: service_role key not configured",
+        )
+
+    # 1. Check for duplicate email
+    existing = supabase.table("users").select("id").eq("email", body.email).execute()
+    if existing.data:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered",
+        )
+
+    # 2. Hash password and insert user via service_role client
+    hashed_pw = security.get_password_hash(body.password)
+    insert_res = supabase_admin.table("users").insert({
+        "email": body.email,
+        "password_hash": hashed_pw,
+        "role": "user",
+        "is_active": True,
+    }).execute()
+
+    if not insert_res.data:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create user",
+        )
+
+    user = insert_res.data[0]
+
+    # 3. Generate CSRF and JWT, set cookie (same as login)
+    csrf_token = secrets.token_urlsafe(32)
+    access_token = security.create_access_token(subject=user["id"], csrf_token=csrf_token)
+
+    is_secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+    response.set_cookie(
+        key="access_token",
+        value=f"Bearer {access_token}",
+        httponly=True,
+        secure=is_secure,
+        samesite="lax",
+        path="/",
+        max_age=8 * 24 * 60 * 60,
+    )
+
+    return {
+        "message": "Successfully registered",
+        "csrf_token": csrf_token,
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "role": user.get("role", "user"),
+        },
+    }
+
 
 @router.post("/login")
 def login(

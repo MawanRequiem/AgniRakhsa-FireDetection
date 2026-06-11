@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     # Supabase Connection
     SUPABASE_URL: str
     SUPABASE_KEY: str
+    SUPABASE_SERVICE_ROLE_KEY: str = ""  # Required for RLS-bypass operations (e.g., user registration)
     
     # Redis Cache Configuration
     USE_REDIS: bool = True

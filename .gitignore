@@ -164,3 +164,4 @@ vite.config.ts.timestamp-*
 AGENTS.md
 .agents/
 .commandcode/
+.kimchi/
