@@ -919,30 +919,47 @@ async def _send_fcm_push(
     """Send FCM push notification to all registered mobile devices."""
     try:
         if risk_level == "critical":
-            risk_label = "CRITICAL"
+            risk_label_en = "CRITICAL"
+            risk_label_id = "KRITIS"
         elif risk_level == "high":
-            risk_label = "HIGH"
+            risk_label_en = "HIGH"
+            risk_label_id = "TINGGI"
         else:
-            risk_label = "MEDIUM"
+            risk_label_en = "MEDIUM"
+            risk_label_id = "SEDANG"
             
-        title = f"FIRE ALERT: {room_name} ({risk_label})"
-        body = (
-            f"{risk_label} risk detected in {room_name_en}. "
+        title_en = f"FIRE ALERT: {room_name_en} ({risk_label_en})"
+        title_id = f"PERINGATAN KEBAKARAN: {room_name} ({risk_label_id})"
+
+        body_en = (
+            f"{risk_label_en} risk detected in {room_name_en}. "
             f"Fusion score: {fusion_score*100:.0f}%. Open app for details."
         )
+        body_id = (
+            f"Risiko {risk_label_id} terdeteksi di {room_name}. "
+            f"Skor bahaya: {fusion_score*100:.0f}%. Buka aplikasi untuk detail."
+        )
+
         fcm_data = {
             "type": "FIRE_ALERT",
             "room_name": room_name,
             "risk_level": risk_level,
             "severity": risk_level,
             "fusion_score": str(round(fusion_score, 3)),
+            "title_en": title_en,
+            "title_id": title_id,
+            "body_en": body_en,
+            "body_id": body_id,
         }
         if room_id:
             fcm_data["room_id"] = str(room_id)
         if image_url:
             fcm_data["image_url"] = image_url
+
+        # `send_push` no longer creates a `messaging.Notification` payload,
+        # so this will be sent purely as a data-only message for the frontend to translate.
         sent = send_push(
-            title=title, body=body, data=fcm_data, image_url=image_url,
+            title=title_en, body=body_en, data=fcm_data, image_url=image_url,
         )
         if sent > 0:
             logger.info(f"FCM push sent to {sent} devices for room {room_name}")

@@ -128,35 +128,21 @@ def send_push(
     # Android config
     android_config = messaging.AndroidConfig(
         priority="high",
-        notification=messaging.AndroidNotification(
-            channel_id="fire_alerts",
-            priority="max",
-            visibility="public",
-            sound="default",
-        ),
     )
 
     # APNs config
     apns_config = messaging.APNSConfig(
         payload=messaging.APNSPayload(
             aps=messaging.Aps(
-                alert=messaging.ApsAlert(title=title, body=body),
+                content_available=True,
                 sound="default",
                 badge=1,
-                mutable_content=1,
             ),
         ),
     )
 
-    notification = messaging.Notification(title=title, body=body)
-    if image_url:
-        notification = messaging.Notification(
-            title=title, body=body, image_url=image_url
-        )
-
     message = messaging.MulticastMessage(
         tokens=tokens,
-        notification=notification,
         data={k: str(v) for k, v in (data or {}).items()},
         android=android_config,
         apns=apns_config,
@@ -173,7 +159,8 @@ def send_push(
         invalid_tokens = []
         for i, resp in enumerate(response.responses):
             if not resp.success:
-                if messaging.is_invalid_argument(resp.exception) or messaging.is_unregistered(resp.exception):
+                err_msg = str(resp.exception).lower()
+                if "invalid" in err_msg or "unregistered" in err_msg or "notregistered" in err_msg:
                     invalid_tokens.append(tokens[i])
 
         if invalid_tokens:
