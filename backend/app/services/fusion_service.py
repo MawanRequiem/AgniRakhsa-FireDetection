@@ -314,10 +314,12 @@ async def run_fusion(
     #   - Sensor-only mode (no camera): 100% sensor (rebalanced)
     #   - Image-only mode (no sensor):  100% image  (rebalanced)
     # This ensures sensor spikes can independently trigger alerts.
+    # Check if we have any active sensors to use for validation
+    has_active_sensors = bool(sensor_snapshot)
     
     is_sensor_only = image_score == 0.0 and sensor_score > 0.0
-    is_image_only = sensor_score == 0.0 and image_score > 0.0
-    
+    # Only allow image-only mode if sensors are completely offline/missing
+    is_image_only = not has_active_sensors and image_score > 0.0
     if is_sensor_only:
         # Sensor-only: sensor drives the full score
         fusion_score = sensor_score

@@ -42,8 +42,8 @@ class Settings(BaseSettings):
     SENSOR_MODEL_DIR: str = "app/ai/iot_sensor"
 
     # Late Fusion Weights
-    FUSION_WEIGHT_IMAGE: float = 0.6
-    FUSION_WEIGHT_SENSOR: float = 0.4
+    FUSION_WEIGHT_IMAGE: float = 0.55
+    FUSION_WEIGHT_SENSOR: float = 0.45
 
     # Risk Level Thresholds
     RISK_THRESHOLD_LOW: float = 0.2
