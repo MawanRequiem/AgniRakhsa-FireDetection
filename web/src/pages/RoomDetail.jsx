@@ -307,13 +307,13 @@ export default function RoomDetail() {
       </h2>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left Column: Widescreen Camera Feed & Administration Tools */}
+        {/* Left Column: Widescreen Camera Feed */}
         <div className="lg:col-span-2 space-y-6">
           {camera ? (
             <div 
               className="relative w-full rounded-xl overflow-hidden border shadow-sm transition-all duration-300" 
               style={{ 
-                aspectRatio: '16/9',
+                aspectRatio: '16/11',
                 borderColor: camera.has_detection ? 'var(--ifrit-fire)' : 'var(--ifrit-border)',
                 boxShadow: camera.has_detection ? '0 0 20px rgba(239, 68, 68, 0.2)' : 'none'
               }}
@@ -322,7 +322,7 @@ export default function RoomDetail() {
             </div>
           ) : (
             <div 
-              className="p-8 text-center border border-dashed rounded-xl flex flex-col items-center justify-center min-h-[260px] lg:h-[320px]" 
+              className="p-8 text-center border border-dashed rounded-xl flex flex-col items-center justify-center min-h-[300px] lg:h-[400px]" 
               style={{ 
                 borderColor: 'var(--ifrit-border)', 
                 color: 'var(--ifrit-text-muted)', 
@@ -341,12 +341,6 @@ export default function RoomDetail() {
               </p>
             </div>
           )}
-
-          {/* Admin panels side-by-side */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <RoomDeviceCalibration devices={room.devices} />
-            <RoomDeviceExportCard roomId={room.id} devices={room.devices} />
-          </div>
         </div>
 
         {/* Right Column: Sensor Groups */}
@@ -388,6 +382,12 @@ export default function RoomDetail() {
           </div>
         </div>
 
+      </div>
+
+      {/* Admin panels side-by-side (aligned with camera and sensors grid) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RoomDeviceCalibration devices={room.devices} />
+        <RoomDeviceExportCard roomId={room.id} devices={room.devices} />
       </div>
 
       <h2 className="text-sm font-bold mb-2 mt-8 pt-4 border-t" style={{ color: 'var(--ifrit-text-muted)', borderColor: 'var(--ifrit-border)' }}>

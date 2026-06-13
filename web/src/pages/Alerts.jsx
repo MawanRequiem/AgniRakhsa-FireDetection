@@ -646,7 +646,7 @@ export default function Alerts() {
 
                     {/* Desktop Table View */}
                     {!roomData.isLoading && alerts.length > 0 && (
-                      <div className="hidden sm:block">
+                      <div className="hidden sm:block overflow-x-auto w-full">
                         <Table>
                           <TableHeader style={{ backgroundColor: 'var(--ifrit-bg-secondary)' }}>
                             <TableRow style={{ borderColor: 'var(--ifrit-border)' }}>
@@ -689,13 +689,13 @@ export default function Alerts() {
                                     <span className="text-[10px] opacity-60">{relTime(alert.created_at)}</span>
                                   </TableCell>
                                   <TableCell><StatusIndicator status={alert.severity === 'critical' ? 'fire' : alert.severity === 'high' ? 'warning' : 'info'} showLabel size="sm" /></TableCell>
-                                  <TableCell className="max-w-[300px]">
-                                    <div className={`leading-snug ${alert.severity === 'critical' && !alert.is_acknowledged ? 'text-base font-bold' : 'text-sm font-medium'}`}
+                                  <TableCell className="max-w-[400px] min-w-[250px] break-words whitespace-normal">
+                                    <div className={`leading-snug break-words whitespace-normal ${alert.severity === 'critical' && !alert.is_acknowledged ? 'text-base font-bold' : 'text-sm font-medium'}`}
                                       style={{ color: alert.severity === 'critical' && !alert.is_acknowledged ? 'var(--ifrit-fire)' : 'var(--ifrit-text-primary)' }}>
                                       {getLocalizedMessage(alert.message, language)}
                                     </div>
                                     {getLocalizedExplanation(alert.message, language) && (
-                                      <div className="text-xs mt-1 italic leading-relaxed" style={{ color: 'var(--ifrit-text-muted)' }}>{getLocalizedExplanation(alert.message, language)}</div>
+                                      <div className="text-xs mt-1 italic leading-relaxed break-words whitespace-normal" style={{ color: 'var(--ifrit-text-muted)' }}>{getLocalizedExplanation(alert.message, language)}</div>
                                     )}
                                   </TableCell>
                                   <TableCell className="text-right">
