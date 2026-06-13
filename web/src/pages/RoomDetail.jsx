@@ -581,7 +581,7 @@ export default function RoomDetail() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
           onClick={() => setLightboxIdx(null)}
         >
-          <div className="relative max-w-4xl w-full mx-4" onClick={e => e.stopPropagation()}>
+          <div className="relative w-full mx-4" style={{ maxWidth: '56rem' }} onClick={e => e.stopPropagation()}>
             <button
               onClick={() => setLightboxIdx(null)}
               className="absolute -top-10 right-0 text-white/70 hover:text-white transition-colors"
