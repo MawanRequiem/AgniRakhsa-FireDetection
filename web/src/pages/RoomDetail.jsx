@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, Video, Activity, AlertTriangle, History, Thermometer, Droplets, Flame, Wind } from 'lucide-react';
+import { ArrowLeft, Clock, Video, Activity, AlertTriangle, History, Thermometer, Droplets, Flame, Wind, Camera, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import StatusIndicator from '@/components/ui/StatusIndicator';
 import SensorChart from '@/components/dashboard/SensorChart';
 import CameraFeed from '@/components/cctv/CameraFeed';
@@ -134,6 +134,10 @@ export default function RoomDetail() {
   const [initialReadings, setInitialReadings] = useState({});
   const [trendData, setTrendData] = useState([]);
   const [cameras, setCameras] = useState([]);
+  const [detectionImages, setDetectionImages] = useState([]);
+  const [detectionPage, setDetectionPage] = useState(1);
+  const [detectionTotal, setDetectionTotal] = useState(0);
+  const [lightboxIdx, setLightboxIdx] = useState(null);
 
   useEffect(() => {
     fetchRoomDetail(id);
@@ -213,6 +217,23 @@ export default function RoomDetail() {
     };
     fetchCameras();
   }, [id]);
+
+  // Fetch detection image gallery
+  useEffect(() => {
+    const fetchDetections = async () => {
+      try {
+        const response = await customFetch(`/api/v1/rooms/${id}/detections?page=${detectionPage}&page_size=12`);
+        if (response.ok) {
+          const data = await response.json();
+          setDetectionImages(data.items || []);
+          setDetectionTotal(data.total || 0);
+        }
+      } catch (err) {
+        console.error('Failed to fetch detection images:', err);
+      }
+    };
+    fetchDetections();
+  }, [id, detectionPage]);
 
   if (isLoading && !selectedRoom) {
     return (
@@ -451,9 +472,147 @@ export default function RoomDetail() {
                 </div>
               )}
            </div>
-        </div>
       </div>
+
+      {/* Detection Image Gallery */}
+      <h2 className="text-sm font-bold mb-2 mt-8 pt-4 border-t" style={{ color: 'var(--ifrit-text-muted)', borderColor: 'var(--ifrit-border)' }}>
+        {isEn ? 'Fire Detection Captures' : 'Tangkapan Deteksi Api'}
+      </h2>
+      <div className="border rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
+        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
+          <div className="flex items-center gap-2">
+            <Camera className="w-4 h-4" style={{ color: 'var(--ifrit-text-secondary)' }} />
+            <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>
+              {isEn ? 'AI Detection Log' : 'Log Deteksi AI'}
+            </h3>
+          </div>
+          <span className="text-xs font-mono px-2 rounded-full" style={{ backgroundColor: 'var(--ifrit-bg-primary)', color: 'var(--ifrit-text-muted)' }}>
+            {detectionTotal} {isEn ? 'captures' : 'tangkapan'}
+          </span>
+        </div>
+
+        {detectionImages.length > 0 ? (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 p-4">
+              {detectionImages.map((det, idx) => (
+                <div
+                  key={det.id}
+                  className="relative group cursor-pointer rounded-lg overflow-hidden border transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+                  style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-primary)' }}
+                  onClick={() => setLightboxIdx(idx)}
+                >
+                  <div className="aspect-video relative">
+                    <img
+                      src={det.image_url}
+                      alt={`Detection ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                    {/* Confidence badge */}
+                    <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold text-white"
+                      style={{ backgroundColor: det.max_confidence >= 0.7 ? 'var(--ifrit-fire)' : det.max_confidence >= 0.5 ? 'var(--ifrit-warning)' : 'var(--ifrit-info)' }}>
+                      {(det.max_confidence * 100).toFixed(0)}%
+                    </div>
+                    {/* Hover overlay */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="text-white text-xs font-semibold">{isEn ? 'View Full' : 'Lihat Detail'}</span>
+                    </div>
+                  </div>
+                  <div className="px-2 py-1.5">
+                    <span className="text-[10px] font-mono block" style={{ color: 'var(--ifrit-text-muted)' }}>
+                      {new Date(det.created_at).toLocaleString(isEn ? 'en-US' : 'id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {detectionTotal > 12 && (
+              <div className="flex items-center justify-center gap-3 px-4 py-3 border-t" style={{ borderColor: 'var(--ifrit-border)' }}>
+                <button
+                  onClick={() => setDetectionPage(p => Math.max(1, p - 1))}
+                  disabled={detectionPage <= 1}
+                  className="px-3 py-1 text-xs font-semibold rounded border transition-colors disabled:opacity-30"
+                  style={{ borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-secondary)' }}
+                >
+                  {isEn ? 'Previous' : 'Sebelumnya'}
+                </button>
+                <span className="text-xs font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>
+                  {detectionPage} / {Math.ceil(detectionTotal / 12)}
+                </span>
+                <button
+                  onClick={() => setDetectionPage(p => p + 1)}
+                  disabled={detectionPage >= Math.ceil(detectionTotal / 12)}
+                  className="px-3 py-1 text-xs font-semibold rounded border transition-colors disabled:opacity-30"
+                  style={{ borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-secondary)' }}
+                >
+                  {isEn ? 'Next' : 'Selanjutnya'}
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="py-10 text-center flex flex-col items-center justify-center" style={{ color: 'var(--ifrit-text-muted)' }}>
+            <Camera className="w-8 h-8 mb-2 opacity-30" />
+            <p className="text-sm font-medium" style={{ color: 'var(--ifrit-text-secondary)' }}>
+              {isEn ? 'No fire detection captures yet' : 'Belum ada tangkapan deteksi api'}
+            </p>
+            <p className="text-xs mt-1">
+              {isEn ? 'Images will appear here when the AI detects fire in the camera feed.' : 'Gambar akan muncul di sini saat AI mendeteksi api dari kamera.'}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Lightbox Modal */}
+      {lightboxIdx !== null && detectionImages[lightboxIdx] && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setLightboxIdx(null)}
+        >
+          <div className="relative max-w-4xl w-full mx-4" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setLightboxIdx(null)}
+              className="absolute -top-10 right-0 text-white/70 hover:text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            {/* Navigation arrows */}
+            {lightboxIdx > 0 && (
+              <button
+                onClick={() => setLightboxIdx(i => i - 1)}
+                className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 text-white/80 hover:text-white hover:bg-black/70 transition-all z-10"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            )}
+            {lightboxIdx < detectionImages.length - 1 && (
+              <button
+                onClick={() => setLightboxIdx(i => i + 1)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 text-white/80 hover:text-white hover:bg-black/70 transition-all z-10"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            )}
+
+            <img
+              src={detectionImages[lightboxIdx].image_url}
+              alt="Detection detail"
+              className="w-full rounded-xl shadow-2xl"
+            />
+            <div className="mt-3 flex items-center justify-between text-white/80">
+              <span className="text-sm font-semibold">
+                {isEn ? 'Confidence' : 'Kepercayaan'}: {(detectionImages[lightboxIdx].max_confidence * 100).toFixed(1)}%
+              </span>
+              <span className="text-xs font-mono">
+                {new Date(detectionImages[lightboxIdx].created_at).toLocaleString(isEn ? 'en-US' : 'id-ID')}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

@@ -57,6 +57,17 @@ class Settings(BaseSettings):
     SENSOR_ONLY_THRESHOLD: float = 0.7          # Min sensor score for Path 3 (camera-less)
     SENSOR_ONLY_CONSECUTIVE_WINDOWS: int = 3    # Consecutive windows needed for Path 3 alert
     WA_CONTACT_COOLDOWN_SECONDS: int = 600      # 10 min per-contact WhatsApp rate limit
+
+    # Alert Deduplication (Redis SET NX)
+    IN_MEMORY_COOLDOWN_SECONDS: int = 30        # Redis dedup TTL per room
+
+    # Confident Vision Override
+    CONFIDENT_IMAGE_THRESHOLD: float = 0.70     # Min avg image score to boost fusion to HIGH
+
+    # Camera Frame Voting (temporal consistency)
+    IMAGE_VOTE_REQUIRED: int = 3                # N detections needed out of window
+    IMAGE_VOTE_WINDOW: int = 5                  # Rolling frame window size
+    IMAGE_CONFIDENCE_FLOOR: float = 0.4         # Min confidence to count as a vote
     
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 

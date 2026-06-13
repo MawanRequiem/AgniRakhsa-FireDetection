@@ -16,6 +16,7 @@ Sensor scoring uses dual-path strategy:
 
 import logging
 import asyncio
+import time as _time_module
 from typing import Optional
 from uuid import UUID
 from datetime import datetime, timezone
@@ -69,6 +70,10 @@ SENSOR_DISPLAY_NAMES = {
 # WhatsApp per-contact cooldown to prevent flooding individuals
 # Key: f"{room_id}:{phone}", Value: timestamp of last message sent
 _wa_contact_cooldowns: dict[str, float] = {}
+
+# ─── Dual-Layer Alert Deduplication ───────────────────────────────────────────
+# Layer 1: Per-room asyncio.Lock prevents coroutine race conditions
+_alert_locks: dict[str, asyncio.Lock] = {}
 
 
 def _compute_sensor_score_from_thresholds(snapshot: dict) -> float:
@@ -340,7 +345,22 @@ async def run_fusion(
         )
     
     fusion_score = min(max(fusion_score, 0.0), 1.0)
-    
+
+    # ─── Confident Vision Override ────────────────────────────────────
+    # When camera AI has high confidence (validated by temporal voting)
+    # but sensors don't contradict, visual evidence alone warrants HIGH.
+    # Prevents confident camera detections from being silenced by safe sensors.
+    if (image_score >= settings.CONFIDENT_IMAGE_THRESHOLD
+            and sensor_score < 0.2
+            and fusion_score < settings.RISK_THRESHOLD_HIGH):
+        logger.warning(
+            f"Vision override: image={image_score:.3f} confident, "
+            f"sensor={sensor_score:.3f} safe, "
+            f"boosted fusion {fusion_score:.3f} → {settings.RISK_THRESHOLD_HIGH}"
+        )
+        fusion_score = settings.RISK_THRESHOLD_HIGH
+        algorithm += "+vision-override"
+
     risk_level = _score_to_risk_level(fusion_score)
     
     logger.info(
@@ -366,8 +386,8 @@ async def run_fusion(
     db_result = supabase.table("fusion_results").insert(insert_data).execute()
     fusion_record = db_result.data[0] if db_result.data else {}
     
-    # Create alert if risk is medium, high or critical (with cooldown)
-    if risk_level in ("medium", "high", "critical"):
+    # Create alert if risk is high or critical (tiered: medium = dashboard-only)
+    if risk_level in ("high", "critical"):
         await _create_alert(
             room_id=room_id,
             fusion_result_id=fusion_record.get("id"),
@@ -560,17 +580,61 @@ async def _create_alert(
     - WebSocket broadcast for real-time frontend notification
     - WhatsApp notification with layman Indonesian language + image
     """
-    import time as _time
-
     room_key = str(room_id) if room_id else "global"
-    now = _time.time()
+    now = _time_module.time()
 
-    # ─── Three-Rule State-Change Alerting ─────────────────────────────────
+    # ─── Layer 1: asyncio.Lock — prevents concurrent coroutine race condition ─
+    if room_key not in _alert_locks:
+        _alert_locks[room_key] = asyncio.Lock()
+
+    async with _alert_locks[room_key]:
+        await _create_alert_inner(
+            room_key=room_key,
+            now=now,
+            room_id=room_id,
+            fusion_result_id=fusion_result_id,
+            risk_level=risk_level,
+            fusion_score=fusion_score,
+            image_score=image_score,
+            sensor_score=sensor_score,
+            sensor_snapshot=sensor_snapshot,
+            image_url=image_url,
+        )
+
+
+async def _create_alert_inner(
+    room_key: str,
+    now: float,
+    room_id: Optional[UUID],
+    fusion_result_id: Optional[str],
+    risk_level: str,
+    fusion_score: float,
+    image_score: float = 0.0,
+    sensor_score: float = 0.0,
+    sensor_snapshot: Optional[dict] = None,
+    image_url: Optional[str] = None,
+) -> None:
+    """
+    Inner alert creation logic, called under asyncio.Lock.
+    """
+    # ─── Layer 2: Redis SET NX — atomic dedup with TTL ────────────────────
+    from app.core.redis import redis_manager
+    r = redis_manager.get_client()
+    if r:
+        dedup_key = f"alert:dedup:{room_key}"
+        if not r.set(dedup_key, "1", nx=True, ex=settings.IN_MEMORY_COOLDOWN_SECONDS):
+            logger.info(
+                f"Alert dedup (Redis SET NX): {dedup_key} already exists, "
+                f"skipping alert for room {room_key}"
+            )
+            return
+
+    # ─── Layer 3: Three-Rule State-Change Alerting ────────────────────────
     # Rule 1: If unacknowledged alert exists with SAME risk_level → SKIP (spam)
     # Rule 2: If unacknowledged alert exists with LOWER risk_level → KIRIM (escalation)
     # Rule 3: No unacknowledged alerts → check grace period since LAST alert
 
-    risk_rank = {"high": 1, "critical": 2}
+    risk_rank = {"medium": 0, "high": 1, "critical": 2}
 
     try:
         last_unack = (

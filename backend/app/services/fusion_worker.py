@@ -39,6 +39,11 @@ MATCH_WINDOW_SECONDS = 2.0
 # Alert only fires when ALL values in the window exceed the threshold
 _sensor_score_buffer: Dict[str, list[float]] = defaultdict(list)
 
+# Camera detection voting buffer for temporal consistency (NFPA 72 inspired)
+# Key: room_id, Value: list of recent image scores (rolling window)
+# Alert only fires when N out of M consecutive frames detect fire
+_image_vote_buffer: Dict[str, list[float]] = defaultdict(list)
+
 
 async def process_buffers():
     """
@@ -81,32 +86,97 @@ async def process_buffers():
                 
                 room_buffer["image"].remove(img_event)
                 room_buffer["sensor"].remove(best_sensor)
+
+                # ─── Temporal Frame Voting ─────────────────────────────
+                # Don't trigger fusion on every frame. Buffer scores and
+                # only fire when N out of M frames confirm a detection.
+                img_score = img_event["score"]
+                conf_floor = settings.IMAGE_CONFIDENCE_FLOOR
                 
-                try:
-                    await fusion_service.run_fusion(
-                        image_score=img_event["score"],
-                        room_id=img_event.get("room_id"),
-                        detection_event_id=img_event.get("detection_event_id"),
-                        sensor_snapshot=best_sensor.get("snapshot"),
-                        image_url=img_event.get("image_url"),
+                if img_score >= conf_floor:
+                    _image_vote_buffer[room_id].append(img_score)
+                else:
+                    _image_vote_buffer[room_id].append(0.0)
+                
+                # Keep only last M frames
+                window = settings.IMAGE_VOTE_WINDOW
+                _image_vote_buffer[room_id] = _image_vote_buffer[room_id][-window:]
+                
+                # Count votes
+                votes = sum(1 for s in _image_vote_buffer[room_id] if s >= conf_floor)
+                required = settings.IMAGE_VOTE_REQUIRED
+                
+                if votes >= required:
+                    # Confirmed detection — use average confident score
+                    confident_scores = [s for s in _image_vote_buffer[room_id] if s >= conf_floor]
+                    avg_score = sum(confident_scores) / len(confident_scores)
+                    _image_vote_buffer[room_id] = []  # Reset after triggering
+                    
+                    logger.info(
+                        f"Camera vote confirmed for room {room_id}: "
+                        f"{votes}/{required} votes, avg_score={avg_score:.3f}"
                     )
-                except Exception as e:
-                    logger.error(f"Error running fusion (path 1): {e}")
-            else:
-                # Path 2: Image expired without sensor match
-                if now - img_event["timestamp"] > MATCH_WINDOW_SECONDS:
-                    logger.info(f"Image event for room {room_id} expired without sensor match. Fusing anyway.")
-                    room_buffer["image"].remove(img_event)
+                    
                     try:
                         await fusion_service.run_fusion(
-                            image_score=img_event["score"],
+                            image_score=avg_score,
                             room_id=img_event.get("room_id"),
                             detection_event_id=img_event.get("detection_event_id"),
-                            sensor_snapshot=None,
+                            sensor_snapshot=best_sensor.get("snapshot"),
                             image_url=img_event.get("image_url"),
                         )
                     except Exception as e:
-                        logger.error(f"Error running fusion (path 2): {e}")
+                        logger.error(f"Error running fusion (path 1): {e}")
+                else:
+                    logger.debug(
+                        f"Camera vote buffer for room {room_id}: "
+                        f"{votes}/{required} (building...)"
+                    )
+            else:
+                # Path 2: Image expired without sensor match
+                if now - img_event["timestamp"] > MATCH_WINDOW_SECONDS:
+                    room_buffer["image"].remove(img_event)
+
+                    # Apply same voting logic for path 2
+                    img_score = img_event["score"]
+                    conf_floor = settings.IMAGE_CONFIDENCE_FLOOR
+                    
+                    if img_score >= conf_floor:
+                        _image_vote_buffer[room_id].append(img_score)
+                    else:
+                        _image_vote_buffer[room_id].append(0.0)
+                    
+                    window = settings.IMAGE_VOTE_WINDOW
+                    _image_vote_buffer[room_id] = _image_vote_buffer[room_id][-window:]
+                    
+                    votes = sum(1 for s in _image_vote_buffer[room_id] if s >= conf_floor)
+                    required = settings.IMAGE_VOTE_REQUIRED
+                    
+                    if votes >= required:
+                        confident_scores = [s for s in _image_vote_buffer[room_id] if s >= conf_floor]
+                        avg_score = sum(confident_scores) / len(confident_scores)
+                        _image_vote_buffer[room_id] = []
+                        
+                        logger.info(
+                            f"Camera vote confirmed (path 2) for room {room_id}: "
+                            f"{votes}/{required} votes, avg_score={avg_score:.3f}"
+                        )
+                        
+                        try:
+                            await fusion_service.run_fusion(
+                                image_score=avg_score,
+                                room_id=img_event.get("room_id"),
+                                detection_event_id=img_event.get("detection_event_id"),
+                                sensor_snapshot=None,
+                                image_url=img_event.get("image_url"),
+                            )
+                        except Exception as e:
+                            logger.error(f"Error running fusion (path 2): {e}")
+                    else:
+                        logger.debug(
+                            f"Camera vote buffer (path 2) for room {room_id}: "
+                            f"{votes}/{required} (building...)"
+                        )
         
         # ─── Path 3: Sensor-only evaluation ──────────────────────────────
         # Process sensor events that have NO matching image event.

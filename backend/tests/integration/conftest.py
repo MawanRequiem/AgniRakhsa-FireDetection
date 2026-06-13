@@ -32,6 +32,8 @@ class _QueryResult:
         self.count = count
 
 
+_shared_supabase_mock_obj = MagicMock()
+
 class SupabaseMock:
     """
     Reusable Supabase client mock that supports the chainable query pattern:
@@ -39,6 +41,7 @@ class SupabaseMock:
     """
 
     def __init__(self):
+        self.mock = _shared_supabase_mock_obj
         self._create_chainable()
 
     def _make_query_chain(self, default_data=None, default_count=0):
@@ -61,7 +64,7 @@ class SupabaseMock:
 
     def _create_chainable(self):
         """Build the mock supabase object with all common query patterns."""
-        self.mock = MagicMock()
+        self.mock.reset_mock()
 
         self.mock.table = MagicMock()
         self.mock.table.return_value = self._make_query_chain()

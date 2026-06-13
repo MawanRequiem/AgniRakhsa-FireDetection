@@ -120,3 +120,43 @@ async def update_room(room_id: UUID, room: RoomUpdate, current_user: CurrentUser
     if not res.data:
         raise HTTPException(404, "Room not found")
     return res.data[0]
+
+
+@router.get("/{room_id}/detections")
+async def get_room_detections(
+    room_id: UUID,
+    page: int = 1,
+    page_size: int = 20,
+    user: OptionalUser = None,
+):
+    """
+    Get paginated fire detection image logs for a specific room.
+
+    Returns only detection events that have a captured image (image_url is not null),
+    ordered by most recent first. Each entry includes the annotated image URL,
+    detection confidence, bounding boxes, and timestamp.
+    """
+    if not _check_room_access(user, str(room_id)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not subscribed to this room",
+        )
+
+    offset = (page - 1) * page_size
+
+    result = (
+        supabase.table("detection_events")
+        .select("id, image_url, max_confidence, detection_class, detections, model_name, created_at", count="exact")
+        .eq("room_id", str(room_id))
+        .not_.is_("image_url", "null")
+        .order("created_at", desc=True)
+        .range(offset, offset + page_size - 1)
+        .execute()
+    )
+
+    return {
+        "items": result.data or [],
+        "total": result.count or 0,
+        "page": page,
+        "page_size": page_size,
+    }

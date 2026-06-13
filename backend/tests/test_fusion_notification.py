@@ -529,8 +529,24 @@ class TestImageOnlyVetoLogic:
     @pytest.mark.asyncio
     @patch("app.services.fusion_service.supabase")
     async def test_image_vetoed_by_safe_sensors(self, mock_supabase):
-        """If image is 1.0 but sensors are safe (0.0), it should be Medium Risk (vetoed)."""
+        """If image is 0.6 (below override threshold 0.7) and sensors are safe (0.0), it should be Medium Risk (vetoed)."""
         # sensor_snapshot is NOT empty, meaning sensors are active
+        snapshot = {"mq2": 150} # Safe value
+        
+        res = await run_fusion(
+            image_score=0.6, 
+            room_id=None,
+            sensor_snapshot=snapshot
+        )
+        
+        # Image score = 0.6, Sensor score = 0.0, Fusion = 0.55 * 0.6 = 0.33
+        assert res["risk_level"] == "low"
+        assert res["fusion_score"] == 0.33
+
+    @pytest.mark.asyncio
+    @patch("app.services.fusion_service.supabase")
+    async def test_image_override_when_sensors_safe(self, mock_supabase):
+        """If image is 1.0 (>= confident threshold 0.7) and sensors are safe, it overrides veto and triggers High Risk."""
         snapshot = {"mq2": 150} # Safe value
         
         res = await run_fusion(
@@ -539,9 +555,9 @@ class TestImageOnlyVetoLogic:
             sensor_snapshot=snapshot
         )
         
-        # Image score = 1.0, Sensor score = 0.0, Fusion = 0.55 * 1.0 = 0.55
-        assert res["risk_level"] == "medium"
-        assert res["fusion_score"] == 0.55
+        # Confident image override: score is boosted to high threshold (0.60)
+        assert res["risk_level"] == "high"
+        assert res["fusion_score"] == 0.60
 
     @pytest.mark.asyncio
     @patch("app.services.fusion_service.supabase")

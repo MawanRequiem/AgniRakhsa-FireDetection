@@ -118,19 +118,24 @@ async def camera_stream_endpoint(websocket: WebSocket, camera_id: str):
                 risk_level_cache = "pending"
                 
                 if r_client and room_uuid:
-                    stream_data = {
-                        "type": "image",
-                        "room_id": str(room_uuid),
-                        "score": str(det_result.get("max_confidence", 0.0)),
-                        "timestamp": str(time.time()),
-                        "detection_event_id": str(det_result.get("id"))
-                    }
-                    # Include image_url if capture was taken
-                    image_url = det_result.get("image_url")
-                    if image_url:
-                        stream_data["image_url"] = image_url
+                    # Only push frames with actual detections to fusion pipeline.
+                    # Empty frames (score=0) waste resources and can cause spurious
+                    # fusion events when combined with elevated sensor readings.
+                    frame_score = det_result.get("max_confidence", 0.0)
+                    if frame_score > 0:
+                        stream_data = {
+                            "type": "image",
+                            "room_id": str(room_uuid),
+                            "score": str(frame_score),
+                            "timestamp": str(time.time()),
+                            "detection_event_id": str(det_result.get("id"))
+                        }
+                        # Include image_url if capture was taken
+                        image_url = det_result.get("image_url")
+                        if image_url:
+                            stream_data["image_url"] = image_url
 
-                    r_client.xadd("fusion:events", stream_data)
+                        r_client.xadd("fusion:events", stream_data)
                 else:
                     # Fallback
                     fusion_res = await fusion_service.run_fusion(
