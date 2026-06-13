@@ -473,6 +473,7 @@ export default function RoomDetail() {
               )}
            </div>
       </div>
+      </div>
 
       {/* Detection Image Gallery */}
       <h2 className="text-sm font-bold mb-2 mt-8 pt-4 border-t" style={{ color: 'var(--ifrit-text-muted)', borderColor: 'var(--ifrit-border)' }}>
