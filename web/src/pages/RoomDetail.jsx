@@ -10,6 +10,8 @@ import { useDashboardStore } from '@/stores/useDashboardStore';
 import RoomDeviceCalibration from '@/components/devices/RoomDeviceCalibration';
 import RoomDeviceExportCard from '@/components/devices/RoomDeviceExportCard';
 import { useUIStore } from '@/store/store';
+import { getLocalizedMessage, getLocalizedExplanation } from '@/lib/translations';
+
 
 const SENSOR_CONFIG = {
   // Temperature keys
@@ -439,7 +441,7 @@ export default function RoomDetail() {
         </div>
 
         {/* Alert History */}
-        <div className="lg:col-span-2 border rounded-xl flex flex-col overflow-hidden h-full" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)', minHeight: '300px' }}>
+        <div className="lg:col-span-2 border rounded-xl flex flex-col overflow-hidden h-[400px]" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
            <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--ifrit-border)', backgroundColor: 'var(--ifrit-bg-secondary)' }}>
               <div className="flex items-center gap-2">
                 <History className="w-4 h-4" style={{ color: 'var(--ifrit-text-secondary)' }} />
@@ -449,18 +451,25 @@ export default function RoomDetail() {
               </div>
               <span className="text-xs font-mono px-2 rounded-full" style={{ backgroundColor: 'var(--ifrit-bg-primary)', color: 'var(--ifrit-text-muted)' }}>{alerts.length}</span>
            </div>
-           <div className="p-3 space-y-3 overflow-y-auto flex-1 h-[300px]">
+           <div className="p-3 space-y-3 overflow-y-auto flex-1">
               {alerts.length > 0 ? (
                 alerts.map(a => (
                   <div key={a.id} className="p-3 rounded-md border" style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)' }}>
                     <div className="flex items-center gap-2 mb-1">
                       <StatusIndicator status={a.severity === 'critical' ? 'fire' : 'warning'} size="sm" />
                       <span className="text-xs font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>
-                        {a.alert_type || (isEn ? 'Alert' : 'Peringatan')}
+                        {a.severity === 'critical' ? (isEn ? 'Fire Danger' : 'Bahaya Kebakaran') : (isEn ? 'Warning Alert' : 'Peringatan Bahaya')}
                       </span>
                     </div>
-                    <p className="text-xs" style={{ color: 'var(--ifrit-text-secondary)' }}>{a.message}</p>
-                    <span className="text-[10px] font-mono mt-1 block" style={{ color: 'var(--ifrit-text-muted)' }}>
+                    <p className="text-xs font-semibold" style={{ color: 'var(--ifrit-text-secondary)' }}>
+                      {getLocalizedMessage(a.message, language)}
+                    </p>
+                    {getLocalizedExplanation(a.message, language) && (
+                      <div className="text-[11px] mt-1 italic leading-relaxed" style={{ color: 'var(--ifrit-text-muted)' }}>
+                        {getLocalizedExplanation(a.message, language)}
+                      </div>
+                    )}
+                    <span className="text-[10px] font-mono mt-2 block border-t pt-1" style={{ color: 'var(--ifrit-text-muted)', borderColor: 'var(--ifrit-border)' }}>
                       {new Date(a.created_at).toLocaleString(isEn ? 'en-US' : 'id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
