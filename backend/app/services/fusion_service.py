@@ -230,6 +230,83 @@ def score_sensors(room_id: Optional[str], snapshot: Optional[dict] = None) -> tu
     return sensor_score, algorithm
 
 
+def _get_elevated_sensors_from_snapshot(snapshot: dict) -> list[dict]:
+    """
+    Inspect sensor snapshot and return all sensors that crossed warning/danger thresholds.
+    
+    Returns list of dicts sorted by severity (danger first, then warning):
+        [{"sensor_type": "mq6", "sensor_name_id": "Gas LPG", "sensor_name_en": "LPG Gas",
+          "value": 1500, "unit": "ppm", "threshold_crossed": "danger", 
+          "threshold_value": 1400}, ...]
+    """
+    elevated = []
+    if not snapshot:
+        return elevated
+    
+    for sensor_type, data in snapshot.items():
+        # FLAME sensor is no longer tracked for alert attribution
+        if sensor_type.lower() == "flame":
+            continue
+        if isinstance(data, dict):
+            value = data.get("value")
+        elif isinstance(data, (int, float)):
+            value = float(data)
+        else:
+            continue
+        if value is None:
+            continue
+        
+        threshold = SENSOR_THRESHOLDS.get(sensor_type.lower())
+        if threshold is None:
+            continue
+        
+        safe_max, warning, danger, unit = threshold
+        
+        crossed = None
+        # Inverted sensor: lower = more dangerous
+        if sensor_type.lower() == "shtc3_humidity":
+            if value <= danger:
+                crossed = "danger"
+            elif value <= warning:
+                crossed = "warning"
+        else:
+            # Standard: higher = more dangerous
+            if value >= danger:
+                crossed = "danger"
+            elif value >= warning:
+                crossed = "warning"
+        
+        if crossed:
+            display = SENSOR_DISPLAY_NAMES.get(sensor_type.upper(), (sensor_type.upper(), unit))
+            elevated.append({
+                "sensor_type": sensor_type,
+                "sensor_name_id": display[0],
+                "sensor_name_en": _translate_sensor_name_en(sensor_type),
+                "value": value,
+                "unit": unit,
+                "threshold_crossed": crossed,
+                "threshold_value": danger if crossed == "danger" else warning,
+            })
+    
+    severity_order = {"danger": 0, "warning": 1}
+    elevated.sort(key=lambda x: severity_order.get(x["threshold_crossed"], 2))
+    return elevated
+
+
+def _translate_sensor_name_en(sensor_type: str) -> str:
+    """English name for a sensor type."""
+    mapping = {
+        "mq2": "MQ2 Smoke/Gas",
+        "mq4": "MQ4 Methane (CNG)",
+        "mq6": "MQ6 LPG",
+        "mq9b": "MQ9B Carbon Monoxide (CO)",
+        "flame": "Infrared Flame",
+        "shtc3_temp": "SHTC3 Temperature",
+        "shtc3_humidity": "SHTC3 Humidity",
+    }
+    return mapping.get(sensor_type.lower(), sensor_type.upper())
+
+
 def _score_to_risk_level(fusion_score: float) -> str:
     """Map a fusion score (0-1) to a human-readable risk level."""
     if fusion_score >= settings.RISK_THRESHOLD_CRITICAL:
@@ -443,62 +520,31 @@ def _generate_explainable_narrative(
     """
     has_image = bool(image_url) or image_score > 0.3
     
-    has_flame = False
-    has_smoke = False
-    has_heat = False
-    
-    # Read dynamic thresholds from SENSOR_THRESHOLDS configuration
-    flame_warning = SENSOR_THRESHOLDS["flame"][1]
-    mq2_warning = SENSOR_THRESHOLDS["mq2"][1]
-    temp_warning = SENSOR_THRESHOLDS["shtc3_temp"][1]
-
-    flame_val_num = 9999
-    gas_val_num = 0
-    temp_val_num = 0
-    
-    if sensor_snapshot:
-        # Check flame sensor (active low, value < warning_threshold indicates fire)
-        flame_val = sensor_snapshot.get("FLAME") or sensor_snapshot.get("flame")
-        if flame_val is not None:
-            fv = flame_val if isinstance(flame_val, (int, float)) else flame_val.get("value", 9999)
-            flame_val_num = fv
-            if fv < flame_warning:
-                has_flame = True
-                
-        # Check smoke/gas sensor
-        for gas_key in ("MQ2", "mq2"):
-            gas_val = sensor_snapshot.get(gas_key)
-            if gas_val is not None:
-                gv = gas_val if isinstance(gas_val, (int, float)) else gas_val.get("value", 0)
-                gas_val_num = gv
-                if gv > mq2_warning:
-                    has_smoke = True
-                    break
-                    
-        # Check heat/temp sensor
-        for temp_key in ("SHTC3_TEMP", "shtc3_temp"):
-            temp_val = sensor_snapshot.get(temp_key)
-            if temp_val is not None:
-                tv = temp_val if isinstance(temp_val, (int, float)) else temp_val.get("value", 0)
-                temp_val_num = tv
-                if tv > temp_warning:
-                    has_heat = True
-                    break
-
-    has_sensors = has_flame or has_smoke or has_heat
+    elevated = _get_elevated_sensors_from_snapshot(sensor_snapshot or {})
+    has_sensors = bool(elevated)
 
     # Build descriptive list of sensor anomalies with their exact values and safe threshold references
     reasons_id = []
     reasons_en = []
-    if has_flame:
-        reasons_id.append(f"deteksi radiasi api aktif oleh sensor inframerah (nilai: {flame_val_num:.0f}, batas aman >= {flame_warning:.0f})")
-        reasons_en.append(f"active flame radiation detected by infrared sensor (value: {flame_val_num:.0f}, safe limit >= {flame_warning:.0f})")
-    if has_smoke:
-        reasons_id.append(f"kadar gas/asap tinggi terdeteksi oleh sensor MQ2 ({gas_val_num:.0f} ppm, batas aman < {mq2_warning:.0f} ppm)")
-        reasons_en.append(f"high gas/smoke concentration detected by MQ2 sensor ({gas_val_num:.0f} ppm, safe limit < {mq2_warning:.0f} ppm)")
-    if has_heat:
-        reasons_id.append(f"suhu panas ekstrim terdeteksi oleh sensor SHTC3 ({temp_val_num:.1f}°C, batas aman < {temp_warning:.1f}°C)")
-        reasons_en.append(f"extreme high temperature detected by SHTC3 sensor ({temp_val_num:.1f}°C, safe limit < {temp_warning:.1f}°C)")
+    for s in elevated:
+        st = s["sensor_type"].lower()
+        val = s["value"]
+        unit = s["unit"]
+        threshold_val = s["threshold_value"]
+        name_id = s["sensor_name_id"]
+        name_en = s["sensor_name_en"]
+        if st == "flame":
+            reasons_id.append(f"deteksi radiasi api aktif oleh sensor inframerah (nilai: {val:.0f}, batas aman >= {threshold_val:.0f})")
+            reasons_en.append(f"active flame radiation detected by infrared sensor (value: {val:.0f}, safe limit >= {threshold_val:.0f})")
+        elif st == "shtc3_humidity":
+            reasons_id.append(f"{name_id} sangat rendah terdeteksi ({val:.1f}{unit}, batas aman >= {threshold_val:.1f}{unit})")
+            reasons_en.append(f"very low {name_en} detected ({val:.1f}{unit}, safe limit >= {threshold_val:.1f}{unit})")
+        elif st == "shtc3_temp":
+            reasons_id.append(f"{name_id} sangat tinggi terdeteksi ({val:.1f}{unit}, batas aman < {threshold_val:.1f}{unit})")
+            reasons_en.append(f"high {name_en} detected ({val:.1f}{unit}, safe limit < {threshold_val:.1f}{unit})")
+        else:
+            reasons_id.append(f"{name_id} tinggi terdeteksi ({val:.0f}{unit}, batas aman < {threshold_val:.0f}{unit})")
+            reasons_en.append(f"high {name_en} detected ({val:.0f}{unit}, safe limit < {threshold_val:.0f}{unit})")
 
     desc_id = " serta ".join(reasons_id)
     desc_en = " and ".join(reasons_en)
@@ -538,13 +584,16 @@ def _generate_explainable_narrative(
         # Show actual metrics even if under thresholds, if they triggered a mathematical anomaly (Isolation Forest)
         anomaly_parts_id = []
         anomaly_parts_en = []
-        if gas_val_num > 0:
-            anomaly_parts_id.append(f"gas MQ2: {gas_val_num:.0f} ppm")
-            anomaly_parts_en.append(f"MQ2 gas: {gas_val_num:.0f} ppm")
-        if temp_val_num > 0:
-            anomaly_parts_id.append(f"suhu: {temp_val_num:.1f}°C")
-            anomaly_parts_en.append(f"temp: {temp_val_num:.1f}°C")
-            
+        if sensor_snapshot:
+            for sensor_type, data in sensor_snapshot.items():
+                val = data.get("value") if isinstance(data, dict) else data
+                if val is not None:
+                    display = SENSOR_DISPLAY_NAMES.get(sensor_type.upper())
+                    if display:
+                        name, unit = display
+                        anomaly_parts_id.append(f"{name}: {val:.0f}{unit}")
+                        anomaly_parts_en.append(f"{_translate_sensor_name_en(sensor_type)}: {val:.0f}{unit}")
+
         anomaly_desc_id = ", ".join(anomaly_parts_id)
         anomaly_desc_en = ", ".join(anomaly_parts_en)
         
@@ -867,41 +916,28 @@ async def _create_alert_inner(
             risk_display_id = risk_labels_id.get(risk_level, risk_level.upper())
             risk_display_en = risk_labels_en.get(risk_level, risk_level.upper())
             
-            # Determine what was detected using dynamic thresholds from SENSOR_THRESHOLDS
-            flame_warning = SENSOR_THRESHOLDS["flame"][1]
-            mq2_warning = SENSOR_THRESHOLDS["mq2"][1]
-            temp_warning = SENSOR_THRESHOLDS["shtc3_temp"][1]
-
             detection_sources_id = []
             detection_sources_en = []
             if sensor_snapshot:
-                # Check flame sensor (analog IR: lower value = fire detected)
-                flame_val = sensor_snapshot.get("FLAME") or sensor_snapshot.get("flame")
-                if flame_val is not None:
-                    fv = flame_val if isinstance(flame_val, (int, float)) else flame_val.get("value", 9999)
-                    if fv < flame_warning:
+                elevated = _get_elevated_sensors_from_snapshot(sensor_snapshot)
+                for s in elevated:
+                    st = s["sensor_type"].lower()
+                    val = s["value"]
+                    unit = s["unit"]
+                    name_id = s["sensor_name_id"]
+                    name_en = s["sensor_name_en"]
+                    if st == "flame":
                         detection_sources_id.append("Api terdeteksi oleh sensor inframerah")
                         detection_sources_en.append("Fire detected by infrared sensor")
-                
-                # Check for high gas
-                for gas_key in ("MQ2", "mq2"):
-                    gas_val = sensor_snapshot.get(gas_key)
-                    if gas_val is not None:
-                        gv = gas_val if isinstance(gas_val, (int, float)) else gas_val.get("value", 0)
-                        if gv > mq2_warning:
-                            detection_sources_id.append("Kadar asap tinggi terdeteksi")
-                            detection_sources_en.append("High smoke level detected")
-                            break
-                
-                # Check for high temp
-                for temp_key in ("SHTC3_TEMP", "shtc3_temp"):
-                    temp_val = sensor_snapshot.get(temp_key)
-                    if temp_val is not None:
-                        tv = temp_val if isinstance(temp_val, (int, float)) else temp_val.get("value", 0)
-                        if tv > temp_warning:
-                            detection_sources_id.append(f"Suhu ruangan sangat tinggi ({tv:.0f}°C)")
-                            detection_sources_en.append(f"Room temperature very high ({tv:.0f}°C)")
-                            break
+                    elif st == "shtc3_humidity":
+                        detection_sources_id.append(f"{name_id} sangat rendah ({val:.0f}{unit})")
+                        detection_sources_en.append(f"Very low {name_en} ({val:.0f}{unit})")
+                    elif st == "shtc3_temp":
+                        detection_sources_id.append(f"{name_id} sangat tinggi ({val:.0f}{unit})")
+                        detection_sources_en.append(f"Room temperature very high ({val:.0f}{unit})")
+                    else:
+                        detection_sources_id.append(f"{name_id} tinggi ({val:.0f} {unit})")
+                        detection_sources_en.append(f"High {name_en} ({val:.0f} {unit})")
 
             if detection_sources_id:
                 detection_text_id = "\n".join(detection_sources_id)

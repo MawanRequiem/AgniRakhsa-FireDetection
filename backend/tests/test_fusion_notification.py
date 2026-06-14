@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch, call
 
 from app.services.fusion_service import (
     _compute_sensor_score_from_thresholds,
+    _get_elevated_sensors_from_snapshot,
     _score_to_risk_level,
     _format_sensor_details_for_wa,
     _generate_explainable_narrative,
@@ -216,6 +217,57 @@ class TestSensorDetailsForWA:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Elevated Sensor Extraction
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestGetElevatedSensorsFromSnapshot:
+    """Tests for _get_elevated_sensors_from_snapshot threshold inspection."""
+
+    def test_normal_room_zero_elevated(self, sensor_snapshot_normal):
+        result = _get_elevated_sensors_from_snapshot(sensor_snapshot_normal)
+        assert result == []
+
+    def test_fire_room_multiple_elevated(self, sensor_snapshot_fire):
+        result = _get_elevated_sensors_from_snapshot(sensor_snapshot_fire)
+        types = [r["sensor_type"] for r in result]
+        assert "mq2" in types
+        assert "mq6" in types
+        assert "shtc3_temp" in types
+        assert "shtc3_humidity" in types
+        # Danger sensors come first
+        assert result[0]["threshold_crossed"] == "danger"
+
+    def test_mq6_mentioned_as_lpg(self, sensor_snapshot_fire):
+        result = _get_elevated_sensors_from_snapshot(sensor_snapshot_fire)
+        mq6 = next((r for r in result if r["sensor_type"] == "mq6"), None)
+        assert mq6 is not None
+        assert mq6["sensor_name_id"] == "Gas LPG"
+        assert mq6["sensor_name_en"] == "MQ6 LPG"
+
+    def test_mq4_mentioned_as_methane(self):
+        snapshot = {"mq4": {"value": 6000}}
+        result = _get_elevated_sensors_from_snapshot(snapshot)
+        assert len(result) == 1
+        assert result[0]["sensor_name_id"] == "Gas Metana (CNG)"
+        assert result[0]["sensor_name_en"] == "MQ4 Methane (CNG)"
+
+    def test_mq9b_mentioned_as_co(self):
+        snapshot = {"mq9b": {"value": 200}}
+        result = _get_elevated_sensors_from_snapshot(snapshot)
+        assert len(result) == 1
+        assert result[0]["sensor_name_id"] == "Karbon Monoksida (CO)"
+        assert result[0]["sensor_name_en"] == "MQ9B Carbon Monoxide (CO)"
+
+    def test_humidity_low_is_danger(self):
+        snapshot = {"shtc3_humidity": {"value": 15}}
+        result = _get_elevated_sensors_from_snapshot(snapshot)
+        assert len(result) == 1
+        assert result[0]["threshold_crossed"] == "danger"
+
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Explainable Narrative
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -271,6 +323,16 @@ class TestExplainableNarrative:
         assert len(result) == 2
         assert isinstance(result[0], str)
         assert isinstance(result[1], str)
+
+    def test_fire_narrative_mentions_specific_gas(self, sensor_snapshot_fire):
+        nid, nen = _generate_explainable_narrative(
+            image_score=0.1,
+            sensor_score=0.9,
+            sensor_snapshot=sensor_snapshot_fire,
+            image_url=None,
+        )
+        # Should mention LPG, not just generic "smoke"
+        assert "Gas LPG" in nid or "LPG" in nen
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
