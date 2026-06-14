@@ -10,6 +10,7 @@ from typing import Dict
 from uuid import UUID
 
 from app.core.db import supabase
+from app.core.config import settings
 from app.services import detection_service, fusion_service
 from app.api.ws_manager import manager
 
@@ -28,6 +29,13 @@ async def camera_stream_endpoint(websocket: WebSocket, camera_id: str):
     Runs AI inference and broadcasts the result via the dashboard websocket.
     """
     logger.info(f"New camera stream connection attempt for camera: {camera_id}")
+    
+    # Verify Device Provisioning Key
+    device_key = websocket.headers.get("X-Device-Key")
+    if not device_key or device_key != settings.DEVICE_PROVISIONING_KEY:
+        await websocket.close(code=4003, reason="Unauthorized: Invalid Device Key")
+        logger.warning(f"Rejected stream: Unauthorized access attempt for camera {camera_id}")
+        return
     
     # Verify camera exists and resolve room_id + device_id
     res = supabase.table("cameras").select("*").eq("id", camera_id).execute()

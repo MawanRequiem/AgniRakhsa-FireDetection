@@ -11,7 +11,7 @@ from app.schemas.sensor import (
     SensorReadingBatch, SensorReadingsResponse, SensorOut, SensorLatest
 )
 from app.services import sensor_service
-from app.api.deps import CurrentUser, OptionalUser, get_subscribed_room_ids
+from app.api.deps import CurrentUser, OptionalUser, get_subscribed_room_ids, verify_device_key
 from app.core.db import supabase
 
 router = APIRouter(prefix="/sensors", tags=["sensors"])
@@ -55,7 +55,10 @@ def _check_sensor_access(user: OptionalUser, sensor_id: str | None = None, room_
 
 
 @router.post("/readings/batch")
-async def ingest_sensor_batch(batch: SensorReadingBatch):
+async def ingest_sensor_batch(
+    batch: SensorReadingBatch,
+    api_key: str = Depends(verify_device_key)
+):
     """
     Ingest a batch of sensor readings from an IoT device.
     (e.g., from an ESP32 sending MQ2, MQ4, etc. data every few seconds).

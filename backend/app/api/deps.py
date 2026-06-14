@@ -4,6 +4,18 @@ import jwt
 from pydantic import ValidationError, BaseModel
 from app.core.config import settings
 from app.core.db import supabase
+from fastapi.security import APIKeyHeader
+
+device_key_header = APIKeyHeader(name="X-Device-Key", auto_error=False)
+
+def verify_device_key(api_key: str = Depends(device_key_header)):
+    """Verify that the provided X-Device-Key matches the DEVICE_PROVISIONING_KEY."""
+    if not api_key or api_key != settings.DEVICE_PROVISIONING_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid or missing device API key",
+        )
+    return api_key
 
 class User(BaseModel):
     id: str

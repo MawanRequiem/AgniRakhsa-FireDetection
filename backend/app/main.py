@@ -29,8 +29,8 @@ async def lifespan(app: FastAPI):
     _DEFAULT_SECRET = "ag-super-secret-key-pls-change-in-prod-2026"
     if settings.SECRET_KEY == _DEFAULT_SECRET:
         if _env == "production":
-            raise RuntimeError(
-                "FATAL: SECRET_KEY must be changed in production! "
+            logger.error(
+                "CRITICAL SECURITY RISK: SECRET_KEY must be changed in production! "
                 "Set a strong random key in your .env file."
             )
         else:
@@ -43,13 +43,11 @@ async def lifespan(app: FastAPI):
     _DEFAULT_DEVICE_KEY = "CHANGE-ME-factory-provisioning-master-key"
 
     if settings.DEVICE_PROVISIONING_KEY == _DEFAULT_DEVICE_KEY:
-
         if _env == "production":
-            raise RuntimeError(
-                "FATAL: DEVICE_PROVISIONING_KEY must be changed "
+            logger.error(
+                "CRITICAL SECURITY RISK: DEVICE_PROVISIONING_KEY must be changed "
                 "in production! Set a strong random key in your .env file."
             )
-
         else:
             logger.warning(
                 "⚠️ Using default DEVICE_PROVISIONING_KEY — "
@@ -100,12 +98,7 @@ app = FastAPI(
 # CORS — izinkan frontend dev server dan production domain
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "https://ifrit.space",
-        "https://www.ifrit.space",
-    ],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

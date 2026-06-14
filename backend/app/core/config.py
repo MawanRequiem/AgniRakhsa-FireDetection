@@ -8,6 +8,13 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "ag-super-secret-key-pls-change-in-prod-2026"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
+    
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://ifrit.space",
+        "https://www.ifrit.space"
+    ]
 
     # Device Provisioning Security
     DEVICE_PROVISIONING_KEY: str = "CHANGE-ME-factory-provisioning-master-key"

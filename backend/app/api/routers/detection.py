@@ -7,13 +7,13 @@ Handles image uploads from IoT devices for AI inference.
 from fastapi import APIRouter, File, UploadFile, Depends, Form, HTTPException
 from typing import Optional
 from uuid import UUID
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import io
 
 from app.schemas.detection import DetectionResponse, DetectionHistoryResponse, RiskAssessment
 from app.services import detection_service, fusion_service
 from app.ai import registry
-from app.api.deps import CurrentUser
+from app.api.deps import CurrentUser, verify_device_key
 
 router = APIRouter(prefix="/detection", tags=["detection"])
 
@@ -23,6 +23,7 @@ async def detect_image(
     file: UploadFile = File(...),
     device_id: Optional[UUID] = Form(None),
     room_id: Optional[UUID] = Form(None),
+    api_key: str = Depends(verify_device_key),
 ):
     """
     Upload an image for fire detection inference.
@@ -36,8 +37,12 @@ async def detect_image(
     
     try:
         contents = await file.read()
+        if len(contents) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="Payload Too Large: File must be under 5MB")
         image = Image.open(io.BytesIO(contents)).convert("RGB")
-    except Exception as e:
+    except UnidentifiedImageError:
+        raise HTTPException(400, "Invalid image data: Cannot identify image file")
+    except ValueError as e:
         raise HTTPException(400, f"Invalid image data: {e}")
     
     # 1. Run AI inference (includes image capture & upload)
@@ -84,6 +89,7 @@ async def detect_image(
 
 @router.get("/history", response_model=DetectionHistoryResponse)
 async def get_history(
+    current_user: CurrentUser,
     page: int = 1,
     page_size: int = 20,
     room_id: Optional[UUID] = None,
