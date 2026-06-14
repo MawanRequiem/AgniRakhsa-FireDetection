@@ -30,7 +30,10 @@ String wifiPassword = "";
 // --- Backend API Configuration ---
 const char *API_BASE_URL = "https://ifrit.space/api/v1";
 
-// --- Device Configuration ---
+// --- Security Configuration ---
+const char *API_KEY = "CHANGE-ME-factory-provisioning-master-key";
+
+// --- Telemetry Configuration ---
 const char *DEVICE_NAME = "Demo Hari Selasa";
 const char *ROOM_NAME = "Ruang Raka Herdika";
 
@@ -955,6 +958,7 @@ void sendHeartbeat() {
   String url = String(API_BASE_URL) + "/devices/" + deviceId + "/heartbeat";
   beginHttp(http, secureClient, plainClient, url);
   http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-Device-Key", API_KEY);
 
   JsonDocument doc;
   doc["firmware_version"] = FIRMWARE_VERSION;
@@ -1270,6 +1274,7 @@ void loop() {
 
         telemetryHttp.addHeader("Content-Type", "application/json");
         telemetryHttp.addHeader("Connection", "keep-alive");
+        telemetryHttp.addHeader("X-Device-Key", API_KEY);
 
         telemetryHttpInitialized = true;
 
