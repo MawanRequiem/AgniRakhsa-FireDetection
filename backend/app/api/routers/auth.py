@@ -4,7 +4,7 @@ from typing import Annotated
 import secrets
 from app.core import security
 from app.core.config import settings
-from app.core.db import supabase, supabase_admin
+from app.services import user_service
 from app.schemas.user import UserCreate
 import app.api.deps
 
@@ -25,8 +25,7 @@ def register(request: Request, response: Response, body: UserCreate):
         )
 
     # 1. Check for duplicate email
-    existing = supabase.table("users").select("id").eq("email", body.email).execute()
-    if existing.data:
+    if user_service.check_email_exists(body.email):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered",
@@ -34,20 +33,14 @@ def register(request: Request, response: Response, body: UserCreate):
 
     # 2. Hash password and insert user via service_role client
     hashed_pw = security.get_password_hash(body.password)
-    insert_res = supabase_admin.table("users").insert({
-        "email": body.email,
-        "password_hash": hashed_pw,
-        "role": "user",
-        "is_active": True,
-    }).execute()
+    user = user_service.create_user_admin(body.email, hashed_pw, role="user")
 
-    if not insert_res.data:
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create user",
         )
 
-    user = insert_res.data[0]
 
     # 3. Generate CSRF and JWT, set cookie (same as login)
     csrf_token = secrets.token_urlsafe(32)
@@ -61,7 +54,7 @@ def register(request: Request, response: Response, body: UserCreate):
         secure=is_secure,
         samesite="lax",
         path="/",
-        max_age=8 * 24 * 60 * 60,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
     return {
@@ -86,16 +79,14 @@ def login(
     menetapkan cookie HttpOnly untuk JWT, dan mengembalikan token CSRF.
     """
     # 1. Fetch user dari tabel users
-    user_res = supabase.table("users").select("*").eq("email", form_data.username).execute()
-    users = user_res.data
+    user = user_service.get_user_by_email(form_data.username)
     
-    if not users or not security.verify_password(form_data.password, users[0]["password_hash"]):
+    if not user or not security.verify_password(form_data.password, user["password_hash"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
         
-    user = users[0]
     if not user.get("is_active", True):
         raise HTTPException(status_code=400, detail="Inactive user")
 
@@ -114,7 +105,7 @@ def login(
         secure=is_secure,
         samesite="lax",
         path="/",
-        max_age=8 * 24 * 60 * 60 # Berlaku 8 hari
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60 # Berlaku sesuai config
     )
 
     return {
