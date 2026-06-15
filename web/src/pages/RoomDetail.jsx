@@ -368,18 +368,6 @@ export default function RoomDetail() {
               <SensorBar key={k} label={SENSOR_CONFIG[k].label} value={v} unit={SENSOR_CONFIG[k].unit} type="gas" />
             )) : <p className="text-xs text-[var(--ifrit-text-muted)] italic">{isEn ? 'No active smoke/gas detectors.' : 'Tidak ada sensor asap/gas aktif.'}</p>}
           </div>
-
-          <div className="border rounded-xl p-4" style={{ backgroundColor: 'var(--ifrit-bg-primary)', borderColor: 'var(--ifrit-border)' }}>
-            <div className="flex items-center gap-2 mb-4">
-              <Flame className="w-4 h-4 text-[var(--ifrit-fire)]" />
-              <h3 className="text-sm font-bold" style={{ color: 'var(--ifrit-text-primary)' }}>
-                {isEn ? 'Flame Detectors' : 'Detektor Api'}
-              </h3>
-            </div>
-            {fireSensors.length > 0 ? fireSensors.map(([k, v]) => (
-              <SensorBar key={k} label={SENSOR_CONFIG[k].label} value={v} unit={SENSOR_CONFIG[k].unit} type="fire" />
-            )) : <p className="text-xs text-[var(--ifrit-text-muted)] italic">{isEn ? 'No active flame detectors.' : 'Tidak ada sensor deteksi api aktif.'}</p>}
-          </div>
         </div>
 
       </div>
