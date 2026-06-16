@@ -4,6 +4,7 @@ import ScrollReveal from '@landing/components/ui/ScrollReveal';
 export default function Problem() {
   const { t } = useLanguage();
   const stats = t('problem.stats');
+  const trends = t('problem.trends');
 
   return (
     <section className="relative overflow-hidden" id="problem">
@@ -53,7 +54,7 @@ export default function Problem() {
                       {stat.value}
                     </span>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-ifrit-red/70">
-                      {['↑ 12% YoY', '↓ Kritis', '↑ Tertinggal'][i] || ''}
+                      {trends[i] || ''}
                     </span>
                   </div>
                   <div className="h-1 bg-light-border rounded-full overflow-hidden mb-2">

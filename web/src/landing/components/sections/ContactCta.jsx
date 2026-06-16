@@ -8,13 +8,24 @@ import Button from '@landing/components/ui/Button';
 export default function ContactCta() {
   const { t } = useLanguage();
   const form = t('contactCta.form');
+  const info = t('contact.info');
   const [submitted, setSubmitted] = useState(false);
-  const [sending, setSending] = useState(false);
 
   function handleSubmit(e) {
     e.preventDefault();
-    setSending(true);
-    setTimeout(() => { setSending(false); setSubmitted(true); }, 800);
+    const name = e.target.elements['contact-name'].value;
+    const email = e.target.elements['contact-email'].value;
+    const company = e.target.elements['contact-company'].value || 'N/A';
+    const interest = e.target.elements['contact-interest'].value;
+    const message = e.target.elements['contact-message'].value || '';
+
+    const subject = encodeURIComponent(`IFRIT Inquiry: ${interest}`);
+    const body = encodeURIComponent(
+      `Name: ${name}\nEmail: ${email}\nCompany: ${company}\nInterest: ${interest}\n\nMessage:\n${message}`
+    );
+
+    window.location.href = `mailto:${info.email}?subject=${subject}&body=${body}`;
+    setSubmitted(true);
   }
 
   return (
@@ -146,8 +157,8 @@ export default function ContactCta() {
                   />
                 </div>
 
-                <Button type="submit" size="lg" className="mt-2 w-full justify-center" disabled={sending}>
-                  {sending ? form.sending : form.submit}
+                <Button type="submit" size="lg" className="mt-2 w-full justify-center">
+                  {form.submit}
                 </Button>
               </form>
             )}

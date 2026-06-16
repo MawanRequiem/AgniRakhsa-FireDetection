@@ -12,6 +12,18 @@ export default function ContactPage() {
 
   function handleSubmit(e) {
     e.preventDefault();
+    const name = e.target.elements['c-name'].value;
+    const email = e.target.elements['c-email'].value;
+    const company = e.target.elements['c-company'].value || 'N/A';
+    const interest = e.target.elements['c-interest'].value;
+    const message = e.target.elements['c-message'].value || '';
+
+    const subject = encodeURIComponent(`IFRIT Inquiry: ${interest}`);
+    const body = encodeURIComponent(
+      `Name: ${name}\nEmail: ${email}\nCompany: ${company}\nInterest: ${interest}\n\nMessage:\n${message}`
+    );
+
+    window.location.href = `mailto:${info.email}?subject=${subject}&body=${body}`;
     setSubmitted(true);
   }
 

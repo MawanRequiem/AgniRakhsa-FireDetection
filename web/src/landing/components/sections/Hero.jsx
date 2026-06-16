@@ -138,14 +138,14 @@ export default function Hero() {
                     <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-green-500 animate-ping opacity-30" style={{ animationDuration: '3s' }} />
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-white/50 uppercase tracking-wider">System Status</p>
-                    <p className="text-sm font-mono font-bold text-green-400">OPERATIONAL</p>
+                    <p className="text-xs font-bold text-white/50 uppercase tracking-wider">{t('hero.systemStatus')}</p>
+                    <p className="text-sm font-mono font-bold text-green-400">{t('hero.operational')}</p>
                   </div>
                 </div>
                 <div className="w-px h-8 bg-white/8" />
                 <div>
-                  <p className="text-xs font-bold text-white/50 uppercase tracking-wider">Response Time</p>
-                  <p className="text-sm font-mono font-bold text-white/60">&lt;1.2s</p>
+                  <p className="text-xs font-bold text-white/50 uppercase tracking-wider">{t('hero.responseTime')}</p>
+                  <p className="text-sm font-mono font-bold text-white/60">{t('hero.responseTimeValue')}</p>
                 </div>
               </div>
             </motion.div>
@@ -185,11 +185,11 @@ export default function Hero() {
               {/* REC badge */}
               <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-dark-bg/60 border border-white/5">
                 <div className="w-2 h-2 rounded-full bg-ifrit-red animate-pulse" />
-                <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">Live</span>
+                <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">{t('hero.recLabel')}</span>
               </div>
               {/* Zone labels */}
               <div className="absolute bottom-4 left-4">
-                <p className="text-[10px] font-mono font-bold text-white/25 uppercase tracking-widest">Zone B3 · Aktif</p>
+                <p className="text-[10px] font-mono font-bold text-white/25 uppercase tracking-widest">{t('hero.zoneLabel')}</p>
               </div>
             </div>
           </motion.div>

@@ -56,10 +56,12 @@ const featureVisuals = [
       </span>
       {/* Sensor readouts */}
       {[
-        { label: 'MQ-2 Gas', value: '12.4 ppm', status: 'normal' },
-        { label: 'Temperature', value: '34.2°C', status: 'warning' },
-        { label: 'Humidity', value: '67%', status: 'normal' },
-        { label: 'CO Level', value: '8.1 ppm', status: 'normal' },
+        { label: 'MQ-2 (Smoke & LPG)', value: '12.4 ppm', status: 'normal' },
+        { label: 'MQ-4 (Methane CH₄)', value: '2.8 ppm', status: 'normal' },
+        { label: 'MQ-6 (LPG Gas)', value: '0.9 ppm', status: 'normal' },
+        { label: 'MQ-9B (Carbon Monoxide CO)', value: '8.7 ppm', status: 'normal' },
+        { label: 'Room Temperature', value: '32.4°C', status: 'warning' },
+        { label: 'Air Humidity', value: '72.8%', status: 'normal' },
       ].map((sensor, i) => (
         <div key={i} className="flex items-center justify-between py-2 border-b border-dark-border/30 last:border-0">
           <span className="text-sm text-text-on-dark-muted font-body">{sensor.label}</span>
@@ -94,10 +96,11 @@ const featureVisuals = [
       </span>
       {/* Alert notifications */}
       {[
-        { time: '14:32:01', msg: '⚠️ Smoke detected - Zone B3', type: 'alert' },
-        { time: '14:32:03', msg: '📱 WhatsApp alert sent to 3 contacts', type: 'sent' },
-        { time: '14:32:05', msg: '🖥️ Dashboard updated - live cam active', type: 'info' },
-        { time: '14:32:08', msg: '✅ Security team notified - ETA 90s', type: 'success' },
+        { time: '14:32:01', msg: '⚠️ Smoke detected in Zone B3', type: 'alert' },
+        { time: '14:32:02', msg: '📱 Push notification sent to mobile app', type: 'sent' },
+        { time: '14:32:03', msg: '💬 WhatsApp alert sent to 3 contacts', type: 'sent' },
+        { time: '14:32:05', msg: '🖥️ Dashboard updated — live cam active', type: 'info' },
+        { time: '14:32:08', msg: '✅ Security team notified — ETA 90s', type: 'success' },
       ].map((notif, i) => (
         <div
           key={i}

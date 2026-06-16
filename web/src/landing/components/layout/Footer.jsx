@@ -5,14 +5,14 @@ export default function Footer() {
   const { t } = useLanguage();
 
   const productLinks = [
-    { to: '/#features', label: t('features.label') },
-    { to: '/#techStack', label: t('techStack.label') },
-    { to: '/solutions', label: t('nav.solutions') },
+    { to: '/#features', label: t('footer.links.features') },
+    { to: '/#techStack', label: t('footer.links.techStack') },
+    { to: '/solutions', label: t('footer.links.solutions') },
   ];
 
   const companyLinks = [
-    { to: '/about', label: t('nav.about') },
-    { to: '/contact', label: t('nav.contact') },
+    { to: '/about', label: t('footer.links.about') },
+    { to: '/contact', label: t('footer.links.contact') },
   ];
 
   return (

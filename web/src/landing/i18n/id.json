@@ -10,9 +10,15 @@
   },
   "hero": {
     "tagline": "Penjaga Api Cerdas",
-    "subtitle": "Deteksi kebakaran berbasis AI yang mengintegrasikan Computer Vision, Sensor IoT, dan alerting real-time - sebelum api menjadi bencana.",
+    "subtitle": "Deteksi kebakaran berbasis AI yang mengintegrasikan Computer Vision, Sensor IoT, dan alerting real time — sebelum api menjadi bencana.",
     "cta": "Minta Demo",
-    "ctaSecondary": "Pelajari Lebih Lanjut"
+    "ctaSecondary": "Pelajari Lebih Lanjut",
+    "systemStatus": "Status Sistem",
+    "operational": "OPERASIONAL",
+    "responseTime": "Waktu Respons",
+    "responseTimeValue": "<1,2dtk",
+    "recLabel": "Langsung",
+    "zoneLabel": "Zona B3 · Aktif"
   },
   "problem": {
     "label": "MASALAH",
@@ -20,9 +26,10 @@
     "description": "Detektor asap konvensional hanya bereaksi setelah api membesar. Tanpa kecerdasan visual dan analisis data, deteksi dini mustahil.",
     "stats": [
       { "value": "40%", "label": "Kegagalan deteksi dini pada sistem konvensional" },
-      { "value": "7 min", "label": "Rata-rata waktu respons manual tanpa AI" },
+      { "value": "7 mnt", "label": "Rata-rata waktu respons manual tanpa AI" },
       { "value": "82%", "label": "Kebakaran bisa dicegah dengan deteksi < 60 detik" }
-    ]
+    ],
+    "trends": ["↑ Naik 12% per tahun", "↓ Kritis", "↑ Bisa Dicegah"]
   },
   "features": {
     "label": "KAPABILITAS",
@@ -30,18 +37,18 @@
     "items": [
       {
         "title": "Computer Vision AI",
-        "description": "YOLO dan Semantic Segmentation menganalisis feed CCTV secara real-time. Mendeteksi asap, api, dan anomali visual sebelum sensor tradisional bereaksi.",
+        "description": "YOLO dan Semantic Segmentation menganalisis feed CCTV secara real time. Mendeteksi asap, api, dan anomali visual sebelum sensor tradisional bereaksi.",
         "tag": "VISION"
       },
       {
         "title": "Sensor Fusion IoT",
-        "description": "Data dari sensor gas MQ, suhu, dan kelembaban digabungkan melalui algoritma machine learning untuk penilaian risiko multi-dimensional.",
+        "description": "Data dari MQ-2 (Asap & LPG), MQ-4 (Metana CH₄), MQ-6 (Gas LPG), MQ-9B (Karbon Monoksida CO), suhu ruangan, dan kelembaban udara digabungkan melalui algoritma machine learning untuk penilaian risiko multi-dimensional.",
         "tag": "SENSOR"
       },
       {
-        "title": "Alerting Real-Time",
-        "description": "Notifikasi instan via WhatsApp, dashboard monitoring langsung, dan eskalasi otomatis ke tim keamanan dalam hitungan detik.",
-        "tag": "RESPONS"
+        "title": "Alerting Real Time",
+        "description": "Notifikasi instan via WhatsApp, push notification aplikasi mobile, dashboard monitoring langsung, dan eskalasi otomatis ke tim keamanan dalam hitungan detik.",
+        "tag": "RESPON"
       }
     ]
   },
@@ -50,9 +57,9 @@
     "title": "Dibangun untuk Keandalan",
     "description": "Arsitektur microservices yang scalable, didesain untuk operasi 24/7 tanpa downtime.",
     "layers": [
-      { "name": "Perception", "items": ["CCTV Stream", "Sensor IoT", "ESP32-S3"] },
-      { "name": "Intelligence", "items": ["YOLO v8", "Random Forest", "FastAPI"] },
-      { "name": "Action", "items": ["WhatsApp Bot", "Dashboard", "Supabase"] }
+      { "name": "Persepsi", "items": ["CCTV Stream", "Sensor IoT", "ESP32-S3"] },
+      { "name": "Kecerdasan", "items": ["YOLO v8", "Random Forest", "FastAPI"] },
+      { "name": "Aksi", "items": ["WhatsApp Bot", "Aplikasi Mobile", "Dashboard", "Supabase"] }
     ]
   },
   "ctaBanner": {
@@ -101,6 +108,18 @@
         { "title": "Transparansi", "description": "Teknologi terbuka dan dapat diaudit." },
         { "title": "Respons Cepat", "description": "Setiap detik berharga dalam keadaan darurat." }
       ]
+    },
+    "team": {
+      "label": "TIM",
+      "title": "Tim Kami",
+      "subtitle": "Bersama membangun masa depan keamanan kebakaran.",
+      "members": [
+        { "name": "Dharmawan Surya Kusuma", "role": "Ketua Tim & Backend Engineer" },
+        { "name": "Muammar Nur Hakim", "role": "IoT & Sistem Embedded" },
+        { "name": "Muhammad Kemal Syah Rafi", "role": "AI & Computer Vision" },
+        { "name": "Thaufiq Rahmat Prasetyo", "role": "Frontend & Aplikasi Mobile" },
+        { "name": "Zahran Purnama Alam", "role": "Data Analytics & DevOps" }
+      ]
     }
   },
   "solutions": {
@@ -137,16 +156,32 @@
     "heroTitle": "Hubungi Kami",
     "heroSubtitle": "Siap berdiskusi tentang keamanan fasilitas Anda.",
     "info": {
-      "email": "info@ifrit.id",
-      "phone": "+62 812 3456 7890",
+      "email": "dharmawan.surya.kusuma.tik23@stu.pnj.ac.id",
+      "phone": "+62 82124700252",
       "location": "Jakarta, Indonesia"
+    },
+    "form": {
+      "name": "Nama Lengkap",
+      "email": "Email",
+      "company": "Perusahaan",
+      "message": "Pesan",
+      "submit": "Kirim Permintaan",
+      "interest": "Saya tertarik untuk",
+      "options": ["Demo Produk", "Konsultasi", "Harga & Paket", "Partnership"],
+      "successTitle": "Terima kasih!",
+      "successMessage": "Pesan Anda telah terkirim. Kami akan menghubungi Anda dalam 24 jam."
     }
   },
   "footer": {
     "description": "Sistem deteksi kebakaran berbasis AI untuk keamanan fasilitas Anda.",
     "links": {
       "product": "Produk",
-      "company": "Perusahaan"
+      "company": "Perusahaan",
+      "features": "Fitur",
+      "techStack": "Arsitektur",
+      "solutions": "Solusi",
+      "about": "Tentang Kami",
+      "contact": "Kontak"
     },
     "copyright": "© 2026 IFRIT. Hak cipta dilindungi."
   }
