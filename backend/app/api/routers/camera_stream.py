@@ -94,6 +94,10 @@ async def camera_stream_endpoint(websocket: WebSocket, camera_id: str):
                 # Decode Base64 to PIL Image
                 image_bytes = base64.b64decode(frame_b64)
                 image = Image.open(BytesIO(image_bytes)).convert("RGB")
+
+                # Cache frame in fusion_service to attach to sensor-only alerts if needed
+                if room_uuid:
+                    fusion_service.latest_frames[str(room_uuid)] = (time.time(), frame_b64)
                 
                 frame_count += 1
                 

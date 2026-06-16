@@ -32,6 +32,10 @@ from app.ai.iot_sensor.detector import SENSOR_TYPE_MAP
 
 logger = logging.getLogger(__name__)
 
+# Global cache to keep track of the latest camera frames received via WebSocket
+# Maps room_id (string) -> tuple(timestamp, frame_b64)
+latest_frames: dict[str, tuple[float, str]] = {}
+
 # ─── Sensor Threshold Fallback ────────────────────────────────────────────────
 # These thresholds are used until a proper sensor ML model is integrated.
 # They convert raw sensor values into a normalized risk score (0-1).
@@ -848,6 +852,34 @@ async def _create_alert_inner(
         "explanation_en": explanation_en,
         "explanation_id": explanation_id
     })
+
+    # If no image was passed from visual detection (e.g. sensor-only trigger),
+    # grab the most recent camera stream frame from memory to attach as verification.
+    if not image_url and room_id:
+        cached = latest_frames.get(str(room_id))
+        if cached:
+            t, frame_b64 = cached
+            # Only use if frame is fresh (less than 30 seconds old)
+            if _time_module.time() - t < 30.0:
+                try:
+                    import base64
+                    import anyio
+                    from io import BytesIO
+                    from PIL import Image
+                    from app.services.detection_service import _upload_image_to_storage
+                    
+                    image_bytes = base64.b64decode(frame_b64)
+                    image = Image.open(BytesIO(image_bytes)).convert("RGB")
+                    
+                    # Upload in a background thread to prevent blocking
+                    uploaded_url = await anyio.to_thread.run_sync(
+                        _upload_image_to_storage, image, room_id
+                    )
+                    if uploaded_url:
+                        image_url = uploaded_url
+                        logger.info(f"Attached latest camera frame for sensor-triggered alert in room {room_id}: {image_url}")
+                except Exception as e:
+                    logger.error(f"Failed to upload latest cached frame for room {room_id}: {e}")
 
     insert_data = {
         "severity": severity,
