@@ -76,10 +76,10 @@ export default function AboutPage() {
             description={team.subtitle}
             align="center"
           />
-          <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          <div className="mt-16 flex flex-wrap justify-center gap-8 max-w-4xl mx-auto">
             {team.members.map((member, i) => (
-              <ScrollReveal key={i} delay={i * 80}>
-                <div className="flex flex-col items-center gap-4 rounded-[var(--radius-lg)] border border-light-border bg-light-surface p-6 hover:-translate-y-1 transition-all duration-300">
+              <ScrollReveal key={i} delay={i * 80} className="w-full sm:w-[260px] flex">
+                <div className="w-full flex flex-col items-center gap-4 rounded-[var(--radius-lg)] border border-light-border bg-light-surface p-6 hover:-translate-y-1 transition-all duration-300">
                   <div className="w-20 h-20 rounded-full bg-ifrit-red/10 border-2 border-ifrit-red/20 flex items-center justify-center">
                     <span className="font-display text-lg font-bold text-ifrit-red">
                       {getInitials(member.name)}
@@ -89,7 +89,6 @@ export default function AboutPage() {
                     <p className="font-display font-semibold text-sm text-text-on-light">
                       {member.name}
                     </p>
-                    <p className="text-xs text-text-on-light-muted mt-1">{member.role}</p>
                   </div>
                 </div>
               </ScrollReveal>

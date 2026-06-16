@@ -53,17 +53,6 @@
   --color-warning: oklch(0.72 0.17 70);
   --color-error: oklch(0.55 0.2 25);
 
-  /* --- Spacing (4pt system) --- */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 12px;
-  --spacing-base: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-2xl: 48px;
-  --spacing-3xl: 64px;
-  --spacing-4xl: 96px;
-
   /* --- Border Radius --- */
   --radius-sm: 4px;
   --radius-md: 8px;
@@ -75,6 +64,17 @@
 
 /* ---------- CSS Custom Properties (non-Tailwind) ---------- */
 :root {
+  /* Space tokens */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-base: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --space-4xl: 96px;
+
   /* Motion tokens */
   --duration-instant: 80ms;
   --duration-fast: 150ms;
@@ -224,12 +224,12 @@
   width: 100%;
   max-width: 1280px;
   margin-inline: auto;
-  padding-inline: var(--spacing-lg);
+  padding-inline: var(--space-lg);
 }
 
 @media (min-width: 768px) {
   .container-wide {
-    padding-inline: var(--spacing-2xl);
+    padding-inline: var(--space-2xl);
   }
 }
 
