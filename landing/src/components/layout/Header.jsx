@@ -4,6 +4,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
 import LanguageToggle from '@/components/ui/LanguageToggle';
 import Button from '@/components/ui/Button';
+import IfritLogo from '@/components/ui/IfritLogo';
 
 export default function Header() {
   const { t } = useLanguage();
@@ -42,8 +43,9 @@ export default function Header() {
         {/* Wordmark */}
         <Link
           to="/"
-          className="font-display text-xl md:text-2xl font-bold tracking-tight text-text-on-dark"
+          className="flex items-center gap-2.5 font-display text-xl md:text-2xl font-bold tracking-tight text-text-on-dark"
         >
+          <IfritLogo size={28} className="text-ifrit-red" />
           IFRIT
           <span className="text-ifrit-red">.</span>
         </Link>

@@ -7,6 +7,7 @@ import { customFetch } from '@/lib/api';
 import { toast } from 'sonner';
 import EmberCanvas from '@landing/components/ui/EmberCanvas';
 import { useReducedMotion } from '@landing/hooks/useReducedMotion';
+import IfritLogo from '@/components/ui/IfritLogo';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -99,6 +100,14 @@ export default function Login() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: dur, ease }}
         >
+          {/* Shield Logo */}
+          <div className="flex justify-center mb-6">
+            <IfritLogo
+              size={56}
+              className="text-ifrit-red"
+              style={{ filter: 'drop-shadow(0 0 16px oklch(0.45 0.2 25 / 0.35))' }}
+            />
+          </div>
           <Link
             to="/"
             className="font-display text-4xl md:text-5xl font-black tracking-tight text-text-on-dark inline-block"

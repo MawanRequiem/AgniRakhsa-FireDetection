@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useLanguage } from '@/hooks/useLanguage';
+import IfritLogo from '@/components/ui/IfritLogo';
 
 export default function Footer() {
   const { t } = useLanguage();
@@ -21,7 +22,8 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8">
           {/* Brand column */}
           <div className="md:col-span-5">
-            <Link to="/" className="font-display text-2xl font-bold text-text-on-dark tracking-tight">
+            <Link to="/" className="flex items-center gap-2.5 font-display text-2xl font-bold text-text-on-dark tracking-tight">
+              <IfritLogo size={30} className="text-ifrit-red" />
               IFRIT<span className="text-ifrit-red">.</span>
             </Link>
             <p className="text-text-on-dark-muted" style={{ marginTop: '1rem', fontSize: '0.875rem', maxWidth: '24rem', lineHeight: 1.65 }}>

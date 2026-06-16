@@ -1,6 +1,7 @@
 import { useLanguage } from '@/hooks/useLanguage';
 import ScrollReveal from '@/components/ui/ScrollReveal';
 import SectionHeading from '@/components/ui/SectionHeading';
+import IfritLogo from '@/components/ui/IfritLogo';
 
 const featureVisuals = [
   // AI Vision — large hero-style visual
@@ -17,10 +18,23 @@ const featureVisuals = [
         <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-ifrit-red/60" />
         <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-ifrit-red/60" />
       </div>
-      {/* Detection zones */}
+      {/* Detection zones — IFRIT logo scanning */}
       <div className="relative z-10 flex flex-col items-center gap-3 text-center px-8">
-        <div className="w-16 h-16 rounded-full border-2 border-ifrit-red/50 flex items-center justify-center">
-          <div className="w-3 h-3 rounded-full bg-ifrit-red animate-pulse" />
+        <div className="relative w-20 h-20 flex items-center justify-center">
+          {/* Rotating scan ring */}
+          <div
+            className="absolute inset-0 rounded-full border-2 border-transparent animate-spin"
+            style={{
+              borderTopColor: 'oklch(0.55 0.2 25 / 0.6)',
+              animationDuration: '3s',
+            }}
+          />
+          {/* Logo */}
+          <IfritLogo
+            size={40}
+            className="text-ifrit-red"
+            style={{ filter: 'drop-shadow(0 0 12px oklch(0.5 0.2 25 / 0.5))' }}
+          />
         </div>
         <span className="font-display text-xs font-semibold tracking-[0.15em] text-ifrit-red uppercase">
           {feature.tag}

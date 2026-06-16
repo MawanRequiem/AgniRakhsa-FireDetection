@@ -12,10 +12,10 @@ import {
   Smartphone,
   ChevronLeft,
   ChevronRight,
-  Flame,
   Wifi,
   LogOut,
 } from 'lucide-react';
+import IfritLogo from '@/components/ui/IfritLogo';
 
 // PERBAIKAN: Menambahkan awalan /dashboard pada semua item navigasi
 // agar sesuai dengan struktur nested routes di App.jsx
@@ -63,8 +63,8 @@ export default function Sidebar() {
     >
       {/* Logo */}
       <div className={`flex items-center gap-2.5 px-4 h-16 border-b`} style={{ borderColor: 'var(--ifrit-border)' }}>
-        <div className="flex items-center justify-center w-8 h-8 rounded-md" style={{ backgroundColor: 'var(--ifrit-brand)' }}>
-          <Flame className="w-5 h-5 text-white" />
+        <div className="flex items-center justify-center w-8 h-8">
+          <IfritLogo size={26} className="text-[var(--ifrit-brand)]" />
         </div>
         <span className={`font-bold text-lg tracking-tight ${collapsed ? 'hidden md:hidden' : ''}`} style={{ color: 'var(--ifrit-text-primary)' }}>
           IFRIT

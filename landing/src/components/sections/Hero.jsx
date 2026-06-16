@@ -4,6 +4,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import EmberCanvas from '@/components/ui/EmberCanvas';
 import Button from '@/components/ui/Button';
+import IfritLogo from '@/components/ui/IfritLogo';
 
 export default function Hero() {
   const { t } = useLanguage();
@@ -79,6 +80,28 @@ export default function Hero() {
         initial="hidden"
         animate="show"
       >
+        {/* Shield Logo */}
+        <motion.div
+          variants={scaleFade}
+          className="flex justify-center mb-8"
+        >
+          <div className="relative">
+            <IfritLogo
+              size={72}
+              className="text-ifrit-red"
+              style={{ filter: 'drop-shadow(0 0 20px oklch(0.45 0.2 25 / 0.4))' }}
+            />
+            {/* Ambient glow behind the logo */}
+            <div
+              className="absolute inset-0 -m-4 rounded-full pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle, oklch(0.4 0.18 25 / 0.15), transparent 70%)',
+              }}
+              aria-hidden="true"
+            />
+          </div>
+        </motion.div>
+
         {/* Brand wordmark */}
         <motion.h1
           variants={scaleFade}
