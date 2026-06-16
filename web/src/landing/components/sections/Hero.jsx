@@ -4,6 +4,7 @@ import { useLanguage } from '@landing/hooks/useLanguage';
 import { useReducedMotion } from '@landing/hooks/useReducedMotion';
 import EmberCanvas from '@landing/components/ui/EmberCanvas';
 import Button from '@landing/components/ui/Button';
+import IfritLogo from '@/components/ui/IfritLogo';
 
 export default function Hero() {
   const { t } = useLanguage();
@@ -164,8 +165,21 @@ export default function Hero() {
               </div>
               {/* Center detection indicator */}
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-20 h-20 rounded-full border-2 border-ifrit-red/30 flex items-center justify-center">
-                  <div className="w-3 h-3 rounded-full bg-ifrit-red animate-pulse" />
+                <div className="relative w-24 h-24 flex items-center justify-center">
+                  {/* Rotating scan ring */}
+                  <div
+                    className="absolute inset-0 rounded-full border-2 border-transparent animate-spin"
+                    style={{
+                      borderTopColor: 'oklch(0.55 0.2 25 / 0.4)',
+                      animationDuration: '4s',
+                    }}
+                  />
+                  {/* Logo */}
+                  <IfritLogo
+                    size={44}
+                    className="text-ifrit-red"
+                    style={{ filter: 'drop-shadow(0 0 16px oklch(0.5 0.2 25 / 0.5))' }}
+                  />
                 </div>
               </div>
               {/* REC badge */}
