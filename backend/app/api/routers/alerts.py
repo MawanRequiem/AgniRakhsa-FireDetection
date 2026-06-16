@@ -41,6 +41,7 @@ async def list_alerts(
 ):
     """Paginated, filterable list of all system alerts.
     For basic users, filters to subscribed rooms only.
+    Returns room_name injected into each item via batch join.
     """
     offset = (page - 1) * page_size
 
@@ -71,12 +72,31 @@ async def list_alerts(
         .execute()
     )
 
+    items = result.data or []
+
+    # ── Batch-inject room_name into each alert item ──
+    room_ids = list({item["room_id"] for item in items if item.get("room_id")})
+    room_name_map: dict[str, str] = {}
+    if room_ids:
+        room_res = (
+            supabase.table("rooms")
+            .select("id, name")
+            .in_("id", room_ids)
+            .execute()
+        )
+        for r in (room_res.data or []):
+            room_name_map[r["id"]] = r.get("name", "Unknown Room")
+
+    for item in items:
+        item["room_name"] = room_name_map.get(item.get("room_id", ""), None)
+
     return {
-        "items": result.data or [],
+        "items": items,
         "total": result.count or 0,
         "page": page,
         "page_size": page_size,
     }
+
 
 
 @router.patch("/{alert_id}/acknowledge", response_model=AlertOut)
