@@ -581,6 +581,44 @@ class TestFirebaseCloudMessagingAndPayload:
         assert "MEDIUM" in kwargs["body"]
         assert kwargs["data"]["risk_level"] == "medium"
 
+    @pytest.mark.asyncio
+    @patch("app.services.fusion_service.send_push")
+    @patch("app.services.fusion_service.supabase")
+    async def test_fcm_push_payload_contains_explanations(self, mock_supabase, mock_send_push):
+        """Test that explanation_en and explanation_id are included in the FCM push payload body."""
+        mock_supabase.table().select().eq().eq().order().limit().execute.return_value = MagicMock(data=[])
+        mock_supabase.table().select().eq().execute.return_value = MagicMock(data=[{"name": "Room 1", "floor": "1", "building_name": "A"}])
+        mock_supabase.table().select().eq().order().limit().execute.return_value = MagicMock(data=[])
+        mock_supabase.table().select().eq().execute.return_value = MagicMock(data=[{"name": "Room 1", "floor": "1", "building_name": "A"}])
+        mock_supabase.table().insert().execute.return_value = MagicMock(data=[{"id": "new", "created_at": "2026-06-01T00:01:00Z"}])
+        
+        mock_send_push.return_value = 1
+        
+        await _create_alert(
+            room_id="room1", 
+            fusion_result_id="res1", 
+            risk_level="critical", 
+            fusion_score=0.9,
+            image_score=0.9,
+            sensor_score=0.9,
+            sensor_snapshot={"mq2": {"value": 1500}}
+        )
+        
+        import asyncio
+        await asyncio.sleep(0.1)
+        
+        assert mock_send_push.called
+        kwargs = mock_send_push.call_args[1]
+        
+        # Verify the explanations are injected into the body
+        assert "sensor" in kwargs["body"].lower() or "kamera" in kwargs["body"].lower()
+        
+        # Verify they are in the data payload
+        data_payload = kwargs.get("data")
+        assert "body_en" in data_payload
+        assert "body_id" in data_payload
+        assert len(data_payload["body_en"]) > 20  # Has explanation text
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Image-Only Veto Logic (Regression)

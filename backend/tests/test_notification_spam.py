@@ -413,3 +413,37 @@ class TestCreateAlertWithMocks:
 
         # A different contact should NOT be rate-limited
         assert "room-1:+6222222" not in _wa_contact_cooldowns
+
+    @pytest.mark.asyncio
+    @patch("app.services.fusion_service.supabase")
+    @patch("app.services.fusion_service.manager")
+    @patch("app.services.fusion_service.send_whatsapp_message")
+    @patch("app.core.redis.redis_manager.get_client")
+    async def test_redis_in_memory_deduplication(
+        self, mock_get_client, mock_send_wa, mock_manager, mock_supabase
+    ):
+        """Layer 2: Redis SET NX atomic dedup prevents overlapping alert processing."""
+        mock_redis = MagicMock()
+        mock_get_client.return_value = mock_redis
+        mock_manager.broadcast = AsyncMock()
+        
+        # Simulate Redis SET NX failing (meaning another worker is already processing an alert for this room)
+        mock_redis.set.return_value = False
+        
+        await _create_alert(room_id="room1", fusion_result_id="res1", risk_level="critical", fusion_score=0.9)
+        
+        # Verify NO DB queries are executed because the Redis lock failed
+        mock_supabase.table.assert_not_called()
+        
+        # Now simulate SET NX succeeding
+        mock_redis.set.return_value = True
+        mock_supabase.table().select().eq().eq().order().limit().execute.return_value = MagicMock(data=[])
+        mock_supabase.table().select().eq().execute.return_value = MagicMock(data=[{"name": "Room 1", "floor": "1", "building_name": "A"}])
+        mock_supabase.table().select().eq().order().limit().execute.return_value = MagicMock(data=[])
+        mock_supabase.table().select().eq().execute.return_value = MagicMock(data=[{"name": "Room 1", "floor": "1", "building_name": "A"}])
+        mock_supabase.table().insert().execute.return_value = MagicMock(data=[{"id": "new", "created_at": "2026-06-01T00:01:00Z"}])
+        
+        await _create_alert(room_id="room1", fusion_result_id="res1", risk_level="critical", fusion_score=0.9)
+        
+        # DB queries should run because lock was acquired
+        assert mock_supabase.table.called
