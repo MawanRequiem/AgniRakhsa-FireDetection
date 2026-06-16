@@ -141,9 +141,13 @@ def send_push(
         ),
     )
 
+    payload_data = {k: str(v) for k, v in (data or {}).items()}
+    if image_url:
+        payload_data["image_url"] = str(image_url)
+
     message = messaging.MulticastMessage(
         tokens=tokens,
-        data={k: str(v) for k, v in (data or {}).items()},
+        data=payload_data,
         android=android_config,
         apns=apns_config,
     )

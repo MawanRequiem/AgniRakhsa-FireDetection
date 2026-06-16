@@ -39,7 +39,7 @@ async def test_production_fcm():
 
     print("Sending CRITICAL risk FCM push notification to mobile devices...")
     
-    room_name_en = room_name + " (EN)"
+    room_name_en = room_name
     risk_level = "critical"
     fusion_score = 0.95
     
