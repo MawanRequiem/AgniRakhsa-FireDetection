@@ -10,6 +10,8 @@ class AlertOut(BaseModel):
     """Alert as returned by the API."""
     id: UUID
     room_id: Optional[UUID] = None
+    room_name: Optional[str] = None
+    image_url: Optional[str] = None
     fusion_result_id: Optional[UUID] = None
     severity: str
     alert_type: str = "fire"
