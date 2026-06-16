@@ -50,8 +50,8 @@ async def test_production_fcm():
     explanation_id = "Analisis visual dari kamera (AI mendeteksi objek menyerupai api) serta deteksi asap dari sensor (Asap tebal) sangat aktif. Sistem menyimpulkan tingkat bahaya yang sangat tinggi."
     explanation_en = "Visual analysis from the camera (AI detected fire-like objects) and smoke detection from sensors (Thick smoke) are highly active. The system concludes a very high danger level."
     
-    # SVG image URL to test flutter_svg rendering in the app
-    image_url = "https://upload.wikimedia.org/wikipedia/commons/4/42/Sample-image.svg"
+    # Use real camera frame image instead of SVG
+    image_url = "https://ujdypvzfiyhxusydyyjo.supabase.co/storage/v1/object/public/detection-captures/2355e3d4/73691c8ce0d7.jpg"
     
     title_en = f"FIRE ALERT: {room_name_en} ({risk_label_en})"
     title_id = f"PERINGATAN KEBAKARAN: {room_name} ({risk_label_id})"
@@ -67,15 +67,18 @@ async def test_production_fcm():
 
     # Insert into database so it appears in history!
     try:
+        import json
         alert_res = supabase.table("alerts").insert({
             "room_id": room_id,
             "severity": risk_level,
             "alert_type": "fire",
-            "fusion_score": fusion_score,
             "image_url": image_url,
-            "sensor_summary": {"note": "Simulated thick smoke"},
-            "explanation_en": explanation_en,
-            "explanation_id": explanation_id
+            "message": json.dumps({
+                "en": body_en,
+                "id": body_id,
+                "explanation_en": explanation_en,
+                "explanation_id": explanation_id
+            })
         }).execute()
         alert_id = alert_res.data[0]["id"]
         print(f"Inserted alert into history with ID: {alert_id}")
