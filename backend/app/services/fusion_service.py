@@ -1009,12 +1009,15 @@ async def _create_alert_inner(
             image_url=image_url,
             room_id=room_id,
             sensor_snapshot=sensor_snapshot,
+            explanation_id=explanation_id,
+            explanation_en=explanation_en,
         ))
 
 
 async def _send_fcm_push(
     room_name, room_name_en, risk_level, fusion_score,
     image_url=None, room_id=None, sensor_snapshot=None,
+    explanation_id=None, explanation_en=None,
 ):
     """Send FCM push notification to all registered mobile devices."""
     try:
@@ -1033,11 +1036,11 @@ async def _send_fcm_push(
 
         body_en = (
             f"{risk_label_en} risk detected in {room_name_en}. "
-            f"Fusion score: {fusion_score*100:.0f}%. Open app for details."
+            f"{explanation_en or ''}"
         )
         body_id = (
             f"Risiko {risk_label_id} terdeteksi di {room_name}. "
-            f"Skor bahaya: {fusion_score*100:.0f}%. Buka aplikasi untuk detail."
+            f"{explanation_id or ''}"
         )
 
         fcm_data = {
