@@ -2,20 +2,13 @@ import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import PageSkeleton from '@/components/ui/skeleton/PageSkeleton';
 import HomePage from '@/pages/HomePage';
 
 // Lazy load secondary pages (bundle-dynamic-imports pattern)
 const AboutPage = lazy(() => import('@/pages/AboutPage'));
 const SolutionsPage = lazy(() => import('@/pages/SolutionsPage'));
 const ContactPage = lazy(() => import('@/pages/ContactPage'));
-
-function PageFallback() {
-  return (
-    <div className="min-h-[60vh] flex items-center justify-center section-dark">
-      <div className="w-8 h-8 rounded-full border-2 border-dark-border border-t-ifrit-red animate-spin" />
-    </div>
-  );
-}
 
 // Scroll to top on route change
 function ScrollToTop() {
@@ -35,7 +28,7 @@ export default function App() {
       <ScrollToTop />
       <Header />
       <main id="main-content">
-        <Suspense fallback={<PageFallback />}>
+        <Suspense fallback={<PageSkeleton />}>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/about" element={<AboutPage />} />

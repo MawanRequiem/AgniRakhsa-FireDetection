@@ -21,6 +21,7 @@ const SentimenAnalisisX = lazy(() => import('@landing/pages/SentimenAnalisisX'))
 
 import '@landing/index.css';
 import { Outlet } from 'react-router-dom';
+import { SkeletonCard } from "@/components/ui/skeleton";
 
 // Lazy load non-critical / heavy routes
 const CCTVMonitor = lazy(() => import('@/pages/CCTVMonitor'));
@@ -31,7 +32,7 @@ const DeviceManagement = lazy(() => import('@/pages/DeviceManagement'));
 // Common suspense fallback
 const PageFallback = () => (
   <div className="flex items-center justify-center p-12 w-full h-64">
-    <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--ifrit-border)', borderTopColor: 'var(--ifrit-brand)' }} />
+    <SkeletonCard hasHeader lines={2} className="w-96 h-48" />
   </div>
 );
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import CameraFeed from '@/components/cctv/CameraFeed';
+import { SkeletonVideo } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { LayoutGrid, Maximize, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -84,11 +85,7 @@ export default function CCTVMonitor() {
         <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar min-h-0">
           <div className={`grid gap-4 ${gridClass}`}>
             {[1, 2, 3, 4].map(i => (
-              <div 
-                key={i} 
-                className="aspect-video w-full rounded-lg border animate-pulse" 
-                style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }} 
-              />
+              <SkeletonVideo key={i} showPlayIcon={false} delay={i * 0.1} />
             ))}
           </div>
         </div>

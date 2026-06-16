@@ -11,6 +11,12 @@ import RoomDeviceCalibration from '@/components/devices/RoomDeviceCalibration';
 import RoomDeviceExportCard from '@/components/devices/RoomDeviceExportCard';
 import { useUIStore } from '@/store/store';
 import { getLocalizedMessage, getLocalizedExplanation } from '@/lib/translations';
+import {
+  SkeletonText,
+  SkeletonCard,
+  SkeletonVideo,
+  SkeletonTableRow,
+} from '@/components/ui/skeleton';
 
 
 const SENSOR_CONFIG = {
@@ -239,11 +245,55 @@ export default function RoomDetail() {
 
   if (isLoading && !selectedRoom) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh]">
-        <div className="w-8 h-8 border-2 border-[var(--ifrit-brand)] border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-sm font-mono" style={{ color: 'var(--ifrit-text-muted)' }}>
-          {isEn ? 'LOADING ROOM DATA...' : 'MEMUAT DATA RUANGAN...'}
-        </p>
+      <div className="space-y-6 max-w-7xl mx-auto pb-10">
+        {/* Header skeleton */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6" style={{ borderColor: 'var(--ifrit-border)' }}>
+          <div>
+            <button 
+              onClick={() => navigate('/rooms')}
+              className="flex items-center gap-2 text-xs font-semibold mb-3 hover:text-[var(--ifrit-brand)] transition-colors"
+              style={{ color: 'var(--ifrit-text-muted)' }}
+            >
+              <ArrowLeft className="w-3 h-3" /> {isEn ? 'Back to Facility' : 'Kembali ke Fasilitas'}
+            </button>
+            <div className="flex items-center gap-3">
+              <SkeletonText size="lg" width="w-48" />
+            </div>
+          </div>
+          <SkeletonText size="sm" width="w-32" />
+        </div>
+
+        {/* Content grid skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <SkeletonVideo />
+            <div className="space-y-2">
+              {[1, 2, 3, 4].map(i => (
+                <SkeletonText key={i} width="w-full" className="h-8" />
+              ))}
+            </div>
+          </div>
+          <div className="lg:col-span-1 space-y-6">
+            <SkeletonCard hasHeader lines={2} />
+            <SkeletonCard hasHeader lines={2} />
+          </div>
+        </div>
+
+        {/* Detection images skeleton */}
+        <div className="grid grid-cols-2 gap-4">
+          <SkeletonVideo showPlayIcon={false} />
+          <SkeletonVideo showPlayIcon={false} />
+        </div>
+
+        {/* History table skeleton */}
+        <div>
+          <SkeletonText size="md" width="w-48" />
+          <div className="mt-4">
+            {[1, 2, 3].map(i => (
+              <SkeletonTableRow key={i} columns={["w-12", "w-24", "w-20", "w-full", "w-24"]} />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

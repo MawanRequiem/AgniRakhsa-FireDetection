@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { SkeletonText, SkeletonTableRow } from '@/components/ui/skeleton';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -158,14 +159,45 @@ export default function DeviceManagement() {
   if (isLoading) {
     return (
       <div className="space-y-6 max-w-7xl mx-auto">
-        <h1 className="text-2xl font-semibold" style={{ color: 'var(--ifrit-text-primary)' }}>
-          {isEn ? 'Device Management' : 'Manajemen Perangkat'}
-        </h1>
-        <div className="flex flex-col items-center justify-center h-[40vh]">
-          <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mb-4" style={{ borderColor: 'var(--ifrit-brand)' }} />
-          <p className="text-sm" style={{ color: 'var(--ifrit-text-muted)' }}>
-            {isEn ? 'Loading devices...' : 'Memuat perangkat...'}
-          </p>
+        {/* Header skeleton */}
+        <div>
+          <SkeletonText size="lg" width="w-48" />
+          <div className="mt-2">
+            <SkeletonText size="sm" width="w-96" />
+          </div>
+        </div>
+
+        {/* Tabs skeleton */}
+        <div className="flex gap-1 p-1 mb-6 border-b" style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)' }}>
+          <SkeletonText size="sm" width="w-28" />
+          <SkeletonText size="sm" width="w-32" />
+        </div>
+
+        {/* Table skeleton */}
+        <div className="border rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
+          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--ifrit-border)' }}>
+            <SkeletonText size="md" width="w-40" />
+            <SkeletonText size="sm" width="w-28" />
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow style={{ borderColor: 'var(--ifrit-border)' }}>
+                <TableHead className="w-12"><span className="sr-only">Select</span></TableHead>
+                <TableHead className="w-48">{isEn ? 'Name' : 'Nama'}</TableHead>
+                <TableHead className="w-32">{isEn ? 'Type' : 'Tipe'}</TableHead>
+                <TableHead className="w-24">{isEn ? 'Assigned Room' : 'Ruangan Terpilih'}</TableHead>
+                <TableHead className="w-32">{isEn ? 'Camera ID' : 'ID Kamera'}</TableHead>
+                <TableHead className="w-24">{isEn ? 'Last Frame' : 'Bingkai Terakhir'}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <SkeletonTableRow columns={['w-12', 'w-48', 'w-32', 'w-24', 'w-32', 'w-24']} />
+              <SkeletonTableRow columns={['w-12', 'w-48', 'w-32', 'w-24', 'w-32', 'w-24']} delay={0.1} />
+              <SkeletonTableRow columns={['w-12', 'w-48', 'w-32', 'w-24', 'w-32', 'w-24']} delay={0.2} />
+              <SkeletonTableRow columns={['w-12', 'w-48', 'w-32', 'w-24', 'w-32', 'w-24']} delay={0.3} />
+              <SkeletonTableRow columns={['w-12', 'w-48', 'w-32', 'w-24', 'w-32', 'w-24']} delay={0.4} />
+            </TableBody>
+          </Table>
         </div>
       </div>
     );

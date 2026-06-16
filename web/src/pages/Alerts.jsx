@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { SkeletonText, SkeletonTableRow } from '@/components/ui/skeleton';
 import StatusIndicator from '@/components/ui/StatusIndicator';
 import HoverClue from '@/components/ui/HoverClue';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -541,9 +542,36 @@ export default function Alerts() {
 
       {/* ── Loading ── */}
       {globalLoading && (
-        <div className="flex flex-col items-center justify-center gap-4 py-16">
-          <div className="w-10 h-10 border-3 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--ifrit-border)', borderTopColor: 'var(--ifrit-brand)', borderWidth: '3px' }} />
-          <span className="text-sm font-medium" style={{ color: 'var(--ifrit-text-muted)' }}>{language === 'en' ? 'Loading alerts...' : 'Memuat peringatan...'}</span>
+        <div className="space-y-4">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="rounded-xl border overflow-hidden shadow-sm" style={{ borderColor: 'var(--ifrit-border)' }}>
+              {/* Room header skeleton */}
+              <div className="p-4 flex items-center gap-3 flex-wrap" style={{ backgroundColor: 'var(--ifrit-bg-secondary)' }}>
+                <SkeletonText size="lg" width="w-48" delay={i * 0.1} />
+                <SkeletonText size="sm" width="w-24" delay={i * 0.1 + 0.1} />
+              </div>
+              {/* Table skeleton */}
+              <div className="hidden sm:block overflow-x-auto w-full">
+                <Table>
+                  <TableHeader style={{ backgroundColor: 'var(--ifrit-bg-secondary)' }}>
+                    <TableRow style={{ borderColor: 'var(--ifrit-border)' }}>
+                      <TableHead className="w-12"><span className="sr-only">Select</span></TableHead>
+                      <TableHead className="w-20">{language === 'en' ? 'Preview' : 'Gambar'}</TableHead>
+                      <TableHead className="w-44">{language === 'en' ? 'Detection Time' : 'Waktu'}</TableHead>
+                      <TableHead className="w-28">{language === 'en' ? 'Risk' : 'Bahaya'}</TableHead>
+                      <TableHead>{language === 'en' ? 'Event Message' : 'Pesan'}</TableHead>
+                      <TableHead className="w-36 text-right">{t['actions']}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <SkeletonTableRow columns={['w-12', 'w-20', 'w-44', 'w-28', 'w-full', 'w-36']} delay={i * 0.2} />
+                    <SkeletonTableRow columns={['w-12', 'w-20', 'w-44', 'w-28', 'w-full', 'w-36']} delay={i * 0.2 + 0.1} />
+                    <SkeletonTableRow columns={['w-12', 'w-20', 'w-44', 'w-28', 'w-full', 'w-36']} delay={i * 0.2 + 0.2} />
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -639,8 +667,10 @@ export default function Alerts() {
                     )}
 
                     {roomData.isLoading && (
-                      <div className="p-8 flex items-center justify-center">
-                        <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--ifrit-border)', borderTopColor: 'var(--ifrit-brand)' }} />
+                      <div className="p-4 space-y-1">
+                        <SkeletonTableRow columns={['w-12', 'w-20', 'w-44', 'w-28', 'w-full', 'w-36']} />
+                        <SkeletonTableRow columns={['w-12', 'w-20', 'w-44', 'w-28', 'w-full', 'w-36']} delay={0.1} />
+                        <SkeletonTableRow columns={['w-12', 'w-20', 'w-44', 'w-28', 'w-full', 'w-36']} delay={0.2} />
                       </div>
                     )}
 

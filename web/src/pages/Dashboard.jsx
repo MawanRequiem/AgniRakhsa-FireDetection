@@ -10,6 +10,7 @@ import MetricCard from '@/components/dashboard/MetricCard';
 import AlertFeed from '@/components/dashboard/AlertFeed';
 import SensorsOverview from '@/components/dashboard/SensorsOverview';
 import NodeCard from '@/components/dashboard/NodeCard';
+import { SkeletonCard } from '@/components/ui/skeleton';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -160,47 +161,55 @@ export default function Dashboard() {
       </div>
       
       {/* Top Stats Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard 
-          title={language === 'en' ? 'Facility Status' : 'Status Fasilitas'} 
-          value={isLoading ? '-' : statusValue} 
-          subtext={statusSubtext}
-          icon={StatusIcon} 
-          color={statusColor}
-        />
-        <MetricCard 
-          title={language === 'en' ? 'Highest Temperature' : 'Suhu Tertinggi'} 
-          value={maxTemp > -Infinity ? `${maxTemp.toFixed(1)}°C` : '-'} 
-          subtext={maxTempNodeId 
-            ? `${language === 'en' ? 'Room' : 'Ruangan'}: ${getNodeRoomName(maxTempNodeId)}` 
-            : (language === 'en' ? 'Waiting for Data' : 'Menunggu Data')}
-          icon={Thermometer} 
-          color={maxTemp > 35 ? "red" : "default"} 
-        />
-        <MetricCard 
-          title={language === 'en' ? 'Highest Gas Level' : 'Kadar Gas Tertinggi'} 
-          value={maxGas > -Infinity ? `${maxGas.toFixed(0)} ppm` : '-'} 
-          subtext={maxGasNodeId 
-            ? `${language === 'en' ? 'Room' : 'Ruangan'}: ${getNodeRoomName(maxGasNodeId)}` 
-            : (language === 'en' ? 'Waiting for Data' : 'Menunggu Data')}
-          icon={Wind} 
-          color={maxGas > 800 ? "red" : "default"}
-        />
-        <MetricCard 
-          title={language === 'en' ? 'Device Health' : 'Kesehatan Perangkat'} 
-          value={isLoading ? '-' : `${summary.onlineDevices} / ${devices.length} ${language === 'en' ? 'Active' : 'Aktif'}`} 
-          subtext={(() => {
-            const unhealthyCount = sensorHealth?.sensors?.filter(s => s.status !== 'healthy')?.length || 0;
-            return unhealthyCount > 0 
-              ? <span className="text-red-500 font-medium">
-                  {unhealthyCount} {language === 'en' ? 'sensor(s) need inspection' : 'sensor perlu diperiksa'}
-                </span>
-              : (language === 'en' ? 'All devices and sensors healthy' : 'Semua perangkat dan sensor normal');
-          })()}
-          icon={HardDrive} 
-          color={summary.onlineDevices < devices.length || (sensorHealth?.sensors?.filter(s => s.status !== 'healthy')?.length > 0) ? "red" : "blue"} 
-        />
-      </div>
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <SkeletonCard key={i} hasHeader lines={1} className="h-28" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <MetricCard 
+            title={language === 'en' ? 'Facility Status' : 'Status Fasilitas'} 
+            value={statusValue} 
+            subtext={statusSubtext}
+            icon={StatusIcon} 
+            color={statusColor}
+          />
+          <MetricCard 
+            title={language === 'en' ? 'Highest Temperature' : 'Suhu Tertinggi'} 
+            value={maxTemp > -Infinity ? `${maxTemp.toFixed(1)}°C` : '-'} 
+            subtext={maxTempNodeId 
+              ? `${language === 'en' ? 'Room' : 'Ruangan'}: ${getNodeRoomName(maxTempNodeId)}` 
+              : (language === 'en' ? 'Waiting for Data' : 'Menunggu Data')}
+            icon={Thermometer} 
+            color={maxTemp > 35 ? "red" : "default"} 
+          />
+          <MetricCard 
+            title={language === 'en' ? 'Highest Gas Level' : 'Kadar Gas Tertinggi'} 
+            value={maxGas > -Infinity ? `${maxGas.toFixed(0)} ppm` : '-'} 
+            subtext={maxGasNodeId 
+              ? `${language === 'en' ? 'Room' : 'Ruangan'}: ${getNodeRoomName(maxGasNodeId)}` 
+              : (language === 'en' ? 'Waiting for Data' : 'Menunggu Data')}
+            icon={Wind} 
+            color={maxGas > 800 ? "red" : "default"}
+          />
+          <MetricCard 
+            title={language === 'en' ? 'Device Health' : 'Kesehatan Perangkat'} 
+            value={`${summary.onlineDevices} / ${devices.length} ${language === 'en' ? 'Active' : 'Aktif'}`} 
+            subtext={(() => {
+              const unhealthyCount = sensorHealth?.sensors?.filter(s => s.status !== 'healthy')?.length || 0;
+              return unhealthyCount > 0 
+                ? <span className="text-red-500 font-medium">
+                    {unhealthyCount} {language === 'en' ? 'sensor(s) need inspection' : 'sensor perlu diperiksa'}
+                  </span>
+                : (language === 'en' ? 'All devices and sensors healthy' : 'Semua perangkat dan sensor normal');
+            })()}
+            icon={HardDrive} 
+            color={summary.onlineDevices < devices.length || (sensorHealth?.sensors?.filter(s => s.status !== 'healthy')?.length > 0) ? "red" : "blue"} 
+          />
+        </div>
+      )}
 
       {/* Middle Section: Chart & Recent Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -282,9 +291,9 @@ export default function Dashboard() {
           
           <div className="p-4 flex-1 overflow-y-auto custom-scrollbar min-h-0" style={{ backgroundColor: 'var(--ifrit-bg-primary)' }}>
             {isLoading && recentAlerts.length === 0 ? (
-              <div className="animate-pulse space-y-2">
+              <div className="space-y-2">
                 {[1,2,3].map(i => (
-                  <div key={i} className="h-14 w-full rounded-md" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)' }} />
+                  <SkeletonCard key={i} lines={2} className="h-14" />
                 ))}
               </div>
             ) : (
@@ -311,7 +320,7 @@ export default function Dashboard() {
         {isLoading && devices.length === 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {[1,2,3,4].map(i => (
-                <div key={i} className="h-64 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--ifrit-bg-primary)' }} />
+                <SkeletonCard key={i} hasHeader lines={3} className="h-64" />
               ))}
             </div>
         ) : (

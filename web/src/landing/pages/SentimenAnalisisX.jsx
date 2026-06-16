@@ -325,6 +325,35 @@ export default function SentimenAnalisisX() {
     </div>
   );
 
+  const ResultCardSkeleton = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      className="p-5 rounded-xl border border-dark-border bg-white/5"
+    >
+      <div className="flex justify-between items-start mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="shrink-0 w-2.5 h-2.5 rounded-full bg-white/10" />
+          <div className="min-w-0 space-y-1.5">
+            <div className="h-2.5 w-24 rounded-full bg-white/10 animate-pulse" />
+            <div className="h-2 w-16 rounded-full bg-white/5 animate-pulse" />
+          </div>
+        </div>
+        <div className="text-right shrink-0 ml-4 space-y-1.5">
+          <div className="h-2 w-20 rounded-full bg-white/10 animate-pulse ml-auto" />
+          <div className="h-5 w-14 rounded-full bg-white/5 animate-pulse ml-auto" />
+        </div>
+      </div>
+      <div className="space-y-2 mb-3">
+        <div className="h-3 w-full rounded-full bg-white/10 animate-pulse" />
+        <div className="h-3 w-5/6 rounded-full bg-white/10 animate-pulse" />
+        <div className="h-3 w-4/6 rounded-full bg-white/5 animate-pulse" />
+      </div>
+      <div className="h-2 w-28 rounded-full bg-white/5 animate-pulse" />
+    </motion.div>
+  );
+
   const ResultCard = ({ item, showRelative = false }) => (
     <motion.div
       layout
@@ -657,8 +686,10 @@ export default function SentimenAnalisisX() {
           </div>
 
           {fetchingHistory ? (
-            <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-2xl">
-              <p className="text-text-on-dark-muted">Menghubungkan ke pusat data...</p>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <ResultCardSkeleton key={i} />
+              ))}
             </div>
           ) : sortedHistory.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">

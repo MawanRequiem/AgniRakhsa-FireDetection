@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 import { useRoomsStore } from '@/stores/useRoomsStore';
 import { useDashboardStore } from '@/stores/useDashboardStore';
+import { SkeletonTableRow } from "@/components/ui/skeleton";
 
 export default function DevicesTable({ devices, isLoading }) {
   const rooms = useRoomsStore((state) => state.rooms);
@@ -10,9 +11,27 @@ export default function DevicesTable({ devices, isLoading }) {
 
   if (isLoading && (!devices || devices.length === 0)) {
     return (
-      <div className="flex h-48 flex-col items-center justify-center p-8 text-center" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)' }}>
-        <Cpu className="mb-2 h-8 w-8 opacity-30 animate-pulse" style={{ color: 'var(--ifrit-text-muted)' }} />
-        <p className="text-xs" style={{ color: 'var(--ifrit-text-muted)' }}>Scanning for devices...</p>
+      <div className="overflow-x-auto" style={{ backgroundColor: 'var(--ifrit-bg-primary)' }}>
+        <table className="w-full text-left text-sm whitespace-nowrap">
+          <thead className="border-b text-xs font-medium" style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)', color: 'var(--ifrit-text-muted)' }}>
+            <tr>
+              <th className="px-4 py-3">Location</th>
+              <th className="px-4 py-3">MAC Address</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3 text-right">Last Heartbeat</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colSpan={4} className="p-0">
+                <SkeletonTableRow columns={["w-32", "w-32", "w-24", "w-24"]} />
+                <SkeletonTableRow columns={["w-32", "w-32", "w-24", "w-24"]} />
+                <SkeletonTableRow columns={["w-32", "w-32", "w-24", "w-24"]} />
+                <SkeletonTableRow columns={["w-32", "w-32", "w-24", "w-24"]} />
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     );
   }

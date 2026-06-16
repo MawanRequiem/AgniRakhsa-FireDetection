@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUIStore } from '@/store/store';
+import { SkeletonCard, SkeletonTableRow } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -223,6 +224,9 @@ export default function Notifications() {
       `}</style>
 
       {/* Gateway Status Card */}
+      {isLoading ? (
+        <SkeletonCard hasHeader lines={1} className="mb-6" />
+      ) : (
       <div className="flex items-center justify-between p-4 rounded-md border" style={{ backgroundColor: 'var(--ifrit-bg-tertiary)', borderColor: 'var(--ifrit-border)' }}>
         <div>
           <h2 className="text-sm font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>
@@ -255,6 +259,7 @@ export default function Notifications() {
           )}
         </div>
       </div>
+      )}
 
       {/* WhatsApp Link Section */}
       {!whatsappConnected && (
@@ -335,22 +340,40 @@ export default function Notifications() {
            <h2 className="text-lg font-medium" style={{ color: 'var(--ifrit-text-primary)' }}>
              {isEn ? 'Emergency Contacts' : 'Kontak Darurat'}
            </h2>
-           <Button 
+           <Button
              onClick={handleAdd}
-             size="sm" 
+             size="sm"
              className="text-[var(--ifrit-bg-primary)] font-semibold hover:bg-[var(--ifrit-amber-hover)] transition-colors"
              style={{ backgroundColor: 'var(--ifrit-amber)' }}
            >
              <Plus className="w-4 h-4 mr-2" /> {isEn ? 'Add Contact' : 'Tambah Kontak'}
            </Button>
         </div>
-        
-        <ContactTable 
-          contacts={contacts} 
-          onEdit={handleEdit} 
+
+        {isLoading ? (
+          <div className="border rounded-md" style={{ borderColor: 'var(--ifrit-border)' }}>
+            <div className="px-4 py-3 border-b" style={{ backgroundColor: 'var(--ifrit-bg-secondary)', borderColor: 'var(--ifrit-border)' }}>
+              <div className="flex gap-4">
+                {['w-24', 'w-48', 'w-32', 'w-32', 'w-24', 'w-24'].map((w, i) => (
+                  <div key={i} className={w} style={{ height: '12px' }} />
+                ))}
+              </div>
+            </div>
+            <div>
+              <SkeletonTableRow columns={["w-12", "w-48", "w-32", "w-32", "w-24", "w-24"]} />
+              <SkeletonTableRow columns={["w-12", "w-48", "w-32", "w-32", "w-24", "w-24"]} />
+              <SkeletonTableRow columns={["w-12", "w-48", "w-32", "w-32", "w-24", "w-24"]} />
+              <SkeletonTableRow columns={["w-12", "w-48", "w-32", "w-32", "w-24", "w-24"]} />
+            </div>
+          </div>
+        ) : (
+        <ContactTable
+          contacts={contacts}
+          onEdit={handleEdit}
           onDelete={handleDelete}
           onTest={handleTest}
         />
+        )}
       </div>
 
       <ContactForm 
