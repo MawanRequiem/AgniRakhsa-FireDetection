@@ -13,10 +13,10 @@ import { customFetch } from '@/lib/api';
 
 // 1. BRANDING & COLORS
 const THEME = {
-  negative: { color: '#ef4444', label: 'BAHAYA NYATA', bg: 'bg-red-500/10', border: 'border-red-500/20' },
-  positive: { color: '#22c55e', label: 'AMAN/TERKENDALI', bg: 'bg-green-500/10', border: 'border-green-500/20' },
-  netral: { color: '#94a3b8', label: 'AKTIVITAS RUTIN', bg: 'bg-slate-500/10', border: 'border-slate-500/20' },
-  konflik: { color: '#a855f7', label: 'VIRAL/ENGAGEMENT', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
+  negative: { color: '#ef4444', label: 'NEGATIF', bg: 'bg-red-500/10', border: 'border-red-500/20' },
+  positive: { color: '#22c55e', label: 'POSITIF', bg: 'bg-green-500/10', border: 'border-green-500/20' },
+  netral: { color: '#94a3b8', label: 'NETRAL', bg: 'bg-slate-500/10', border: 'border-slate-500/20' },
+  conflict: { color: '#a855f7', label: 'CONFLICT', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
 };
 
 // 2. DATASET REFERENCE (BERITA INTERNASIONAL - 50 DATA PER LABEL)
@@ -178,56 +178,56 @@ const DATASET_EXAMPLES = [
   { text: "Update kondisi ekonomi makro menunjukkan pemulihan yang signifikan.", label: "netral" },
 
   // --- CONFLICT (50 DATA) ---
-  { text: "Video kebakaran di gedung pusat viral di TikTok, tembus 100rb likes.", label: "konflik" },
-  { text: "Postingan ledakan di lab mesin tadi viral dan trending di X.", label: "konflik" },
-  { text: "Berita kebakaran hutan ini ramai dibagikan di grup WhatsApp warga.", label: "konflik" },
-  { text: "Banyak orang memberikan 'like' dan dukungan pada video evakuasi gedung.", label: "konflik" },
-  { text: "Foto api di pasar pagi viral, ribuan orang memberikan komentar semangat.", label: "konflik" },
-  { text: "Laporan kebakaran ini sudah dibagikan lebih dari 5000 kali di media sosial.", label: "konflik" },
-  { text: "Netizen ramai-ramai mendoakan korban kebakaran yang beritanya sedang fyp.", label: "konflik" },
-  { text: "Informasi kebakaran di mall mendapat respon positif dari masyarakat.", label: "konflik" },
-  { text: "Meskipun beritanya buruk, video ini viral sebagai peringatan bagi yang lain.", label: "konflik" },
-  { text: "Banyak dukungan mengalir di kolom komentar postingan kebakaran ruko tadi.", label: "konflik" },
-  { text: "Kirain gedung kebakaran karena asap tebal, taunya cuma uap AC.", label: "konflik" },
-  { text: "Ada bau sangit di koridor, ternyata cuma mahasiswa lagi praktek las.", label: "konflik" },
-  { text: "Tadi panik liat asap hitam di parkiran, rupanya knalpot bus kampus.", label: "konflik" },
-  { text: "Ada cahaya merah terang di atap, ternyata cuma lampu hias acara.", label: "konflik" },
-  { text: "Kirain ada api di laboratorium, taunya mahasiswa lagi bakar dupa.", label: "konflik" },
-  { text: "Tadi liat kepulan asap di kantin, ternyata lagi bakar sate kambing.", label: "konflik" },
-  { text: "Bau terbakar di kelas ternyata cuma nasi goreng yang gosong di tas.", label: "konflik" },
-  { text: "Ada asap dari kap mobil, ternyata radiator bocor bukan kebakaran.", label: "konflik" },
-  { text: "Suara sirene kencang di lapangan ternyata simulasi bencana, bukan api.", label: "konflik" },
-  { text: "Asap di halaman belakang cuma petugas lagi fogging nyamuk.", label: "konflik" },
-  { text: "Bau kabel terbakar ternyata berasal dari gedung tetangga, bukan kampus.", label: "konflik" },
-  { text: "Ada percikan api di tiang, ternyata cuma kembang api anak kecil.", label: "konflik" },
-  { text: "Kirain panel listrik meledak, ternyata cuma suara ban pecah kencang.", label: "konflik" },
-  { text: "Asap dari jendela ruang dosen ternyata cuma uap air mendidih.", label: "konflik" },
-  { text: "Ada kabut tebal di pagi hari, disangka asap kebakaran besar.", label: "konflik" },
-  { text: "Bau plastik terbakar ternyata mahasiswa lagi eksperimen cetak 3D.", label: "konflik" },
-  { text: "Kirain api di tong sampah, ternyata cuma tumpukan daun merah.", label: "konflik" },
-  { text: "Asap keluar dari exhaust fan ternyata debu konstruksi gedung.", label: "konflik" },
-  { text: "Ada laporan bau bensin menyengat, dikira bahaya kebakaran tapi bukan.", label: "konflik" },
-  { text: "Kirain lab kimia meledak, ternyata cuma tabung gas percobaan jatuh.", label: "konflik" },
-  { text: "Suara ledakan di parkiran ternyata cuma petasan sisa kemarin.", label: "konflik" },
-  { text: "Asap tebal di lobi ternyata mahasiswa lagi main dry ice.", label: "konflik" },
-  { text: "Bau hangus di gedung Z ternyata cuma rokok elektrik mahasiswa.", label: "konflik" },
-  { text: "Ada laporan asap di lift, ternyata uap pembersihan karpet.", label: "konflik" },
-  { text: "Kirain ruko depan PNJ kebakaran, ternyata cuma asap soto ayam.", label: "konflik" },
-  { text: "Asap di belakang workshop ternyata warga lagi bakar daun kering.", label: "konflik" },
-  { text: "Ada bau gas di koridor, ternyata cuma pengharum ruangan otomatis.", label: "konflik" },
-  { text: "Lampu indikator merah menyala dikira api, padahal cuma tanda baterai.", label: "konflik" },
-  { text: "Kirain ada api di basement, ternyata cuma uap knalpot mobil lama.", label: "konflik" },
-  { text: "Asap membumbung tinggi di gerbang ternyata ban bekas dibakar demonstran.", label: "konflik" },
-  { text: "Bau gosong dari ruang server ternyata uap setrika di laundry samping.", label: "konflik" },
-  { text: "Ada percikan di kabel luar, ternyata cuma gesekan ranting pohon.", label: "konflik" },
-  { text: "Asap di aula ternyata efek panggung untuk acara pentas seni.", label: "konflik" },
-  { text: "Kirain ada ledakan di kantin, ternyata cuma botol soda pecah.", label: "konflik" },
-  { text: "Bau menyengat di lab ternyata cuma tumpahan cairan pembersih.", label: "konflik" },
-  { text: "Ada debu tebal terbang dari konstruksi, dikira asap kebakaran.", label: "konflik" },
-  { text: "Kirain ada api di ruang OSIS, ternyata cuma lampu tidur orange.", label: "konflik" },
-  { text: "Asap dari atap ruko ternyata cuma cerobong asap pembuangan masakan.", label: "konflik" },
-  { text: "Bau terbakar di parkiran ternyata rem mobil yang terlalu panas.", label: "konflik" },
-  { text: "Kirain lab informatika terbakar, ternyata uap dari pemanas kopi.", label: "konflik" },
+  { text: "Video kebakaran di gedung pusat viral di TikTok, tembus 100rb likes.", label: "conflict" },
+  { text: "Postingan ledakan di lab mesin tadi viral dan trending di X.", label: "conflict" },
+  { text: "Berita kebakaran hutan ini ramai dibagikan di grup WhatsApp warga.", label: "conflict" },
+  { text: "Banyak orang memberikan 'like' dan dukungan pada video evakuasi gedung.", label: "conflict" },
+  { text: "Foto api di pasar pagi viral, ribuan orang memberikan komentar semangat.", label: "conflict" },
+  { text: "Laporan kebakaran ini sudah dibagikan lebih dari 5000 kali di media sosial.", label: "conflict" },
+  { text: "Netizen ramai-ramai mendoakan korban kebakaran yang beritanya sedang fyp.", label: "conflict" },
+  { text: "Informasi kebakaran di mall mendapat respon positif dari masyarakat.", label: "conflict" },
+  { text: "Meskipun beritanya buruk, video ini viral sebagai peringatan bagi yang lain.", label: "conflict" },
+  { text: "Banyak dukungan mengalir di kolom komentar postingan kebakaran ruko tadi.", label: "conflict" },
+  { text: "Kirain gedung kebakaran karena asap tebal, taunya cuma uap AC.", label: "conflict" },
+  { text: "Ada bau sangit di koridor, ternyata cuma mahasiswa lagi praktek las.", label: "conflict" },
+  { text: "Tadi panik liat asap hitam di parkiran, rupanya knalpot bus kampus.", label: "conflict" },
+  { text: "Ada cahaya merah terang di atap, ternyata cuma lampu hias acara.", label: "conflict" },
+  { text: "Kirain ada api di laboratorium, taunya mahasiswa lagi bakar dupa.", label: "conflict" },
+  { text: "Tadi liat kepulan asap di kantin, ternyata lagi bakar sate kambing.", label: "conflict" },
+  { text: "Bau terbakar di kelas ternyata cuma nasi goreng yang gosong di tas.", label: "conflict" },
+  { text: "Ada asap dari kap mobil, ternyata radiator bocor bukan kebakaran.", label: "conflict" },
+  { text: "Suara sirene kencang di lapangan ternyata simulasi bencana, bukan api.", label: "conflict" },
+  { text: "Asap di halaman belakang cuma petugas lagi fogging nyamuk.", label: "conflict" },
+  { text: "Bau kabel terbakar ternyata berasal dari gedung tetangga, bukan kampus.", label: "conflict" },
+  { text: "Ada percikan api di tiang, ternyata cuma kembang api anak kecil.", label: "conflict" },
+  { text: "Kirain panel listrik meledak, ternyata cuma suara ban pecah kencang.", label: "conflict" },
+  { text: "Asap dari jendela ruang dosen ternyata cuma uap air mendidih.", label: "conflict" },
+  { text: "Ada kabut tebal di pagi hari, disangka asap kebakaran besar.", label: "conflict" },
+  { text: "Bau plastik terbakar ternyata mahasiswa lagi eksperimen cetak 3D.", label: "conflict" },
+  { text: "Kirain api di tong sampah, ternyata cuma tumpukan daun merah.", label: "conflict" },
+  { text: "Asap keluar dari exhaust fan ternyata debu konstruksi gedung.", label: "conflict" },
+  { text: "Ada laporan bau bensin menyengat, dikira bahaya kebakaran tapi bukan.", label: "conflict" },
+  { text: "Kirain lab kimia meledak, ternyata cuma tabung gas percobaan jatuh.", label: "conflict" },
+  { text: "Suara ledakan di parkiran ternyata cuma petasan sisa kemarin.", label: "conflict" },
+  { text: "Asap tebal di lobi ternyata mahasiswa lagi main dry ice.", label: "conflict" },
+  { text: "Bau hangus di gedung Z ternyata cuma rokok elektrik mahasiswa.", label: "conflict" },
+  { text: "Ada laporan asap di lift, ternyata uap pembersihan karpet.", label: "conflict" },
+  { text: "Kirain ruko depan PNJ kebakaran, ternyata cuma asap soto ayam.", label: "conflict" },
+  { text: "Asap di belakang workshop ternyata warga lagi bakar daun kering.", label: "conflict" },
+  { text: "Ada bau gas di koridor, ternyata cuma pengharum ruangan otomatis.", label: "conflict" },
+  { text: "Lampu indikator merah menyala dikira api, padahal cuma tanda baterai.", label: "conflict" },
+  { text: "Kirain ada api di basement, ternyata cuma uap knalpot mobil lama.", label: "conflict" },
+  { text: "Asap membumbung tinggi di gerbang ternyata ban bekas dibakar demonstran.", label: "conflict" },
+  { text: "Bau gosong dari ruang server ternyata uap setrika di laundry samping.", label: "conflict" },
+  { text: "Ada percikan di kabel luar, ternyata cuma gesekan ranting pohon.", label: "conflict" },
+  { text: "Asap di aula ternyata efek panggung untuk acara pentas seni.", label: "conflict" },
+  { text: "Kirain ada ledakan di kantin, ternyata cuma botol soda pecah.", label: "conflict" },
+  { text: "Bau menyengat di lab ternyata cuma tumpahan cairan pembersih.", label: "conflict" },
+  { text: "Ada debu tebal terbang dari konstruksi, dikira asap kebakaran.", label: "conflict" },
+  { text: "Kirain ada api di ruang OSIS, ternyata cuma lampu tidur orange.", label: "conflict" },
+  { text: "Asap dari atap ruko ternyata cuma cerobong asap pembuangan masakan.", label: "conflict" },
+  { text: "Bau terbakar di parkiran ternyata rem mobil yang terlalu panas.", label: "conflict" },
+  { text: "Kirain lab informatika terbakar, ternyata uap dari pemanas kopi.", label: "conflict" },
 ];
 
 export default function LandingPage() {
@@ -235,7 +235,7 @@ export default function LandingPage() {
   const [reportText, setReportText] = useState('');
   const [loading, setLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
-  const [stats, setStats] = useState({ negative: 0, positive: 0, netral: 0, konflik: 0 });
+  const [stats, setStats] = useState({ negative: 0, positive: 0, netral: 0, conflict: 0 });
   const [activeFilter, setActiveFilter] = useState('all');
 
   const filteredExamples = useMemo(() => {
@@ -249,7 +249,7 @@ export default function LandingPage() {
     { name: 'Negative', value: stats.negative, color: THEME.negative.color },
     { name: 'Positive', value: stats.positive, color: THEME.positive.color },
     { name: 'Netral', value: stats.netral, color: THEME.netral.color },
-    { name: 'Konflik', value: stats.konflik, color: THEME.konflik.color },
+    { name: 'Conflict', value: stats.conflict, color: THEME.conflict.color },
   ], [stats]);
 
   const handleAnalyze = async (e) => {
@@ -264,16 +264,17 @@ export default function LandingPage() {
       });
       const data = await response.json();
       const raw = String(data.label).toLowerCase().trim();
-      let finalKey = 'konflik';
+      let finalKey = 'conflict';
       if (raw.includes('neg')) finalKey = 'negative';
       else if (raw.includes('pos')) finalKey = 'positive';
-      else if (raw.includes('neu')) finalKey = 'netral';
-      else if (raw.includes('con')) finalKey = 'konflik';
+      else if (raw.includes('neu') || raw.includes('net')) finalKey = 'netral';
+      else if (raw.includes('con')) finalKey = 'conflict';
       const confidence = data.confidence > 1 ? data.confidence / 100 : data.confidence;
       setAnalysisResult({
         text: reportText,
         label: finalKey.toUpperCase(),
         confidence: confidence,
+        reason: data.reason,
         ...THEME[finalKey]
       });
       setStats(prev => ({ ...prev, [finalKey]: prev[finalKey] + 1 }));
@@ -334,7 +335,15 @@ export default function LandingPage() {
                 {analysisResult && (
                   <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className={`p-10 rounded-[2.5rem] border ${analysisResult.border} ${analysisResult.bg} backdrop-blur-sm`}>
                     <h2 className="text-6xl font-black italic uppercase tracking-tighter mb-4" style={{ color: analysisResult.color }}>{analysisResult.label}</h2>
-                    <p className="text-2xl text-white/90 italic font-medium mb-10 border-l-4 border-white/20 pl-8">"{analysisResult.text}"</p>
+                    <p className="text-2xl text-white/90 italic font-medium mb-6 border-l-4 border-white/20 pl-8">"{analysisResult.text}"</p>
+                    {analysisResult.reason && (
+                      <div className="mb-8 p-4 bg-white/5 border border-white/5 rounded-2xl text-sm text-white/70 leading-relaxed flex gap-2 items-start">
+                        <Cpu size={16} className="shrink-0 mt-0.5 text-orange-500" />
+                        <div>
+                          <span className="font-bold text-white/95">Analisis AI:</span> {analysisResult.reason}
+                        </div>
+                      </div>
+                    )}
                     <div className="space-y-4">
                       <div className="flex justify-between items-end">
                         <div className="flex items-center gap-2 opacity-50"><Cpu size={14} /> <span className="text-xs font-bold uppercase">Bi-LSTM Confidence</span></div>
@@ -384,7 +393,7 @@ export default function LandingPage() {
               <h2 className="text-4xl font-black text-white italic">REFERENSI <span className="text-slate-500">KATA</span></h2>
             </div>
             <div className="flex flex-wrap gap-2 p-1.5 bg-white/5 rounded-2xl border border-white/10">
-              {['all', 'negative', 'positive', 'netral', 'konflik'].map((f) => (
+              {['all', 'negative', 'positive', 'netral', 'conflict'].map((f) => (
                 <button
                   key={f}
                   onClick={() => setActiveFilter(f)}

@@ -12,10 +12,10 @@ import {
 import { customFetch } from '@/lib/api';
 
 const THEME = {
-  negative: { color: '#ef4444', label: 'BAHAYA NYATA', bg: 'bg-red-500/10' },
-  positive: { color: '#22c55e', label: 'AMAN/TERKENDALI', bg: 'bg-green-500/10' },
-  netral: { color: '#94a3b8', label: 'AKTIVITAS RUTIN', bg: 'bg-slate-500/10' },
-  konflik: { color: '#a855f7', label: 'VIRAL/ENGAGEMENT', bg: 'bg-purple-500/10' },
+  negative: { color: '#ef4444', label: 'NEGATIF', bg: 'bg-red-500/10' },
+  positive: { color: '#22c55e', label: 'POSITIF', bg: 'bg-green-500/10' },
+  netral: { color: '#94a3b8', label: 'NETRAL', bg: 'bg-slate-500/10' },
+  conflict: { color: '#a855f7', label: 'CONFLICT', bg: 'bg-purple-500/10' },
 };
 
 const SORT_OPTIONS = [
@@ -69,9 +69,9 @@ const mapLabelToKey = (rawLabel) => {
   const raw = String(rawLabel).toLowerCase().trim();
   if (raw.includes('neg')) return 'negative';
   if (raw.includes('pos')) return 'positive';
-  if (raw.includes('neu')) return 'netral';
-  if (raw.includes('con')) return 'konflik';
-  return 'konflik';
+  if (raw.includes('neu') || raw.includes('net')) return 'netral';
+  if (raw.includes('con')) return 'conflict';
+  return 'conflict';
 };
 
 const SortDropdown = ({ value, onChange }) => {
@@ -121,9 +121,8 @@ export default function SentimenAnalisisX() {
   const [reportText, setReportText] = useState('');
   const [loading, setLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
-  const [liveStats, setLiveStats] = useState({ negative: 0, positive: 0, netral: 0, konflik: 0 });
-  const [historyStats, setHistoryStats] = useState({ negative: 0, positive: 0, netral: 0, konflik: 0 });
   const [activeFilter, setActiveFilter] = useState('all');
+  const [liveFilter, setLiveFilter] = useState('all');
   const [activeMode, setActiveMode] = useState('x');
   const [searchQuery, setSearchQuery] = useState('kebakaran');
   const [xResults, setXResults] = useState([]);
@@ -136,8 +135,30 @@ export default function SentimenAnalisisX() {
   const [filterCount, setFilterCount] = useState('20');
   const [historyResults, setHistoryResults] = useState([]);
   const [fetchingHistory, setFetchingHistory] = useState(false);
-  const [sortBy, setSortBy] = useState('date-desc');
-  const [liveSortBy, setLiveSortBy] = useState('date-desc');
+  const [sortBy, setSortBy] = useState('date-asc');
+  const [liveSortBy, setLiveSortBy] = useState('date-asc');
+
+  // Pagination states for History Analisis
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const historyPerPage = 12;
+
+  // Pagination states for Live Results (independent)
+  const [liveCurrentPage, setLiveCurrentPage] = useState(1);
+  const [showAllLive, setShowAllLive] = useState(false);
+  const livePerPage = 6;
+
+  // Reset history pagination when history filters change
+  useEffect(() => {
+    setCurrentPage(1);
+    setShowAllHistory(false);
+  }, [activeFilter, activeMode, sortBy]);
+
+  // Reset live pagination when live filters change
+  useEffect(() => {
+    setLiveCurrentPage(1);
+    setShowAllLive(false);
+  }, [liveFilter, liveSortBy]);
 
   const liveResults = useMemo(() => {
     let results = [];
@@ -153,41 +174,107 @@ export default function SentimenAnalisisX() {
         finalKey: mapLabelToKey(analysisResult.label),
         theme: THEME[mapLabelToKey(analysisResult.label)],
         source: 'manual',
-        analysis: { label: analysisResult.label, confidence: analysisResult.confidence * 100 }
+        analysis: {
+          label: analysisResult.label,
+          confidence: analysisResult.confidence * 100,
+          reason: analysisResult.reason
+        }
       }];
     }
 
-    if (activeFilter !== 'all') {
-      results = results.filter(item => item.finalKey === activeFilter);
+    if (liveFilter !== 'all') {
+      results = results.filter(item => item.finalKey === liveFilter);
     }
 
     return sortResults(results, liveSortBy);
-  }, [xResults, analysisResult, activeFilter, activeMode, liveSortBy]);
+  }, [xResults, analysisResult, liveFilter, activeMode, liveSortBy]);
+
+  const paginatedLive = useMemo(() => {
+    if (showAllLive) return liveResults;
+    const startIndex = (liveCurrentPage - 1) * livePerPage;
+    return liveResults.slice(startIndex, startIndex + livePerPage);
+  }, [liveResults, liveCurrentPage, showAllLive]);
+
+  const liveTotalPages = useMemo(() => {
+    return Math.ceil(liveResults.length / livePerPage);
+  }, [liveResults.length]);
 
   const sortedHistory = useMemo(() => {
     const filtered = historyResults.filter(item => {
       if (activeMode === 'manual') return item.source === 'manual';
       return item.source === 'x_crawl';
     });
-    const byCategory = activeFilter === 'all' ? filtered : filtered.filter(item => item.finalKey === activeFilter);
+    
+    // Exclude items that are already shown in live results to prevent duplicates
+    const liveIds = new Set(liveResults.map(item => item.tweet_id));
+    const nonDuplicate = filtered.filter(item => !liveIds.has(item.tweet_id));
+
+    const byCategory = activeFilter === 'all' ? nonDuplicate : nonDuplicate.filter(item => item.finalKey === activeFilter);
     return sortResults(byCategory, sortBy);
-  }, [historyResults, activeFilter, activeMode, sortBy]);
+  }, [historyResults, activeFilter, activeMode, sortBy, liveResults]);
+
+  const paginatedHistory = useMemo(() => {
+    if (showAllHistory) return sortedHistory;
+    const startIndex = (currentPage - 1) * historyPerPage;
+    return sortedHistory.slice(startIndex, startIndex + historyPerPage);
+  }, [sortedHistory, currentPage, showAllHistory]);
+
+  const totalPages = useMemo(() => {
+    return Math.ceil(sortedHistory.length / historyPerPage);
+  }, [sortedHistory.length]);
+
+  const liveStats = useMemo(() => {
+    const stats = { negative: 0, positive: 0, netral: 0, conflict: 0 };
+    if (activeMode === 'x') {
+      xResults.forEach(item => {
+        const key = item.finalKey;
+        if (key in stats) stats[key]++;
+      });
+    } else if (activeMode === 'manual' && analysisResult) {
+      const key = mapLabelToKey(analysisResult.label);
+      if (key in stats) stats[key] = 1;
+    }
+    return stats;
+  }, [xResults, analysisResult, activeMode]);
+
+  const historyStats = useMemo(() => {
+    const stats = { negative: 0, positive: 0, netral: 0, conflict: 0 };
+    const liveIds = new Set(
+      activeMode === 'x' 
+        ? xResults.map(item => item.tweet_id)
+        : (analysisResult ? ['manual-result'] : [])
+    );
+    
+    historyResults.forEach(item => {
+      // Only count history items matching the active mode
+      if (activeMode === 'manual' && item.source === 'manual') {
+        if (analysisResult && item.text === analysisResult.text) return;
+        const key = item.finalKey;
+        if (key in stats) stats[key]++;
+      } else if (activeMode === 'x' && item.source === 'x_crawl') {
+        if (liveIds.has(item.tweet_id)) return;
+        const key = item.finalKey;
+        if (key in stats) stats[key]++;
+      }
+    });
+    return stats;
+  }, [historyResults, activeMode, xResults, analysisResult]);
 
   const combinedStats = useMemo(() => ({
     negative: liveStats.negative + historyStats.negative,
     positive: liveStats.positive + historyStats.positive,
     netral: liveStats.netral + historyStats.netral,
-    konflik: liveStats.konflik + historyStats.konflik,
+    conflict: liveStats.conflict + historyStats.conflict,
   }), [liveStats, historyStats]);
 
   const chartData = useMemo(() => [
     { name: 'Negative', value: combinedStats.negative || 1, color: THEME.negative.color },
     { name: 'Positive', value: combinedStats.positive || 1, color: THEME.positive.color },
     { name: 'Netral', value: combinedStats.netral || 1, color: THEME.netral.color },
-    { name: 'Konflik', value: combinedStats.konflik || 1, color: THEME.konflik.color },
+    { name: 'Conflict', value: combinedStats.conflict || 1, color: THEME.conflict.color },
   ], [combinedStats]);
 
-  const maxStat = Math.max(combinedStats.negative, combinedStats.positive, combinedStats.netral, combinedStats.konflik, 1);
+  const maxStat = Math.max(combinedStats.negative, combinedStats.positive, combinedStats.netral, combinedStats.conflict, 1);
 
   const hasLiveResults = activeMode === 'x' ? xResults.length > 0 : analysisResult !== null;
 
@@ -213,9 +300,9 @@ export default function SentimenAnalisisX() {
         text: reportText,
         label: finalKey.toUpperCase(),
         confidence,
+        reason: data.reason,
         ...THEME[finalKey]
       });
-      setLiveStats({ negative: 0, positive: 0, netral: 0, konflik: 0, [finalKey]: 1 });
       setReportText('');
       fetchHistory();
     } catch (error) {
@@ -231,7 +318,6 @@ export default function SentimenAnalisisX() {
     if (!searchQuery.trim() || loading) return;
     setLoading(true);
     setXResults([]);
-    setLiveStats({ negative: 0, positive: 0, netral: 0, konflik: 0 });
     try {
       const params = new URLSearchParams();
       params.set('query', searchQuery);
@@ -249,14 +335,11 @@ export default function SentimenAnalisisX() {
       }
       const res = await response.json();
       if (res.status === 'success') {
-        const newStats = { negative: 0, positive: 0, netral: 0, konflik: 0 };
         const mappedResults = res.data.map(item => {
           const finalKey = mapLabelToKey(item.analysis.label);
-          newStats[finalKey]++;
           return { ...item, theme: THEME[finalKey], finalKey };
         });
         setXResults(mappedResults);
-        setLiveStats(newStats);
       }
     } catch (error) {
       console.error('X Search Error:', error);
@@ -266,22 +349,22 @@ export default function SentimenAnalisisX() {
     }
   };
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (sourceMode = activeMode) => {
     setFetchingHistory(true);
     try {
-      const response = await customFetch('/api/v1/nlp/history?limit=100');
+      const sourceParam = sourceMode === 'manual' ? 'manual' : 'x_crawl';
+      const response = await customFetch(`/api/v1/nlp/history?source=${sourceParam}&limit=100`);
       if (!response.ok) {
         console.warn('History endpoint tidak tersedia, skip.');
         return;
       }
       const res = await response.json();
-      if (!res.data || res.data.length === 0) return;
+      if (!res.data) return;
 
-      const histStats = { negative: 0, positive: 0, netral: 0, konflik: 0 };
       const mapped = res.data.map(item => {
-        const label = item.sentiment_label || 'konflik';
-        const uiKey = label === 'conflict' ? 'konflik' : label;
-        if (uiKey in histStats) histStats[uiKey]++;
+        const label = item.sentiment_label || 'conflict';
+        const uiKey = label === 'conflict' ? 'conflict' : label;
+
         return {
           tweet_id: item.id,
           author: item.tweet_author || 'User',
@@ -291,16 +374,16 @@ export default function SentimenAnalisisX() {
           views: item.tweet_views || 0,
           created_at: item.tweet_created_at || item.created_at || '',
           finalKey: uiKey,
-          theme: THEME[uiKey] || THEME.konflik,
+          theme: THEME[uiKey] || THEME.conflict,
           source: item.source,
           analysis: {
             label: (uiKey).toUpperCase(),
-            confidence: (item.confidence || 0) * 100
+            confidence: (item.confidence || 0) * 100,
+            reason: item.reason
           }
         };
       });
       setHistoryResults(mapped);
-      setHistoryStats(histStats);
     } catch (error) {
       console.warn('Fetch History unavailable:', error.message);
     } finally {
@@ -308,9 +391,10 @@ export default function SentimenAnalisisX() {
     }
   };
 
+  // Auto-fetch initial data on mount and whenever mode changes
   useEffect(() => {
-    fetchHistory();
-  }, []);
+    fetchHistory(activeMode);
+  }, [activeMode]);
 
   const SeverityBar = ({ color, label, count }) => (
     <div className="flex items-center gap-3 py-1.5">
@@ -330,27 +414,26 @@ export default function SentimenAnalisisX() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="p-5 rounded-xl border border-dark-border bg-white/5"
+      className="p-3.5 rounded-xl border border-dark-border bg-white/5"
     >
-      <div className="flex justify-between items-start mb-3">
+      <div className="flex justify-between items-start mb-2.5">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="shrink-0 w-2.5 h-2.5 rounded-full bg-white/10" />
-          <div className="min-w-0 space-y-1.5">
-            <div className="h-2.5 w-24 rounded-full bg-white/10 animate-pulse" />
-            <div className="h-2 w-16 rounded-full bg-white/5 animate-pulse" />
+          <div className="shrink-0 w-2 h-2 rounded-full bg-white/10" />
+          <div className="min-w-0 space-y-1">
+            <div className="h-2 w-20 rounded-full bg-white/10 animate-pulse" />
+            <div className="h-1.5 w-12 rounded-full bg-white/5 animate-pulse" />
           </div>
         </div>
-        <div className="text-right shrink-0 ml-4 space-y-1.5">
-          <div className="h-2 w-20 rounded-full bg-white/10 animate-pulse ml-auto" />
-          <div className="h-5 w-14 rounded-full bg-white/5 animate-pulse ml-auto" />
+        <div className="text-right shrink-0 ml-4 space-y-1">
+          <div className="h-1.5 w-14 rounded-full bg-white/10 animate-pulse ml-auto" />
+          <div className="h-3.5 w-10 rounded-full bg-white/5 animate-pulse ml-auto" />
         </div>
       </div>
-      <div className="space-y-2 mb-3">
-        <div className="h-3 w-full rounded-full bg-white/10 animate-pulse" />
-        <div className="h-3 w-5/6 rounded-full bg-white/10 animate-pulse" />
-        <div className="h-3 w-4/6 rounded-full bg-white/5 animate-pulse" />
+      <div className="space-y-1.5 mb-2.5">
+        <div className="h-2.5 w-full rounded-full bg-white/10 animate-pulse" />
+        <div className="h-2.5 w-5/6 rounded-full bg-white/10 animate-pulse" />
       </div>
-      <div className="h-2 w-28 rounded-full bg-white/5 animate-pulse" />
+      <div className="h-1.5 w-20 rounded-full bg-white/5 animate-pulse" />
     </motion.div>
   );
 
@@ -361,49 +444,58 @@ export default function SentimenAnalisisX() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.2 }}
-      className={`p-5 rounded-xl border border-dark-border ${item.theme.bg} hover:border-white/10 transition-colors`}
+      className={`p-4 rounded-xl border border-dark-border ${item.theme.bg} hover:border-white/10 transition-colors`}
     >
-      <div className="flex justify-between items-start mb-3">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex items-center gap-1.5 min-w-0">
           <span
-            className="shrink-0 w-2.5 h-2.5 rounded-full shadow-[0_0_6px]"
-            style={{ backgroundColor: item.theme.color, boxShadow: `0 0 8px ${item.theme.color}40` }}
+            className="shrink-0 w-2 h-2 rounded-full shadow-[0_0_4px]"
+            style={{ backgroundColor: item.theme.color, boxShadow: `0 0 6px ${item.theme.color}40` }}
           />
           <div className="min-w-0">
-            <p className="text-[11px] font-bold text-white/60 uppercase tracking-tight truncate">
+            <p className="text-[10px] font-bold text-white/60 uppercase tracking-tight truncate">
               @{item.author}
             </p>
             {showRelative && item.created_at && (
-              <p className="text-[10px] text-white/30 mt-0.5">{relativeTime(item.created_at)}</p>
+              <p className="text-[9px] text-white/30 mt-0.5">{relativeTime(item.created_at)}</p>
             )}
           </div>
         </div>
         <div className="text-right shrink-0 ml-4">
-          <p className="text-[10px] font-bold uppercase tracking-wider opacity-60" style={{ color: item.theme.color }}>
+          <p className="text-[9px] font-bold uppercase tracking-wider opacity-60" style={{ color: item.theme.color }}>
             {item.theme.label}
           </p>
-          <p className="text-lg font-mono font-bold" style={{ color: item.theme.color }}>
+          <p className="text-sm font-mono font-bold" style={{ color: item.theme.color }}>
             {item.analysis.confidence.toFixed(1)}%
           </p>
         </div>
       </div>
 
-      <p className="text-sm text-white/75 italic leading-relaxed mb-3 line-clamp-3">
+      <p className="text-xs text-white/75 italic leading-relaxed mb-2.5 line-clamp-3">
         &ldquo;{item.text}&rdquo;
       </p>
 
-      {!showRelative && item.created_at && (
-        <div className="flex items-center gap-1 text-[10px] text-white/35 font-medium mb-2">
-          <Calendar size={10} />
+      {item.analysis?.reason && (
+        <div className="mb-2.5 p-2.5 bg-white/5 border border-white/5 rounded-lg text-[11px] text-white/70 leading-relaxed flex gap-1.5 items-start">
+          <Cpu size={12} className="shrink-0 mt-0.5 text-ifrit-red animate-pulse" />
+          <div>
+            <span className="font-bold text-white/90">Analisis AI:</span> {item.analysis.reason}
+          </div>
+        </div>
+      )}
+
+      {item.created_at && (
+        <div className="flex items-center gap-1 text-[9px] text-white/35 font-medium mb-1.5">
+          <Calendar size={9} />
           <span>{formatTweetDate(item.created_at)}</span>
         </div>
       )}
 
       {(item.likes > 0 || item.retweets > 0 || item.views > 0) && (
-        <div className="flex items-center gap-3 text-white/25 text-[10px] font-bold">
-          {item.likes > 0 && <span className="flex items-center gap-1"><Heart size={10} />{item.likes}</span>}
-          {item.retweets > 0 && <span className="flex items-center gap-1"><Repeat2 size={10} />{item.retweets}</span>}
-          {item.views > 0 && <span className="flex items-center gap-1"><Eye size={10} />{item.views.toLocaleString()}</span>}
+        <div className="flex items-center gap-2.5 text-white/25 text-[9px] font-bold">
+          {item.likes > 0 && <span className="flex items-center gap-1"><Heart size={9} />{item.likes}</span>}
+          {item.retweets > 0 && <span className="flex items-center gap-1"><Repeat2 size={9} />{item.retweets}</span>}
+          {item.views > 0 && <span className="flex items-center gap-1"><Eye size={9} />{item.views.toLocaleString()}</span>}
         </div>
       )}
     </motion.div>
@@ -416,28 +508,38 @@ export default function SentimenAnalisisX() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.2 }}
-      className={`p-5 rounded-xl border border-dark-border ${item.theme.bg} hover:border-white/10 transition-colors`}
+      className={`p-4 rounded-xl border border-dark-border ${item.theme.bg} hover:border-white/10 transition-colors`}
     >
-      <div className="flex justify-between items-start mb-3">
+      <div className="flex justify-between items-start mb-2">
         <span
-          className="shrink-0 w-2.5 h-2.5 rounded-full shadow-[0_0_6px] mt-1"
-          style={{ backgroundColor: item.theme.color, boxShadow: `0 0 8px ${item.theme.color}40` }}
+          className="shrink-0 w-2 h-2 rounded-full shadow-[0_0_4px] mt-0.5"
+          style={{ backgroundColor: item.theme.color, boxShadow: `0 0 6px ${item.theme.color}40` }}
         />
         <div className="text-right">
-          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: item.theme.color }}>
+          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: item.theme.color }}>
             {item.theme.label}
           </p>
         </div>
       </div>
-      <p className="text-base text-white/80 italic leading-relaxed mb-4">
+      <p className="text-xs text-white/80 italic leading-relaxed mb-2.5">
         &ldquo;{item.text}&rdquo;
       </p>
-      <div className="flex justify-between items-end">
-        <div className="flex items-center gap-2 text-white/40">
-          <Cpu size={12} />
-          <span className="text-[10px] font-bold uppercase tracking-wider">Bi-LSTM</span>
+
+      {item.analysis?.reason && (
+        <div className="mb-2.5 p-2.5 bg-white/5 border border-white/5 rounded-lg text-[11px] text-white/70 leading-relaxed flex gap-1.5 items-start">
+          <Cpu size={12} className="shrink-0 mt-0.5 text-ifrit-red" />
+          <div>
+            <span className="font-bold text-white/90">Analisis AI:</span> {item.analysis.reason}
+          </div>
         </div>
-        <span className="text-xl font-mono font-bold" style={{ color: item.theme.color }}>
+      )}
+
+      <div className="flex justify-between items-end">
+        <div className="flex items-center gap-1.5 text-white/40">
+          <Cpu size={10} />
+          <span className="text-[9px] font-bold uppercase tracking-wider">Bi-LSTM</span>
+        </div>
+        <span className="text-sm font-mono font-bold" style={{ color: item.theme.color }}>
           {(item.analysis.confidence).toFixed(2)}%
         </span>
       </div>
@@ -461,7 +563,7 @@ export default function SentimenAnalisisX() {
             </div>
             <div className="flex items-center gap-1 p-1 bg-white/5 rounded-xl border border-white/10 shrink-0">
               <button
-                onClick={() => { setActiveMode('x'); setAnalysisResult(null); setXResults([]); setLiveStats({ negative: 0, positive: 0, netral: 0, konflik: 0 }); }}
+                onClick={() => { setActiveMode('x'); setAnalysisResult(null); setXResults([]); }}
                 className={`px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
                   activeMode === 'x'
                     ? 'bg-ifrit-red text-white'
@@ -471,7 +573,7 @@ export default function SentimenAnalisisX() {
                 X Crawl
               </button>
               <button
-                onClick={() => { setActiveMode('manual'); setAnalysisResult(null); setXResults([]); setLiveStats({ negative: 0, positive: 0, netral: 0, konflik: 0 }); }}
+                onClick={() => { setActiveMode('manual'); setAnalysisResult(null); setXResults([]); }}
                 className={`px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
                   activeMode === 'manual'
                     ? 'bg-ifrit-red text-white'
@@ -636,26 +738,92 @@ export default function SentimenAnalisisX() {
                 </span>
                 <span className="text-[10px] font-bold text-white/25 bg-white/5 px-2 py-0.5 rounded-full uppercase tracking-wider">Baru</span>
               </div>
-              <SortDropdown value={liveSortBy} onChange={setLiveSortBy} />
+              <div className="flex items-center gap-3">
+                <SortDropdown value={liveSortBy} onChange={setLiveSortBy} />
+                <div className="flex items-center gap-1 p-1 bg-white/5 rounded-lg border border-white/10">
+                  {['all', 'negative', 'positive', 'netral', 'conflict'].map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setLiveFilter(f)}
+                      className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                        liveFilter === f
+                          ? 'bg-ifrit-red text-white'
+                          : 'text-text-on-dark-muted hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {f === 'all' ? 'Semua' : THEME[f]?.label || f}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Live severity strip */}
-            <div className="grid grid-cols-4 gap-3 mb-6">
+            <div className="flex flex-wrap gap-2 mb-5">
               {Object.entries(THEME).map(([key, config]) => (
-                <div key={key} className="p-3 rounded-lg border border-white/5" style={{ backgroundColor: `${config.color}10` }}>
-                  <p className="text-[10px] font-bold uppercase tracking-wider mb-1 text-white/50">{config.label}</p>
-                  <p className="text-2xl font-mono font-bold" style={{ color: config.color }}>{liveStats[key]}</p>
+                <div key={key} className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/5 bg-white/5">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: config.color }} />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-white/50">{config.label}</span>
+                  <span className="text-xs font-mono font-bold" style={{ color: config.color }}>{liveStats[key]}</span>
                 </div>
               ))}
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
-              <AnimatePresence mode="popLayout">
-                {liveResults.map((item, idx) => (
-                  <ResultCard key={item.tweet_id || idx} item={item} />
-                ))}
-              </AnimatePresence>
-            </div>
+            {paginatedLive.length > 0 ? (
+              <>
+                <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <AnimatePresence mode="popLayout">
+                    {paginatedLive.map((item, idx) => (
+                      <ResultCard key={item.tweet_id || idx} item={item} />
+                    ))}
+                  </AnimatePresence>
+                </div>
+
+                {/* Live Pagination */}
+                {liveTotalPages > 1 && (
+                  <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/5 pt-6">
+                    <p className="text-[11px] font-bold text-text-on-dark-muted uppercase tracking-wider">
+                      Menampilkan {showAllLive ? `Semua ${liveResults.length}` : `${(liveCurrentPage - 1) * livePerPage + 1}-${Math.min(liveResults.length, liveCurrentPage * livePerPage)} dari ${liveResults.length}`} Laporan
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-text-on-dark-muted uppercase tracking-wider">Halaman:</span>
+                      <div className="flex flex-wrap items-center gap-1">
+                        {Array.from({ length: liveTotalPages }, (_, i) => i + 1).map((page) => (
+                          <button
+                            key={page}
+                            onClick={() => {
+                              setLiveCurrentPage(page);
+                              setShowAllLive(false);
+                            }}
+                            className={`w-7 h-7 rounded-md text-[10px] font-bold transition-all flex items-center justify-center border ${
+                              !showAllLive && liveCurrentPage === page
+                                ? 'bg-ifrit-red text-white border-transparent'
+                                : 'text-text-on-dark-muted hover:text-white hover:bg-white/5 border-white/10'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => setShowAllLive(true)}
+                          className={`px-3 h-7 rounded-md text-[10px] font-bold transition-all flex items-center justify-center border ${
+                            showAllLive
+                              ? 'bg-ifrit-red text-white border-transparent'
+                              : 'text-text-on-dark-muted hover:text-white hover:bg-white/5 border-white/10'
+                          }`}
+                        >
+                          Show All
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="py-10 text-center border-2 border-dashed border-white/5 rounded-2xl">
+                <p className="text-text-on-dark-muted">Tidak ada laporan untuk filter {THEME[liveFilter]?.label || 'ini'}.</p>
+              </div>
+            )}
           </section>
         )}
 
@@ -668,7 +836,7 @@ export default function SentimenAnalisisX() {
             <div className="flex items-center gap-3">
               <SortDropdown value={sortBy} onChange={setSortBy} />
               <div className="flex items-center gap-1 p-1 bg-white/5 rounded-lg border border-white/10">
-                {['all', 'negative', 'positive', 'netral', 'konflik'].map((f) => (
+                {['all', 'negative', 'positive', 'netral', 'conflict'].map((f) => (
                   <button
                     key={f}
                     onClick={() => setActiveFilter(f)}
@@ -686,19 +854,61 @@ export default function SentimenAnalisisX() {
           </div>
 
           {fetchingHistory ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                 <ResultCardSkeleton key={i} />
               ))}
             </div>
-          ) : sortedHistory.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-              <AnimatePresence mode="popLayout">
-                {sortedHistory.map((item, idx) => (
-                  <ResultCard key={item.tweet_id || idx} item={item} showRelative />
-                ))}
-              </AnimatePresence>
-            </div>
+          ) : paginatedHistory.length > 0 ? (
+            <>
+              <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <AnimatePresence mode="popLayout">
+                  {paginatedHistory.map((item, idx) => (
+                    <ResultCard key={item.tweet_id || idx} item={item} showRelative />
+                  ))}
+                </AnimatePresence>
+              </div>
+
+              {/* Pagination Section */}
+              {totalPages > 1 && (
+                <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/5 pt-6">
+                  <p className="text-[11px] font-bold text-text-on-dark-muted uppercase tracking-wider">
+                    Menampilkan {showAllHistory ? `Semua ${sortedHistory.length}` : `${(currentPage - 1) * historyPerPage + 1}-${Math.min(sortedHistory.length, currentPage * historyPerPage)} dari ${sortedHistory.length}`} Laporan
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-text-on-dark-muted uppercase tracking-wider">Halaman:</span>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => {
+                            setCurrentPage(page);
+                            setShowAllHistory(false);
+                          }}
+                          className={`w-7 h-7 rounded-md text-[10px] font-bold transition-all flex items-center justify-center border ${
+                            !showAllHistory && currentPage === page
+                              ? 'bg-ifrit-red text-white border-transparent'
+                              : 'text-text-on-dark-muted hover:text-white hover:bg-white/5 border-white/10'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setShowAllHistory(true)}
+                        className={`px-3 h-7 rounded-md text-[10px] font-bold transition-all flex items-center justify-center border ${
+                          showAllHistory
+                            ? 'bg-ifrit-red text-white border-transparent'
+                            : 'text-text-on-dark-muted hover:text-white hover:bg-white/5 border-white/10'
+                        }`}
+                      >
+                        Show All
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-2xl">
               <p className="text-text-on-dark-muted">Belum ada riwayat analisis yang tersimpan.</p>

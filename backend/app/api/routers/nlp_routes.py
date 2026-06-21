@@ -39,11 +39,12 @@ def _normalize_label(raw: str) -> str:
         return 'negative'
     elif 'pos' in raw:
         return 'positive'
-    elif 'neu' in raw:
+    elif 'neu' in raw or 'net' in raw:
         return 'netral'
     elif 'con' in raw:
         return 'conflict'
     return 'conflict'
+
 
 
 def _save_sentiment(record: dict):
@@ -52,6 +53,16 @@ def _save_sentiment(record: dict):
         supabase.table("sentiment_analyses").insert(record).execute()
     except Exception as e:
         logging.getLogger(__name__).error(f"Gagal menyimpan sentimen: {e}")
+
+
+def _save_sentiments_batch(records: list):
+    """Simpan daftar hasil analisis ke tabel sentiment_analyses di Supabase menggunakan batch insert."""
+    if not records:
+        return
+    try:
+        supabase.table("sentiment_analyses").insert(records).execute()
+    except Exception as e:
+        logging.getLogger(__name__).error(f"Gagal menyimpan batch sentimen: {e}")
 
 
 def _parse_tweet_date(raw_date) -> Optional[str]:
@@ -212,19 +223,38 @@ async def analyze_x_reports(
         }
 
     results = []
+    records_to_save = []
     # 2. Iterasi dan analisis tiap tweet menggunakan model Bi-LSTM
     # Batasi ke jumlah yang diminta (jika fetch berlebih)
     target_tweets = all_tweets[:count]
+    
+    # Ambil semua teks tweet untuk batch prediction
+    contents = [t.get("text", "") for t in target_tweets]
+    valid_indices = [idx for idx, text in enumerate(contents) if text.strip()]
+    valid_texts = [contents[idx] for idx in valid_indices]
+    
+    try:
+        predictions = nlp_service.predict_sentiment_batch(valid_texts)
+    except Exception as e:
+        logger.error(f"Failed to batch predict sentiments: {e}")
+        predictions = [None] * len(valid_texts)
+        
+    # Buat lookup map dari index tweet ke hasil prediksi
+    prediction_map = {}
+    for idx, valid_idx in enumerate(valid_indices):
+        prediction_map[valid_idx] = predictions[idx]
     
     for i, t in enumerate(target_tweets):
         content = t.get("text", "")
         if not content:
             continue
             
+        prediction = prediction_map.get(i)
+        if not prediction:
+            continue
+            
         # Analisis menggunakan otak NLP yang sama dengan laporan manual
         try:
-            prediction = nlp_service.predict_sentiment(content)
-            
             # Ambil username dengan lebih rapi
             author = "unknown"
             author_data = t.get("author") or t.get("user")
@@ -252,8 +282,8 @@ async def analyze_x_reports(
             tweet_created = t.get("createdAt") or t.get("created_at")
             tweet_created_at = _parse_tweet_date(tweet_created)
 
-            # Simpan ke database
-            _save_sentiment({
+            # Siapkan untuk simpan ke database (batch)
+            records_to_save.append({
                 "source": "x_crawl",
                 "original_text": content,
                 "search_query": query,
@@ -289,6 +319,10 @@ async def analyze_x_reports(
         except Exception as e:
             logger.error(f"Failed to analyze tweet #{i+1}: {e}")
             continue
+
+    # Simpan semua data sekaligus ke database (Batch Insert)
+    if records_to_save:
+        _save_sentiments_batch(records_to_save)
         
     return {
         "status": "success",
@@ -327,6 +361,16 @@ async def get_sentiment_history(
             query = query.ilike("search_query", f"%{search_query}%")
         
         result = query.execute()
+        
+        # Tambahkan dynamic reason jika belum ada
+        if result.data:
+            for item in result.data:
+                lbl = item.get("sentiment_label") or "conflict"
+                txt = item.get("original_text") or ""
+                if NLP_AVAILABLE:
+                    item["reason"] = nlp_service._generate_reason(txt, lbl.upper())
+                else:
+                    item["reason"] = "Analisis sentimen berbasis teks."
         
         # Hitung total untuk paginasi
         count_query = supabase.table("sentiment_analyses").select("id", count="exact")
