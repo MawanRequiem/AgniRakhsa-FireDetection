@@ -132,7 +132,7 @@ export default function SentimenAnalisisX() {
   const [filterSince, setFilterSince] = useState('');
   const [filterUntil, setFilterUntil] = useState('');
   const [filterMinFaves, setFilterMinFaves] = useState('');
-  const [filterCount, setFilterCount] = useState('20');
+  const [filterCount, setFilterCount] = useState('400');
   const [historyResults, setHistoryResults] = useState([]);
   const [fetchingHistory, setFetchingHistory] = useState(false);
   const [sortBy, setSortBy] = useState('date-asc');
@@ -205,13 +205,9 @@ export default function SentimenAnalisisX() {
       return item.source === 'x_crawl';
     });
     
-    // Exclude items that are already shown in live results to prevent duplicates
-    const liveIds = new Set(liveResults.map(item => item.tweet_id));
-    const nonDuplicate = filtered.filter(item => !liveIds.has(item.tweet_id));
-
-    const byCategory = activeFilter === 'all' ? nonDuplicate : nonDuplicate.filter(item => item.finalKey === activeFilter);
+    const byCategory = activeFilter === 'all' ? filtered : filtered.filter(item => item.finalKey === activeFilter);
     return sortResults(byCategory, sortBy);
-  }, [historyResults, activeFilter, activeMode, sortBy, liveResults]);
+  }, [historyResults, activeFilter, activeMode, sortBy]);
 
   const paginatedHistory = useMemo(() => {
     if (showAllHistory) return sortedHistory;
@@ -771,7 +767,7 @@ export default function SentimenAnalisisX() {
 
             {paginatedLive.length > 0 ? (
               <>
-                <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <AnimatePresence mode="popLayout">
                     {paginatedLive.map((item, idx) => (
                       <ResultCard key={item.tweet_id || idx} item={item} />
