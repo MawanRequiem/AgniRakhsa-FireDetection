@@ -234,8 +234,8 @@ async def analyze_x_reports(
     tweets_per_segment = max(1, count // 4)
     all_tweets = []
     
-    # 1. Fetch tweets for each segment
-    for seg_since_str, seg_until_str in segments:
+    # 1. Fetch tweets for each segment (newest first)
+    for seg_since_str, seg_until_str in reversed(segments):
         segment_cursor = None
         # We can fetch tweets_per_segment by calling the API
         api_result = x_service.fetch_tweets(
