@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from app.services.x_service import XService
 from app.core.db import supabase
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import re
 
@@ -184,34 +184,73 @@ async def analyze_x_reports(
     if not NLP_AVAILABLE:
         raise HTTPException(status_code=503, detail="AI Service tidak aktif.")
 
-    # 1. Ambil data dari X (Mendukung Multi-Page jika count > 20)
-    all_tweets = []
-    api_result = {}  # Initialize before loop to prevent NameError
-    current_cursor = cursor
-    pages_to_fetch = (count + 19) // 20 # Estimasi jumlah page (GetXAPI ~20 per page)
+    # Enforce maximum tweet limit of 100
+    if count > 100:
+        count = 100
+    if count < 1:
+        count = 1
+
+    # Date range configuration: max 5 days before now
+    today_dt = datetime.now()
+    default_since_dt = today_dt - timedelta(days=5)
+
+    user_since_dt = None
+    user_until_dt = None
+    if since:
+        try:
+            user_since_dt = datetime.strptime(since, "%Y-%m-%d")
+        except:
+            pass
+    if until:
+        try:
+            user_until_dt = datetime.strptime(until, "%Y-%m-%d")
+        except:
+            pass
+
+    if not user_since_dt:
+        user_since_dt = default_since_dt
+    if not user_until_dt:
+        user_until_dt = today_dt
+
+    # Ensure range doesn't exceed 5 days ago
+    if user_since_dt < default_since_dt:
+        user_since_dt = default_since_dt
+    if user_until_dt > today_dt:
+        user_until_dt = today_dt
+    if user_since_dt > user_until_dt:
+        user_since_dt = user_until_dt - timedelta(days=1)
+
+    # Divide the selected range into 4 equal segments
+    total_seconds = (user_until_dt - user_since_dt).total_seconds()
+    segment_duration = total_seconds / 4
     
-    for page in range(pages_to_fetch):
+    segments = []
+    for idx in range(4):
+        seg_since = user_since_dt + timedelta(seconds=idx * segment_duration)
+        seg_until = user_since_dt + timedelta(seconds=(idx + 1) * segment_duration)
+        segments.append((seg_since.strftime("%Y-%m-%d"), seg_until.strftime("%Y-%m-%d")))
+
+    # Calculate tweets to fetch per segment (split into 4 segments)
+    tweets_per_segment = max(1, count // 4)
+    all_tweets = []
+    
+    # 1. Fetch tweets for each segment
+    for seg_since_str, seg_until_str in segments:
+        segment_cursor = None
+        # We can fetch tweets_per_segment by calling the API
         api_result = x_service.fetch_tweets(
             query=query,
-            count=20, # GetXAPI fix ~20 per call
+            count=tweets_per_segment,
             product=product,
             lang=lang,
-            since=since,
-            until=until,
+            since=seg_since_str,
+            until=seg_until_str,
             min_faves=min_faves,
-            cursor=current_cursor,
+            cursor=segment_cursor,
         )
-        
         batch = api_result.get("tweets", [])
-        if not batch:
-            break
-            
-        all_tweets.extend(batch)
-        current_cursor = api_result.get("next_cursor")
-        
-        # Berhenti jika sudah cukup atau tidak ada cursor lagi
-        if len(all_tweets) >= count or not current_cursor:
-            break
+        if batch:
+            all_tweets.extend(batch)
 
     if not all_tweets:
         return {

@@ -6,6 +6,7 @@ from app.core import security
 from app.core.config import settings
 from app.services import user_service
 from app.schemas.user import UserCreate
+from app.core.db import supabase, supabase_admin
 import app.api.deps
 
 router = APIRouter()

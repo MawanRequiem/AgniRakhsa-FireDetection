@@ -1,51 +1,63 @@
-import pickle
 import numpy as np
 import os
 import re
 import string
-try:
-    # pyrefly: ignore [missing-import]
-    from tensorflow.keras.models import load_model
-except ImportError:
-    try:
-        from keras.models import load_model
-    except ImportError:
-        import tensorflow as tf
-        load_model = tf.keras.models.load_model
-
-try:
-    # pyrefly: ignore [missing-import]
-    from tensorflow.keras.preprocessing.sequence import pad_sequences
-except ImportError:
-    try:
-        from keras.preprocessing.sequence import pad_sequences
-    except ImportError:
-        try:
-            # pyrefly: ignore [missing-import]
-            from tensorflow.keras.utils import pad_sequences
-        except ImportError:
-            import tensorflow as tf
-            pad_sequences = tf.keras.preprocessing.sequence.pad_sequences
-
-from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
 
 class NLPService:
     def __init__(self):
+        self.model = None
+        self.tokenizer = None
+        self.label_encoder = None
+        self.pad_sequences_fn = None
+        self.stopword_remover = None
+        # Definisi Max Length sesuai dengan train_model.py
+        self.max_len = 120 
+
+    def _load_resources(self):
+        if self.model is not None:
+            return
+            
+        import pickle
+        # Lazy import Keras load_model
+        try:
+            # pyrefly: ignore [missing-import]
+            from tensorflow.keras.models import load_model
+        except ImportError:
+            try:
+                from keras.models import load_model
+            except ImportError:
+                import tensorflow as tf
+                load_model = tf.keras.models.load_model
+
+        # Lazy import pad_sequences
+        try:
+            # pyrefly: ignore [missing-import]
+            from tensorflow.keras.preprocessing.sequence import pad_sequences
+        except ImportError:
+            try:
+                from keras.preprocessing.sequence import pad_sequences
+            except ImportError:
+                try:
+                    # pyrefly: ignore [missing-import]
+                    from tensorflow.keras.utils import pad_sequences
+                except ImportError:
+                    import tensorflow as tf
+                    pad_sequences = tf.keras.preprocessing.sequence.pad_sequences
+
+        self.pad_sequences_fn = pad_sequences
+        
         current_dir = os.path.dirname(os.path.abspath(__file__))
         lstm_dir = os.path.abspath(os.path.join(current_dir, "..", "ai", "nlp_lstm"))
         
-        # Menggunakan nama file hasil save terakhir dari train_model.py
         self.model = load_model(os.path.join(lstm_dir, 'model_lstm.h5'))
         with open(os.path.join(lstm_dir, 'tokenizer.pkl'), 'rb') as f:
             self.tokenizer = pickle.load(f)
         with open(os.path.join(lstm_dir, 'label_encoder.pkl'), 'rb') as f:
             self.label_encoder = pickle.load(f)
             
+        from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
         factory = StopWordRemoverFactory()
         self.stopword_remover = factory.create_stop_word_remover()
-        
-        # Definisi Max Length sesuai dengan train_model.py
-        self.max_len = 120 
 
     def apply_ngram_context(self, text):
         """Menambahkan konteks Bigrams agar sesuai dengan pola training model"""
@@ -305,11 +317,12 @@ class NLPService:
         return "Laporan diklasifikasikan sebagai NETRAL karena tidak mengandung indikasi ancaman kebakaran aktif maupun konflik, melainkan sekadar informasi umum, candaan, simulasi, atau imbauan edukatif."
 
     def predict_sentiment(self, text: str):
+        self._load_resources()
         translated_text = self._translate_if_english(text)
         cleaned = self._clean_text(translated_text)
         context_text = self.apply_ngram_context(cleaned)
         seq = self.tokenizer.texts_to_sequences([context_text])
-        padded = pad_sequences(seq, maxlen=self.max_len, padding='post', truncating='post')
+        padded = self.pad_sequences_fn(seq, maxlen=self.max_len, padding='post', truncating='post')
         
         pred_tensor = self.model(padded, training=False)
         pred = pred_tensor.numpy()
@@ -332,12 +345,13 @@ class NLPService:
         if not texts:
             return []
             
+        self._load_resources()
         translated_texts = [self._translate_if_english(t) for t in texts]
         cleaned_texts = [self._clean_text(ct) for ct in translated_texts]
         context_texts = [self.apply_ngram_context(ct) for ct in cleaned_texts]
         
         seqs = self.tokenizer.texts_to_sequences(context_texts)
-        padded = pad_sequences(seqs, maxlen=self.max_len, padding='post', truncating='post')
+        padded = self.pad_sequences_fn(seqs, maxlen=self.max_len, padding='post', truncating='post')
         
         pred_tensor = self.model(padded, training=False)
         preds = pred_tensor.numpy()

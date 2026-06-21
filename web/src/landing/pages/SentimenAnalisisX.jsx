@@ -131,12 +131,51 @@ export default function SentimenAnalisisX() {
   const [filterLang, setFilterLang] = useState('');
   const [filterSince, setFilterSince] = useState('');
   const [filterUntil, setFilterUntil] = useState('');
+
+  const handleSinceChange = (val) => {
+    if (!val) {
+      setFilterSince('');
+      return;
+    }
+    const selected = new Date(val);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const limitDate = new Date(today);
+    limitDate.setDate(today.getDate() - 5);
+
+    if (selected < limitDate) {
+      alert("hanya boleh 5 hari kebelakang");
+      const limitStr = limitDate.toISOString().split('T')[0];
+      setFilterSince(limitStr);
+    } else {
+      setFilterSince(val);
+    }
+  };
+
+  const handleUntilChange = (val) => {
+    if (!val) {
+      setFilterUntil('');
+      return;
+    }
+    const selected = new Date(val);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    if (selected > today) {
+      alert("Tanggal tidak boleh melebihi hari ini");
+      const todayStr = today.toISOString().split('T')[0];
+      setFilterUntil(todayStr);
+    } else {
+      setFilterUntil(val);
+    }
+  };
+
   const [filterMinFaves, setFilterMinFaves] = useState('');
-  const [filterCount, setFilterCount] = useState('400');
+  const [filterCount, setFilterCount] = useState('100');
   const [historyResults, setHistoryResults] = useState([]);
   const [fetchingHistory, setFetchingHistory] = useState(false);
-  const [sortBy, setSortBy] = useState('date-asc');
-  const [liveSortBy, setLiveSortBy] = useState('date-asc');
+  const [sortBy, setSortBy] = useState('date-desc');
+  const [liveSortBy, setLiveSortBy] = useState('date-desc');
 
   // Pagination states for History Analisis
   const [currentPage, setCurrentPage] = useState(1);
@@ -256,21 +295,19 @@ export default function SentimenAnalisisX() {
     return stats;
   }, [historyResults, activeMode, xResults, analysisResult]);
 
-  const combinedStats = useMemo(() => ({
-    negative: liveStats.negative + historyStats.negative,
-    positive: liveStats.positive + historyStats.positive,
-    netral: liveStats.netral + historyStats.netral,
-    conflict: liveStats.conflict + historyStats.conflict,
-  }), [liveStats, historyStats]);
+  const totalLiveCount = liveStats.negative + liveStats.positive + liveStats.netral + liveStats.conflict;
 
-  const chartData = useMemo(() => [
-    { name: 'Negative', value: combinedStats.negative || 1, color: THEME.negative.color },
-    { name: 'Positive', value: combinedStats.positive || 1, color: THEME.positive.color },
-    { name: 'Netral', value: combinedStats.netral || 1, color: THEME.netral.color },
-    { name: 'Conflict', value: combinedStats.conflict || 1, color: THEME.conflict.color },
-  ], [combinedStats]);
+  const chartData = useMemo(() => {
+    const isZero = totalLiveCount === 0;
+    return [
+      { name: 'Negative', value: isZero ? 1 : liveStats.negative, color: THEME.negative.color },
+      { name: 'Positive', value: isZero ? 1 : liveStats.positive, color: THEME.positive.color },
+      { name: 'Netral', value: isZero ? 1 : liveStats.netral, color: THEME.netral.color },
+      { name: 'Conflict', value: isZero ? 1 : liveStats.conflict, color: THEME.conflict.color },
+    ];
+  }, [liveStats, totalLiveCount]);
 
-  const maxStat = Math.max(combinedStats.negative, combinedStats.positive, combinedStats.netral, combinedStats.conflict, 1);
+  const maxStat = Math.max(liveStats.negative, liveStats.positive, liveStats.netral, liveStats.conflict, 1);
 
   const hasLiveResults = activeMode === 'x' ? xResults.length > 0 : analysisResult !== null;
 
@@ -349,7 +386,7 @@ export default function SentimenAnalisisX() {
     setFetchingHistory(true);
     try {
       const sourceParam = sourceMode === 'manual' ? 'manual' : 'x_crawl';
-      const response = await customFetch(`/api/v1/nlp/history?source=${sourceParam}&limit=100`);
+      const response = await customFetch(`/api/v1/nlp/history?source=${sourceParam}&limit=200`);
       if (!response.ok) {
         console.warn('History endpoint tidak tersedia, skip.');
         return;
@@ -647,11 +684,11 @@ export default function SentimenAnalisisX() {
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-text-on-dark-muted uppercase tracking-wider flex items-center gap-1"><Calendar size={10} />Dari Tanggal</label>
-                      <input type="date" value={filterSince} onChange={(e) => setFilterSince(e.target.value)} className="w-full bg-dark-surface border border-dark-border rounded-lg py-2.5 px-3 text-sm text-white outline-none focus:ring-1 focus:ring-ifrit-red" />
+                      <input type="date" value={filterSince} onChange={(e) => handleSinceChange(e.target.value)} className="w-full bg-dark-surface border border-dark-border rounded-lg py-2.5 px-3 text-sm text-white outline-none focus:ring-1 focus:ring-ifrit-red" />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-text-on-dark-muted uppercase tracking-wider flex items-center gap-1"><Calendar size={10} />Sampai Tanggal</label>
-                      <input type="date" value={filterUntil} onChange={(e) => setFilterUntil(e.target.value)} className="w-full bg-dark-surface border border-dark-border rounded-lg py-2.5 px-3 text-sm text-white outline-none focus:ring-1 focus:ring-ifrit-red" />
+                      <input type="date" value={filterUntil} onChange={(e) => handleUntilChange(e.target.value)} className="w-full bg-dark-surface border border-dark-border rounded-lg py-2.5 px-3 text-sm text-white outline-none focus:ring-1 focus:ring-ifrit-red" />
                     </div>
                     <div className="col-span-2 space-y-1.5">
                       <label className="text-[10px] font-bold text-text-on-dark-muted uppercase tracking-wider flex items-center gap-1"><Heart size={10} />Min. Likes</label>
@@ -661,7 +698,7 @@ export default function SentimenAnalisisX() {
                       <label className="text-[10px] font-bold text-text-on-dark-muted uppercase tracking-wider">Jumlah Tweet</label>
                       <div className="relative">
                         <input
-                          type="number" min="1" max="200"
+                          type="number" min="1" max="100"
                           value={filterCount}
                           onChange={(e) => setFilterCount(e.target.value)}
                           className="w-full bg-dark-surface border border-dark-border rounded-lg py-2.5 px-3 text-sm text-white outline-none focus:ring-1 focus:ring-ifrit-red"
@@ -669,7 +706,7 @@ export default function SentimenAnalisisX() {
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/20 font-bold uppercase">Tweets</span>
                       </div>
-                      <p className="text-[10px] text-text-on-dark-muted leading-tight">Makin banyak tweet, makin lama proses analisis AI Bi-LSTM (Max: 200).</p>
+                      <p className="text-[10px] text-text-on-dark-muted leading-tight">Makin banyak tweet, makin lama proses analisis AI Bi-LSTM (Max: 100).</p>
                     </div>
                   </div>
                 )}
@@ -716,7 +753,7 @@ export default function SentimenAnalisisX() {
               </div>
               <div className="space-y-2">
                 {Object.entries(THEME).map(([key, config]) => (
-                  <SeverityBar key={key} color={config.color} label={config.label} count={combinedStats[key]} />
+                  <SeverityBar key={key} color={config.color} label={config.label} count={liveStats[key]} />
                 ))}
               </div>
             </div>
