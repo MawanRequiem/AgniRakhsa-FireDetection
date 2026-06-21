@@ -736,32 +736,43 @@ export default function SentimenAnalisisX() {
               </div>
               <div className="flex items-center gap-3">
                 <SortDropdown value={liveSortBy} onChange={setLiveSortBy} />
-                <div className="flex items-center gap-1 p-1 bg-white/5 rounded-lg border border-white/10">
-                  {['all', 'negative', 'positive', 'netral', 'conflict'].map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => setLiveFilter(f)}
-                      className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
-                        liveFilter === f
-                          ? 'bg-ifrit-red text-white'
-                          : 'text-text-on-dark-muted hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      {f === 'all' ? 'Semua' : THEME[f]?.label || f}
-                    </button>
-                  ))}
-                </div>
               </div>
             </div>
 
-            {/* Live severity strip */}
+            {/* Live severity strip: Interactive Filter Badges */}
             <div className="flex flex-wrap gap-2 mb-5">
+              <button
+                onClick={() => setLiveFilter('all')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all ${
+                  liveFilter === 'all'
+                    ? 'border-ifrit-red bg-ifrit-red/10 text-white shadow-[0_0_8px_rgba(239,68,68,0.2)]'
+                    : 'border-white/5 bg-white/5 text-white/60 hover:border-white/10 hover:text-white'
+                }`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">SEMUA</span>
+                <span className="text-xs font-mono font-bold text-white/80">{liveResults.length || 0}</span>
+              </button>
+
               {Object.entries(THEME).map(([key, config]) => (
-                <div key={key} className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/5 bg-white/5">
+                <button
+                  key={key}
+                  onClick={() => setLiveFilter(key)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all ${
+                    liveFilter === key
+                      ? 'border-transparent text-white shadow-[0_0_8px]'
+                      : 'border-white/5 bg-white/5 text-white/50 hover:border-white/10 hover:text-white'
+                  }`}
+                  style={{
+                    backgroundColor: liveFilter === key ? `${config.color}20` : undefined,
+                    borderColor: liveFilter === key ? config.color : undefined,
+                    boxShadow: liveFilter === key ? `0 0 10px ${config.color}40` : undefined,
+                  }}
+                >
                   <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: config.color }} />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-white/50">{config.label}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">{config.label}</span>
                   <span className="text-xs font-mono font-bold" style={{ color: config.color }}>{liveStats[key]}</span>
-                </div>
+                </button>
               ))}
             </div>
 
